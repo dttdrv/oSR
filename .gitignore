@@ -1,0 +1,12 @@
+build/
+out/
+.vs/
+.vscode/
+CMakeUserPresets.json
+*.user
+*.suo
+*.log
+*.bin
+*.dump
+captures/
+osr_runtime.log
