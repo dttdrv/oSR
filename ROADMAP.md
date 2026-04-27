@@ -34,6 +34,7 @@ Goal: implement a small HLSL compute upscaler path with predictable output.
 Pass gate:
 - Debug output is produced through a compute pass.
 - GPU cost target at 1920x1200 is under 0.6 ms on Radeon 760M-class hardware.
+- Spatial baseline includes timing for the trust/debug resources disabled.
 
 ## Phase 4: Temporal Accumulation
 
@@ -43,6 +44,7 @@ Pass gate:
 - History is reset on explicit reset, first frame, and resolution changes.
 - Static scenes converge without uncontrolled ghost trails.
 - First temporal path target is under 1.5 ms GPU, with warning over 2.5 ms.
+- A trust field is generated or cleared each frame and exposed to debug views.
 
 ## Phase 5: History Rejection And Disocclusion
 
@@ -51,6 +53,8 @@ Goal: reject invalid history using depth consistency, disocclusion, reactive mas
 Pass gate:
 - Debug views expose motion vectors, depth, disocclusion, accumulation weight, and history confidence.
 - Fast foreground motion prefers current-frame clarity over persistent trails.
+- Reactive-mask synthesis is available when the source API provides no reactive/responsive mask.
+- Sharpening is reduced in low-trust/reactive regions.
 
 ## Phase 6: Game Profiles And Benchmarking
 
@@ -68,4 +72,3 @@ Pass gate:
 - The pass is optional, isolated, and disabled by default.
 - It does not become the core path.
 - It fits the same logging, validation, and profiling discipline.
-

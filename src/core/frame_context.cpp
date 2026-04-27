@@ -103,6 +103,10 @@ const char* ToString(ResourceKind kind) noexcept {
     case ResourceKind::Exposure: return "Exposure";
     case ResourceKind::ReactiveMask: return "ReactiveMask";
     case ResourceKind::TransparencyAndCompositionMask: return "TransparencyAndCompositionMask";
+    case ResourceKind::HistoryColor: return "HistoryColor";
+    case ResourceKind::TrustField: return "TrustField";
+    case ResourceKind::SynthesizedReactiveMask: return "SynthesizedReactiveMask";
+    case ResourceKind::DebugVisualization: return "DebugVisualization";
     case ResourceKind::Unknown:
     default: return "Unknown";
     }

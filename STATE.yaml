@@ -1,10 +1,20 @@
 current_phase: phase_0
 build_status:
   configured: true
-  compiled: true
+  compiled: partial
   tests_passed: true
   last_checked: 2026-04-27
-  last_preset: ninja-debug
+  last_preset: direct-mingw-manual
+  notes:
+    - Previous full Ninja build passed at commit e91acfd.
+    - Current Ninja build directory stalls after a timed-out run; changed test sources compile and pass via direct MinGW commands.
+    - Visual Studio/MSBuild command-line tools were not available in this sandbox, so the AMD sample solution was not built.
+external_dependencies:
+  fidelityfx_sdk:
+    path: external/FidelityFX-SDK
+    git_commit: e236f23
+    version_observed: AMD FSR SDK 2.2.0 Redstone, FSR upscaler 3.1.5
+    status: installed_locally_not_vendored
 known_working_assumptions:
   - Windows 11 primary target.
   - Primary hardware target is AMD Radeon 760M / Ryzen 5 7640HS class laptop.
@@ -12,8 +22,8 @@ known_working_assumptions:
   - Initial bridge is FSR3.1 / FidelityFX API style DX12 input.
   - Reference projects are clean-room references only unless license review changes that.
   - SDK/sample apps are the first validation targets.
+  - oSR's research differentiator is trust-field temporal reconstruction with explainable confidence-driven history selection.
 unknowns:
-  - Exact FidelityFX SDK version used for the first sample-app proof of life.
   - Final exported DLL names for the first wrapper packaging mode.
   - Whether the first sample will call the bridge directly or through a renamed loader DLL.
   - Motion-vector convention and exposure behavior for first real-game target.
@@ -25,7 +35,9 @@ target_games_for_initial_testing:
     - The Outer Worlds: Spacer's Choice Edition
     - RoboCop: Rogue City
 next_actions:
+  - Repair or replace the stale Ninja build directory.
+  - Build AMD FidelityFX_FSR_2022.sln once Visual Studio/MSBuild is available.
   - Wire FFX-style sample dispatch into FrameContext logging.
   - Run first sample proof of life and append results to LOG.md.
-  - Decide first AMD FidelityFX SDK sample checkout/version.
   - Replace metadata-only DX12 debug pass with command-list recording.
+  - Port trust-field CPU policy to command-list-recorded HLSL passes.

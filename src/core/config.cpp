@@ -57,6 +57,16 @@ RuntimeConfig LoadConfig(const std::filesystem::path& path) {
             config.capture_enabled = ParseBool(value);
         } else if (key == "debug_overlay_enabled") {
             config.debug_overlay_enabled = ParseBool(value);
+        } else if (key == "trust_field_enabled") {
+            config.trust_field_enabled = ParseBool(value);
+        } else if (key == "reactive_synthesis_enabled") {
+            config.reactive_synthesis_enabled = ParseBool(value);
+        } else if (key == "trust_decay_rate") {
+            config.trust_decay_rate = std::stof(value);
+        } else if (key == "depth_consistency_threshold") {
+            config.depth_consistency_threshold = std::stof(value);
+        } else if (key == "motion_consistency_threshold_pixels") {
+            config.motion_consistency_threshold_pixels = std::stof(value);
         } else if (key == "motion_vector_scale_override") {
             config.motion_vector_scale_override = ParseFloat2(value);
         } else if (key == "depth_inverted_override") {
@@ -72,4 +82,3 @@ bool ParseBool(const std::string& value) {
 }
 
 } // namespace osr::core
-

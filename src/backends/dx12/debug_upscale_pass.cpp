@@ -7,6 +7,20 @@
 
 namespace osr::backends::dx12 {
 
+const char* ToString(DebugViewMode mode) noexcept {
+    switch (mode) {
+    case DebugViewMode::Final: return "Final";
+    case DebugViewMode::MotionVectors: return "MotionVectors";
+    case DebugViewMode::Depth: return "Depth";
+    case DebugViewMode::Disocclusion: return "Disocclusion";
+    case DebugViewMode::Reactive: return "Reactive";
+    case DebugViewMode::SynthesizedReactive: return "SynthesizedReactive";
+    case DebugViewMode::HistoryTrust: return "HistoryTrust";
+    case DebugViewMode::AccumulationWeight: return "AccumulationWeight";
+    default: return "Unknown";
+    }
+}
+
 DebugUpscaleDispatch BuildDebugUpscaleDispatch(const core::FrameContext& frame) {
     DebugUpscaleDispatch dispatch;
     dispatch.groups_x = (frame.display_size.width + 7u) / 8u;
@@ -26,6 +40,7 @@ bool DebugUpscalePass::Dispatch(void* native_command_list, const core::FrameCont
 
     std::ostringstream message;
     message << "Dispatch debug upscale shader=" << dispatch.shader_name
+            << " view=" << ToString(dispatch.debug_view)
             << " groups=(" << dispatch.groups_x << "," << dispatch.groups_y << ") "
             << DescribeDescriptorRange(descriptors);
 
@@ -41,4 +56,3 @@ bool DebugUpscalePass::Dispatch(void* native_command_list, const core::FrameCont
 }
 
 } // namespace osr::backends::dx12
-

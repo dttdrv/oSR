@@ -18,16 +18,21 @@ DescriptorRange RequiredDebugUpscaleDescriptors(const core::FrameContext& frame)
     }
     if (frame.reactive_mask.has_value() && frame.reactive_mask->IsPresent()) {
         ++range.srv_count;
+    } else {
+        ++range.internal_uav_count;
     }
 
+    ++range.internal_uav_count;
     return range;
 }
 
 std::string DescribeDescriptorRange(const DescriptorRange& range) {
     std::ostringstream out;
-    out << "srv=" << range.srv_count << " uav=" << range.uav_count << " cbv=" << range.cbv_count;
+    out << "srv=" << range.srv_count
+        << " uav=" << range.uav_count
+        << " cbv=" << range.cbv_count
+        << " internal_uav=" << range.internal_uav_count;
     return out.str();
 }
 
 } // namespace osr::backends::dx12
-

@@ -27,7 +27,11 @@ enum class ResourceKind {
     MotionVectors,
     Exposure,
     ReactiveMask,
-    TransparencyAndCompositionMask
+    TransparencyAndCompositionMask,
+    HistoryColor,
+    TrustField,
+    SynthesizedReactiveMask,
+    DebugVisualization
 };
 
 struct ResourceDesc {
@@ -119,4 +123,3 @@ struct ValidationReport {
 [[nodiscard]] const char* ToString(ColorSpace color_space) noexcept;
 
 } // namespace osr::core
-

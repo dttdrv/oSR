@@ -6,12 +6,25 @@
 
 namespace osr::backends::dx12 {
 
+enum class DebugViewMode {
+    Final,
+    MotionVectors,
+    Depth,
+    Disocclusion,
+    Reactive,
+    SynthesizedReactive,
+    HistoryTrust,
+    AccumulationWeight
+};
+
 struct DebugUpscaleDispatch {
     uint32_t groups_x = 0;
     uint32_t groups_y = 0;
     std::string shader_name = "spatial_debug_upscale.hlsl";
+    DebugViewMode debug_view = DebugViewMode::Final;
 };
 
+[[nodiscard]] const char* ToString(DebugViewMode mode) noexcept;
 [[nodiscard]] DebugUpscaleDispatch BuildDebugUpscaleDispatch(const core::FrameContext& frame);
 
 class DebugUpscalePass {
@@ -24,4 +37,3 @@ private:
 };
 
 } // namespace osr::backends::dx12
-

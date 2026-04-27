@@ -19,9 +19,11 @@ target_include_directories(osr_core PUBLIC src)
 add_library(osr_reconstruction STATIC
     src/reconstruction/disocclusion.cpp
     src/reconstruction/history_rejection.cpp
+    src/reconstruction/reactive_mask_synthesis.cpp
     src/reconstruction/sharpening.cpp
     src/reconstruction/spatial_upscale.cpp
     src/reconstruction/temporal_accumulation.cpp
+    src/reconstruction/trust_field.cpp
 )
 target_include_directories(osr_reconstruction PUBLIC src)
 target_link_libraries(osr_reconstruction PUBLIC osr_core)
@@ -73,5 +75,10 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_frame_context_tests PRIVATE osr_core osr_debug)
     add_test(NAME frame_context_validation COMMAND osr_frame_context_tests)
-endif()
 
+    add_executable(osr_trust_field_tests
+        src/tests/trust_field_tests.cpp
+    )
+    target_link_libraries(osr_trust_field_tests PRIVATE osr_core osr_reconstruction)
+    add_test(NAME trust_field COMMAND osr_trust_field_tests)
+endif()
