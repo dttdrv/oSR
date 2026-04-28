@@ -97,6 +97,7 @@ To summarize a captured frame without rerunning DX12:
 ```text
 tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012
 tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012 --gate
+tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012 --gate --thresholds profiles\capture_gate.cfg
 ```
 
 The analyzer reports global temporal trust plus motion/static and synthetic ROI

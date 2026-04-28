@@ -157,6 +157,15 @@ int main() {
     if (!osr::debug::EvaluateCaptureAnalysisGate(failing_analysis, relaxed).passed) {
         return Fail("ROI capture analysis gate should honor custom relaxed thresholds");
     }
+    {
+        std::ofstream thresholds_file(dir.parent_path() / "thresholds.cfg", std::ios::trunc);
+        thresholds_file << "max_reactive_history_trusted_pct = 30\n";
+        thresholds_file << "min_static_history_trusted_pct = 80\n";
+    }
+    const auto loaded_thresholds = osr::debug::LoadCaptureAnalysisGateThresholds(dir.parent_path() / "thresholds.cfg");
+    if (!osr::debug::EvaluateCaptureAnalysisGate(failing_analysis, loaded_thresholds).passed) {
+        return Fail("ROI capture analysis gate should honor loaded threshold config");
+    }
 
     const auto missing = osr::debug::AnalyzeCaptureFrame(dir / "missing");
     if (missing.ok || osr::debug::SummarizeCaptureAnalysis(missing).find("capture_analysis_failed") == std::string::npos) {

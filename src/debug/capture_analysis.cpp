@@ -24,6 +24,13 @@ std::string ReadText(const std::filesystem::path& path) {
     return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
+std::string Trim(std::string value) {
+    const auto not_space = [](unsigned char c) { return c != ' ' && c != '\t' && c != '\r' && c != '\n'; };
+    value.erase(value.begin(), std::find_if(value.begin(), value.end(), not_space));
+    value.erase(std::find_if(value.rbegin(), value.rend(), not_space).base(), value.end());
+    return value;
+}
+
 std::optional<std::string> JsonStringValue(const std::string& object, const std::string& key) {
     const std::string needle = "\"" + key + "\":\"";
     const size_t begin = object.find(needle);
@@ -401,6 +408,44 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
                              analysis);
     analysis.ok = true;
     return analysis;
+}
+
+CaptureAnalysisGateThresholds LoadCaptureAnalysisGateThresholds(const std::filesystem::path& path) {
+    CaptureAnalysisGateThresholds thresholds;
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        return thresholds;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        line = Trim(line);
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        const auto separator = line.find('=');
+        if (separator == std::string::npos) {
+            continue;
+        }
+        const auto key = Trim(line.substr(0, separator));
+        const auto value = Trim(line.substr(separator + 1));
+        if (key == "max_motion_history_trusted_pct") {
+            thresholds.max_motion_history_trusted_pct = std::stod(value);
+        } else if (key == "min_static_history_trusted_pct") {
+            thresholds.min_static_history_trusted_pct = std::stod(value);
+        } else if (key == "min_text_history_trusted_pct") {
+            thresholds.min_text_history_trusted_pct = std::stod(value);
+        } else if (key == "max_specular_history_trusted_pct") {
+            thresholds.max_specular_history_trusted_pct = std::stod(value);
+        } else if (key == "max_transparent_history_trusted_pct") {
+            thresholds.max_transparent_history_trusted_pct = std::stod(value);
+        } else if (key == "max_reactive_history_trusted_pct") {
+            thresholds.max_reactive_history_trusted_pct = std::stod(value);
+        } else if (key == "max_color_reject_candidate_pct") {
+            thresholds.max_color_reject_candidate_pct = std::stod(value);
+        }
+    }
+    return thresholds;
 }
 
 CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis) {

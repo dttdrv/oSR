@@ -67,7 +67,8 @@ build_status:
     - tools/run_capture_analyzer.bat supports --gate for saved-frame ROI trust regression checks.
     - DX12 temporal selected-frame captures run the ROI capture-analysis gate in-process when --metric-gate is enabled.
     - DX12 temporal sequence parity reports worst byte-diff frame, pixel, channel, and synthetic ROI class.
-    - Capture analysis gates use named threshold settings so future profiles/config can override them.
+    - Capture analysis gates use named threshold settings and can load overrides from simple key/value threshold config files.
+    - profiles/capture_gate.cfg contains the default synthetic capture-analysis gate thresholds used for local sweeps.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -114,7 +115,7 @@ next_actions:
   - Add confidence-gated edge/text ROI metrics so readability and thin-geometry stability become first-class gates.
   - Replace manual harness history-weight/rejection-risk proxy views with real temporal resolve debug maps once the harness owns frame history.
   - Add location-aware reporting for the worst temporal-gpu sequence parity pixel so jittered edge outliers can be classified by ROI.
-  - Load capture-analysis gate thresholds from profile/config files instead of only code defaults.
+  - Wire profiles/capture_gate.cfg into selected-frame in-process DX12 gates once profile-path CLI support exists.
   - Add temporal shader debug UAVs for history_weight, color_residual, and depth_residual.
   - Add ROI-labeled per-region capture rows for text, specular glints, transparent panes, reactive particles, and corrupted-MV stress regions.
   - Add automated gates for selected sequence debug-map parity metrics after thresholds are calibrated across more frame IDs.

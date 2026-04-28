@@ -575,8 +575,11 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 
 - Replaced hard-coded capture-analysis ROI gate constants with `CaptureAnalysisGateThresholds`.
 - Added an overload so future profile/config loading can pass per-scenario thresholds without changing gate logic.
+- `osr_capture_analyzer` can now load simple key/value threshold overrides via `--thresholds path`.
+- Added `profiles/capture_gate.cfg` with the current default synthetic capture-analysis thresholds.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_capture_analyzer.bat build/manual/captures/2026-04-28T20-52-51Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012 --gate` exited `0`.
+- Verification: `tools/run_capture_analyzer.bat build/manual/captures/2026-04-28T20-52-51Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012 --gate --thresholds profiles/capture_gate.cfg` exited `0`.
 
 ### Research Links
 

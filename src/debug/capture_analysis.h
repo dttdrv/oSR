@@ -60,6 +60,7 @@ struct CaptureAnalysisGateThresholds {
 };
 
 [[nodiscard]] CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir);
+[[nodiscard]] CaptureAnalysisGateThresholds LoadCaptureAnalysisGateThresholds(const std::filesystem::path& path);
 [[nodiscard]] CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis);
 [[nodiscard]] CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis,
                                                                     const CaptureAnalysisGateThresholds& thresholds);

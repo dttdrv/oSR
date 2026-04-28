@@ -228,6 +228,7 @@ Current offline capture analysis:
 ```text
 tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012
 tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012 --gate
+tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012 --gate --thresholds profiles\capture_gate.cfg
 ```
 
 The analyzer reads `artifacts.json` plus raw R32F/RG32F artifacts and reports history trust, color/depth residual candidate rejection, motion activity, and synthetic ROI splits without launching the harness.
