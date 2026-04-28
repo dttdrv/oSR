@@ -446,6 +446,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `32` and max mean byte diff `0.0120251`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --reconstruction temporal-cpu --metric-gate` exited `0`.
 
+### Temporal-GPU Debug Map Parity Gate
+
+- Added a CPU-vs-GPU debug-map parity check for single-frame temporal-GPU runs.
+- The gate compares shader-readback `history_weight`, `color_residual`, and `depth_residual` maps against the CPU oracle maps, failing on broad drift while allowing bounded edge-pixel differences from sampling/quantization.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`; latest run reported debug map parity `max_abs=0.183646`, `mean_abs=0.000826349`.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

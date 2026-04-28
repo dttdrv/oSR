@@ -18,6 +18,8 @@
 #include "demo/wind_tunnel/temporal_diagnostics.h"
 #include "demo/wind_tunnel/temporal_resolve.h"
 
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -54,6 +56,11 @@ struct Dx12Objects {
     ID3D12Resource* debug_history_weight = nullptr;
     ID3D12Resource* debug_color_residual = nullptr;
     ID3D12Resource* debug_depth_residual = nullptr;
+};
+
+struct FloatMapDiff {
+    double max_abs = 0.0;
+    double mean_abs = 0.0;
 };
 
 enum class ReconstructionMode {
@@ -359,6 +366,27 @@ std::vector<float> FloatBytesToVector(const std::vector<uint8_t>& bytes, osr::co
         std::memcpy(out.data(), bytes.data(), byte_count);
     }
     return out;
+}
+
+FloatMapDiff CompareFloatMaps(const std::vector<float>& expected, const std::vector<float>& actual) {
+    FloatMapDiff diff;
+    if (expected.size() != actual.size() || expected.empty()) {
+        diff.max_abs = 1.0;
+        diff.mean_abs = 1.0;
+        return diff;
+    }
+    double sum = 0.0;
+    for (size_t i = 0; i < expected.size(); ++i) {
+        const double delta = std::abs(static_cast<double>(expected[i]) - static_cast<double>(actual[i]));
+        diff.max_abs = std::max(diff.max_abs, delta);
+        sum += delta;
+    }
+    diff.mean_abs = sum / static_cast<double>(expected.size());
+    return diff;
+}
+
+FloatMapDiff MaxFloatDiff(FloatMapDiff lhs, FloatMapDiff rhs) noexcept {
+    return {std::max(lhs.max_abs, rhs.max_abs), std::max(lhs.mean_abs, rhs.mean_abs)};
 }
 
 } // namespace
@@ -811,7 +839,11 @@ int main(int argc, char** argv) {
     if (!reconstructed_output.name.empty()) {
         transfers.push_back(reconstructed_output);
     }
+    FloatMapDiff debug_map_diff;
+    bool debug_map_parity_checked = false;
+    bool debug_map_parity_ok = true;
     if (dispatch_result && reconstruction_mode == ReconstructionMode::TemporalGpu) {
+        const auto cpu_debug_maps = temporal_debug_maps;
         std::vector<uint8_t> history_bytes;
         std::vector<uint8_t> color_residual_bytes;
         std::vector<uint8_t> depth_residual_bytes;
@@ -857,14 +889,28 @@ int main(int argc, char** argv) {
                                                                 depth_residual_bytes,
                                                                 depth_residual_readback);
         if (debug_readback) {
+            osr::demo::wind_tunnel::TemporalResolveDebugMaps gpu_debug_maps;
+            gpu_debug_maps.display_size = display_size;
+            gpu_debug_maps.history_weight = FloatBytesToVector(history_bytes, display_size);
+            gpu_debug_maps.color_residual = FloatBytesToVector(color_residual_bytes, display_size);
+            gpu_debug_maps.depth_residual = FloatBytesToVector(depth_residual_bytes, display_size);
+            debug_map_diff = MaxFloatDiff(CompareFloatMaps(cpu_debug_maps.history_weight, gpu_debug_maps.history_weight),
+                                          CompareFloatMaps(cpu_debug_maps.color_residual, gpu_debug_maps.color_residual));
+            debug_map_diff = MaxFloatDiff(debug_map_diff,
+                                          CompareFloatMaps(cpu_debug_maps.depth_residual, gpu_debug_maps.depth_residual));
+            debug_map_parity_checked = true;
+            debug_map_parity_ok = debug_map_diff.max_abs <= 0.25 && debug_map_diff.mean_abs <= 0.002;
             temporal_debug_maps.display_size = display_size;
-            temporal_debug_maps.history_weight = FloatBytesToVector(history_bytes, display_size);
-            temporal_debug_maps.color_residual = FloatBytesToVector(color_residual_bytes, display_size);
-            temporal_debug_maps.depth_residual = FloatBytesToVector(depth_residual_bytes, display_size);
+            temporal_debug_maps.history_weight = std::move(gpu_debug_maps.history_weight);
+            temporal_debug_maps.color_residual = std::move(gpu_debug_maps.color_residual);
+            temporal_debug_maps.depth_residual = std::move(gpu_debug_maps.depth_residual);
             transfers.push_back(history_readback);
             transfers.push_back(color_residual_readback);
             transfers.push_back(depth_residual_readback);
-            synthetic.context.notes.push_back("Temporal-gpu debug maps were read back from shader UAVs.");
+            std::ostringstream note;
+            note << "Temporal-gpu debug maps were read back from shader UAVs; map parity max_abs="
+                 << debug_map_diff.max_abs << " mean_abs=" << debug_map_diff.mean_abs << ".";
+            synthetic.context.notes.push_back(note.str());
         } else {
             synthetic.context.notes.push_back("Temporal-gpu debug map readback failed; CPU oracle maps remain in capture.");
         }
@@ -988,6 +1034,12 @@ int main(int argc, char** argv) {
     std::cout << "Capture: " << capture.SessionPath().string() << "\n";
     std::cout << "Transfer hashes: " << (transfer_ok ? "matched" : "FAILED") << "\n";
     std::cout << "Reconstruct output hash: " << (reconstructed_output_match ? "matched" : "FAILED") << "\n";
+    if (debug_map_parity_checked) {
+        std::cout << "Temporal debug map parity: "
+                  << (debug_map_parity_ok ? "matched" : "FAILED")
+                  << " max_abs=" << debug_map_diff.max_abs
+                  << " mean_abs=" << debug_map_diff.mean_abs << "\n";
+    }
     if (temporal_mode) {
         std::cout << "Temporal resolve: history_mean=" << temporal_resolve_stats.history_weight_mean
                   << " reactive_suppressed=" << temporal_resolve_stats.reactive_suppressed_pct
@@ -1020,7 +1072,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    const bool has_errors = report.HasErrors() || !transfer_ok || !reconstructed_output_match || !capture_started || !present_ok;
+    const bool has_errors = report.HasErrors() || !transfer_ok || !reconstructed_output_match || !debug_map_parity_ok || !capture_started || !present_ok;
     osr::demo::dx12_wind_tunnel::ReleasePresentState(present);
     Release(dx);
     if (!has_errors && temporal_verdict.metric_gate_failed) {
