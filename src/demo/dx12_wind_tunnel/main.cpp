@@ -13,9 +13,11 @@
 #include "demo/dx12_wind_tunnel/presenter.h"
 #include "demo/wind_tunnel/debug_dumps.h"
 #include "demo/wind_tunnel/synthetic_frame.h"
+#include "demo/wind_tunnel/temporal_diagnostics.h"
 
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <cstdlib>
 #include <sstream>
@@ -135,6 +137,7 @@ osr::core::ResourceDesc D3DResource(osr::core::ResourceKind kind,
 void ExportMetadata(const osr::core::FrameContext& frame,
                     const osr::core::ValidationReport& report,
                     bool dispatch_result,
+                    const osr::demo::wind_tunnel::TemporalDiagnostics& diagnostics,
                     const std::vector<osr::demo::dx12_wind_tunnel::TextureTransferResult>& transfers,
                     const std::filesystem::path& capture_path,
                     const std::filesystem::path& path) {
@@ -147,12 +150,26 @@ void ExportMetadata(const osr::core::FrameContext& frame,
     out << "jitter: " << frame.jitter_offset.x << ", " << frame.jitter_offset.y << "\n";
     out << "motion_vector_scale: " << frame.motion_vector_scale.x << ", " << frame.motion_vector_scale.y << "\n";
     out << "motion_vector_space: " << osr::core::ToString(frame.motion_vector_space) << "\n";
+    out << "motion_vectors_jittered: " << (frame.flags.motion_vectors_jittered ? "true" : "false") << "\n";
     out << "reset_history: " << (frame.flags.reset_history ? "true" : "false") << "\n";
     out << "reactive_mask: " << (frame.reactive_mask.has_value() ? "present" : "absent") << "\n";
     out << "validation: " << osr::debug::SummarizeValidation(report) << "\n";
     out << "debug_dispatch_result: " << (dispatch_result ? "recorded_or_ready" : "metadata_only_or_pending") << "\n";
     out << "capture_pack: " << capture_path.string() << "\n";
     out << "transfer_match: " << (osr::demo::dx12_wind_tunnel::AllTransfersMatched(transfers) ? "true" : "false") << "\n";
+    out << "temporal_diagnostics:\n";
+    out << "  samples: " << diagnostics.sample_count << "\n";
+    out << "  mv_luma_residual_mean: " << diagnostics.mv_luma_residual_mean << "\n";
+    out << "  mv_luma_residual_p95: " << diagnostics.mv_luma_residual_p95 << "\n";
+    out << "  mv_depth_residual_mean: " << diagnostics.mv_depth_residual_mean << "\n";
+    out << "  mv_depth_residual_p95: " << diagnostics.mv_depth_residual_p95 << "\n";
+    out << "  bad_history_trusted_pct: " << diagnostics.bad_history_trusted_pct << "\n";
+    out << "  good_history_rejected_pct: " << diagnostics.good_history_rejected_pct << "\n";
+    out << "  reactive_history_trusted_pct: " << diagnostics.reactive_history_trusted_pct << "\n";
+    out << "  disocclusion_history_trusted_pct: " << diagnostics.disocclusion_history_trusted_pct << "\n";
+    out << "  trust_evidence_agreement_pct: " << diagnostics.trust_evidence_agreement_pct << "\n";
+    out << "  history_trust_mean: " << diagnostics.history_trust_mean << "\n";
+    out << "  accumulation_weight_mean: " << diagnostics.accumulation_weight_mean << "\n";
     out << "resources:\n";
     out << "  color_input: " << frame.color_input.debug_name << " native=" << frame.color_input.native_resource << "\n";
     out << "  color_output: " << frame.color_output.debug_name << " native=" << frame.color_output.native_resource << "\n";
@@ -192,16 +209,43 @@ void CountValidation(const osr::core::ValidationReport& report, uint32_t& errors
     }
 }
 
+bool ParseMotionVectorMode(const std::string& value, osr::demo::wind_tunnel::MotionVectorMode& mode) {
+    if (value == "correct") {
+        mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
+    } else if (value == "zero") {
+        mode = osr::demo::wind_tunnel::MotionVectorMode::Zero;
+    } else if (value == "flip-x") {
+        mode = osr::demo::wind_tunnel::MotionVectorMode::FlipX;
+    } else if (value == "flip-y") {
+        mode = osr::demo::wind_tunnel::MotionVectorMode::FlipY;
+    } else if (value == "half-scale") {
+        mode = osr::demo::wind_tunnel::MotionVectorMode::HalfScale;
+    } else if (value == "double-scale") {
+        mode = osr::demo::wind_tunnel::MotionVectorMode::DoubleScale;
+    } else if (value == "jitter-contaminated" || value == "jitter") {
+        mode = osr::demo::wind_tunnel::MotionVectorMode::JitterContaminated;
+    } else {
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
     bool headless = false;
     int present_frames = -1;
+    auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--headless") {
             headless = true;
         } else if (std::string(argv[i]) == "--present-frames" && i + 1 < argc) {
             present_frames = std::max(0, std::atoi(argv[++i]));
+        } else if (std::string(argv[i]) == "--mv-mode" && i + 1 < argc) {
+            if (!ParseMotionVectorMode(argv[++i], mv_mode)) {
+                std::cerr << "Unknown --mv-mode. Use correct, zero, flip-x, flip-y, half-scale, double-scale, or jitter-contaminated.\n";
+                return 2;
+            }
         }
     }
 
@@ -220,7 +264,14 @@ int main(int argc, char** argv) {
     settings.render_scale = 2.0f / 3.0f;
     settings.frame_id = 1;
     settings.reset_history = true;
+    settings.motion_vector_mode = mv_mode;
     auto synthetic = osr::demo::wind_tunnel::BuildSyntheticFrame(settings);
+    auto previous_settings = settings;
+    previous_settings.frame_id = settings.frame_id > 0 ? settings.frame_id - 1 : 0;
+    previous_settings.reset_history = false;
+    previous_settings.motion_vector_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
+    const auto previous_synthetic = osr::demo::wind_tunnel::BuildSyntheticFrame(previous_settings);
+    const auto temporal_diagnostics = osr::demo::wind_tunnel::ComputeTemporalDiagnostics(previous_synthetic, synthetic);
 
     const auto render_size = synthetic.context.render_size;
     const auto display_size = synthetic.context.display_size;
@@ -286,7 +337,7 @@ int main(int argc, char** argv) {
     osr::debug::CapturePackConfig capture_config;
     capture_config.root = "build/manual/captures";
     capture_config.scenario = "dx12_wind_tunnel";
-    capture_config.mode = "h1_buffer_truth";
+    capture_config.mode = std::string("h1_buffer_truth_") + osr::demo::wind_tunnel::ToString(mv_mode);
     capture_config.algorithm = "debug_upscale";
     osr::debug::CapturePackWriter capture;
     const bool capture_started = capture.BeginSession(capture_config);
@@ -309,6 +360,17 @@ int main(int argc, char** argv) {
         capture.WriteFrameRow(row);
         osr::debug::HarnessMetricRow metrics;
         metrics.frame_id = synthetic.context.frame_id;
+        metrics.mv_luma_residual_mean = temporal_diagnostics.mv_luma_residual_mean;
+        metrics.mv_luma_residual_p95 = temporal_diagnostics.mv_luma_residual_p95;
+        metrics.mv_depth_residual_mean = temporal_diagnostics.mv_depth_residual_mean;
+        metrics.mv_depth_residual_p95 = temporal_diagnostics.mv_depth_residual_p95;
+        metrics.bad_history_trusted_pct = temporal_diagnostics.bad_history_trusted_pct;
+        metrics.good_history_rejected_pct = temporal_diagnostics.good_history_rejected_pct;
+        metrics.reactive_history_trusted_pct = temporal_diagnostics.reactive_history_trusted_pct;
+        metrics.disocclusion_history_trusted_pct = temporal_diagnostics.disocclusion_history_trusted_pct;
+        metrics.trust_evidence_agreement_pct = temporal_diagnostics.trust_evidence_agreement_pct;
+        metrics.history_trust_mean = temporal_diagnostics.history_trust_mean;
+        metrics.accumulation_weight_mean = temporal_diagnostics.accumulation_weight_mean;
         capture.WriteMetricRow(metrics);
         capture.WriteValidationWarnings(synthetic.context.frame_id, report);
         capture.WriteFrameContextJson(synthetic.context);
@@ -345,12 +407,16 @@ int main(int argc, char** argv) {
         }
     }
 
-    ExportMetadata(synthetic.context, report, dispatch_result, transfers, capture.SessionPath(), "build/manual/osr_dx12_wind_tunnel_metadata.txt");
+    ExportMetadata(synthetic.context, report, dispatch_result, temporal_diagnostics, transfers, capture.SessionPath(), "build/manual/osr_dx12_wind_tunnel_metadata.txt");
 
     std::cout << "oSR DX12 wind tunnel proof of life\n";
     std::cout << "Render: " << render_size.width << "x" << render_size.height
               << "  Display: " << display_size.width << "x" << display_size.height << "\n";
+    std::cout << "MV mode: " << osr::demo::wind_tunnel::ToString(mv_mode) << "\n";
     std::cout << "Validation: " << osr::debug::SummarizeValidation(report) << "\n";
+    std::cout << "Temporal diagnostics: luma_mean=" << temporal_diagnostics.mv_luma_residual_mean
+              << " bad_trusted=" << temporal_diagnostics.bad_history_trusted_pct
+              << "% agreement=" << temporal_diagnostics.trust_evidence_agreement_pct << "%\n";
     std::cout << "Metadata: build/manual/osr_dx12_wind_tunnel_metadata.txt\n";
     std::cout << "Capture: " << capture.SessionPath().string() << "\n";
     std::cout << "Transfer hashes: " << (transfer_ok ? "matched" : "FAILED") << "\n";

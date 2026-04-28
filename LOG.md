@@ -187,6 +187,17 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `osr_dx12_wind_tunnel.exe --headless` wrote frame artifacts; latest checked capture included all expected PPM/PGM/raw files and an `artifacts.json` manifest with hashes.
 - Verification: `tools/run_manual_tests.bat` passed after adding the debug dump test.
 
+### Motion-Vector Truth Modes And Temporal Diagnostics
+
+- Added synthetic motion-vector truth-table modes: `correct`, `zero`, `flip-x`, `flip-y`, `half-scale`, `double-scale`, and `jitter-contaminated`.
+- Added `--mv-mode` to `osr_dx12_wind_tunnel.exe` so Lab Mode can intentionally corrupt motion vectors while preserving valid color/depth/reactive buffers.
+- Added CPU temporal diagnostics that build deterministic previous/current frames, reproject previous color/depth through supplied current-to-previous motion vectors, run the trust-field policy, and write MV residual and history-trust confusion metrics into `metrics.csv` and the readable metadata file.
+- Extended capture metrics with `mv_luma_residual_mean`, `mv_luma_residual_p95`, `mv_depth_residual_mean`, `mv_depth_residual_p95`, `bad_history_trusted_pct`, `good_history_rejected_pct`, `reactive_history_trusted_pct`, `disocclusion_history_trusted_pct`, `trust_evidence_agreement_pct`, `history_trust_mean`, and `accumulation_weight_mean`.
+- Added tests for synthetic MV mode transforms and temporal diagnostics.
+- Verification: `tools/run_manual_tests.bat` passed.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode flip-x` passed with validation `infos=0 warnings=0 errors=0`, matched transfer hashes, and wrote capture pack `build/manual/captures/2026-04-28T12-13-27Z_dx12_wind_tunnel_h1_buffer_truth_flip-x`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct` passed with validation `infos=0 warnings=0 errors=0`, matched transfer hashes, and wrote capture pack `build/manual/captures/2026-04-28T12-14-02Z_dx12_wind_tunnel_h1_buffer_truth_correct`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

@@ -7,6 +7,16 @@
 
 namespace osr::demo::wind_tunnel {
 
+enum class MotionVectorMode {
+    Correct,
+    Zero,
+    FlipX,
+    FlipY,
+    HalfScale,
+    DoubleScale,
+    JitterContaminated
+};
+
 struct SyntheticFrameSettings {
     core::Dimensions display_size {1920, 1200};
     float render_scale = 2.0f / 3.0f;
@@ -16,6 +26,7 @@ struct SyntheticFrameSettings {
     bool reset_history = false;
     bool particles_enabled = true;
     bool rails_enabled = true;
+    MotionVectorMode motion_vector_mode = MotionVectorMode::Correct;
 };
 
 struct Float2Buffer {
@@ -32,6 +43,7 @@ struct SyntheticFrame {
 };
 
 [[nodiscard]] float Halton(uint32_t index, uint32_t base) noexcept;
+[[nodiscard]] const char* ToString(MotionVectorMode mode) noexcept;
 [[nodiscard]] core::Dimensions BuildRenderSize(core::Dimensions display_size, float render_scale) noexcept;
 [[nodiscard]] core::Float2 BuildJitterOffset(uint64_t frame_id, uint32_t sequence_length, bool enabled) noexcept;
 [[nodiscard]] SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings);

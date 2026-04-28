@@ -25,6 +25,9 @@ if errorlevel 1 goto fail
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/wind_tunnel_debug_dumps_tests.cpp src/demo/wind_tunnel/debug_dumps.cpp src/demo/wind_tunnel/synthetic_frame.cpp src/core/frame_context.cpp src/core/quality_mode.cpp -o build\manual\osr_wind_tunnel_debug_dumps_tests.exe && build\manual\osr_wind_tunnel_debug_dumps_tests.exe
 if errorlevel 1 goto fail
 
+"%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/wind_tunnel_temporal_diagnostics_tests.cpp src/demo/wind_tunnel/temporal_diagnostics.cpp src/demo/wind_tunnel/synthetic_frame.cpp src/reconstruction/trust_field.cpp src/core/frame_context.cpp src/core/quality_mode.cpp -o build\manual\osr_wind_tunnel_temporal_diagnostics_tests.exe && build\manual\osr_wind_tunnel_temporal_diagnostics_tests.exe
+if errorlevel 1 goto fail
+
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/capture_pack_tests.cpp src/debug/capture_pack.cpp src/core/frame_context.cpp -o build\manual\osr_capture_pack_tests.exe && build\manual\osr_capture_pack_tests.exe
 if errorlevel 1 goto fail
 

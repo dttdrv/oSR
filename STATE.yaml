@@ -16,6 +16,8 @@ build_status:
     - H1 buffer-truth path uploads synthetic color/depth/MV/reactive inputs to D3D12 textures, reads them back, hashes canonical rows, and writes a capture pack.
     - H2 DX12 presentation smoke path opens a swapchain window, copies color_output to the backbuffer, presents frames, and supports --headless / --present-frames lab modes.
     - Capture packs now include PPM/PGM debug images, exact raw buffers, and artifacts.json manifests for synthetic frame inputs/output.
+    - DX12 wind tunnel supports --mv-mode correct|zero|flip-x|flip-y|half-scale|double-scale|jitter-contaminated for motion-vector truth-table testing.
+    - Capture metrics now include CPU temporal diagnostics for MV luma/depth residuals and history-trust confusion rates.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -64,6 +66,8 @@ next_actions:
   - Add CPU upload and swapchain presentation to the DX12 wind tunnel.
   - Replace metadata-only DX12 debug upscale with command-list-recorded copy/debug passes.
   - Implement the research experiment ladder in RESEARCH.md, starting with motion-vector truth-table modes and trust-field debug metrics.
+  - Use --mv-mode sweeps to tune temporal trust thresholds and verify bad history is rejected before adding GPU temporal accumulation.
   - Implement HARNESS.md H0/H1: run manifest, frame metrics schema, capture pack writer, and DX12 buffer upload/readback/hash verification.
   - Extend capture packs with raw texture dumps and debug-view images after swapchain/debug presentation is available.
   - Replace CPU nearest display upscale with a command-list-recorded debug upscale/copy shader.
+  - Add headless multi-frame sweeps that compare correct vs corrupted motion-vector modes and fail on trust-regression thresholds.

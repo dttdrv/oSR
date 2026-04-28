@@ -44,6 +44,17 @@ struct HarnessMetricRow {
     double text_contrast = 0.0;
     double history_reject_pct = 0.0;
     double residual_search_pct = 0.0;
+    double mv_luma_residual_mean = 0.0;
+    double mv_luma_residual_p95 = 0.0;
+    double mv_depth_residual_mean = 0.0;
+    double mv_depth_residual_p95 = 0.0;
+    double bad_history_trusted_pct = 0.0;
+    double good_history_rejected_pct = 0.0;
+    double reactive_history_trusted_pct = 0.0;
+    double disocclusion_history_trusted_pct = 0.0;
+    double trust_evidence_agreement_pct = 0.0;
+    double history_trust_mean = 0.0;
+    double accumulation_weight_mean = 0.0;
 };
 
 class CapturePackWriter {

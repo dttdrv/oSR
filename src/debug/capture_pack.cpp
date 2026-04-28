@@ -18,7 +18,11 @@ constexpr const char* kFrameHeader =
 
 constexpr const char* kMetricHeader =
     "frame_id,ghost_score,shimmer_score,disocclusion_leak,reactive_trail_score,"
-    "edge_preservation,text_contrast,history_reject_pct,residual_search_pct";
+    "edge_preservation,text_contrast,history_reject_pct,residual_search_pct,"
+    "mv_luma_residual_mean,mv_luma_residual_p95,mv_depth_residual_mean,mv_depth_residual_p95,"
+    "bad_history_trusted_pct,good_history_rejected_pct,reactive_history_trusted_pct,"
+    "disocclusion_history_trusted_pct,trust_evidence_agreement_pct,history_trust_mean,"
+    "accumulation_weight_mean";
 
 std::string TimestampUtc() {
     const auto now = std::chrono::system_clock::now();
@@ -226,7 +230,18 @@ bool CapturePackWriter::WriteMetricRow(const HarnessMetricRow& row) {
         << row.edge_preservation << ","
         << row.text_contrast << ","
         << row.history_reject_pct << ","
-        << row.residual_search_pct << "\n";
+        << row.residual_search_pct << ","
+        << row.mv_luma_residual_mean << ","
+        << row.mv_luma_residual_p95 << ","
+        << row.mv_depth_residual_mean << ","
+        << row.mv_depth_residual_p95 << ","
+        << row.bad_history_trusted_pct << ","
+        << row.good_history_rejected_pct << ","
+        << row.reactive_history_trusted_pct << ","
+        << row.disocclusion_history_trusted_pct << ","
+        << row.trust_evidence_agreement_pct << ","
+        << row.history_trust_mean << ","
+        << row.accumulation_weight_mean << "\n";
     return true;
 }
 

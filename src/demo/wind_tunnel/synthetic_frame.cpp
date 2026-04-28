@@ -31,6 +31,34 @@ core::ResourceDesc Resource(core::ResourceKind kind,
     return {kind, native_resource, debug_id, extent, 0, name};
 }
 
+Float2Buffer ApplyMotionVectorMode(Float2Buffer mv, MotionVectorMode mode, core::Float2 jitter_delta) noexcept {
+    switch (mode) {
+    case MotionVectorMode::Correct:
+        return mv;
+    case MotionVectorMode::Zero:
+        return {};
+    case MotionVectorMode::FlipX:
+        mv.x = -mv.x;
+        return mv;
+    case MotionVectorMode::FlipY:
+        mv.y = -mv.y;
+        return mv;
+    case MotionVectorMode::HalfScale:
+        mv.x *= 0.5f;
+        mv.y *= 0.5f;
+        return mv;
+    case MotionVectorMode::DoubleScale:
+        mv.x *= 2.0f;
+        mv.y *= 2.0f;
+        return mv;
+    case MotionVectorMode::JitterContaminated:
+        mv.x += jitter_delta.x;
+        mv.y += jitter_delta.y;
+        return mv;
+    }
+    return mv;
+}
+
 } // namespace
 
 float Halton(uint32_t index, uint32_t base) noexcept {
@@ -43,6 +71,26 @@ float Halton(uint32_t index, uint32_t base) noexcept {
         i /= base;
     }
     return r;
+}
+
+const char* ToString(MotionVectorMode mode) noexcept {
+    switch (mode) {
+    case MotionVectorMode::Correct:
+        return "correct";
+    case MotionVectorMode::Zero:
+        return "zero";
+    case MotionVectorMode::FlipX:
+        return "flip-x";
+    case MotionVectorMode::FlipY:
+        return "flip-y";
+    case MotionVectorMode::HalfScale:
+        return "half-scale";
+    case MotionVectorMode::DoubleScale:
+        return "double-scale";
+    case MotionVectorMode::JitterContaminated:
+        return "jitter-contaminated";
+    }
+    return "unknown";
 }
 
 core::Dimensions BuildRenderSize(core::Dimensions display_size, float render_scale) noexcept {
@@ -72,6 +120,13 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
     frame.reactive_mask.resize(pixel_count);
 
     const core::Float2 jitter = BuildJitterOffset(settings.frame_id, settings.jitter_sequence_length, settings.jitter_enabled);
+    const core::Float2 previous_jitter = BuildJitterOffset(settings.frame_id > 0 ? settings.frame_id - 1 : 0,
+                                                           settings.jitter_sequence_length,
+                                                           settings.jitter_enabled);
+    const core::Float2 jitter_delta {
+        previous_jitter.x - jitter.x,
+        previous_jitter.y - jitter.y
+    };
     const float t = static_cast<float>(settings.frame_id) * 0.03125f;
     const float inv_w = 1.0f / static_cast<float>(std::max(1u, render_size.width));
     const float inv_h = 1.0f / static_cast<float>(std::max(1u, render_size.height));
@@ -118,7 +173,7 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
 
             frame.color[idx] = c;
             frame.depth[idx] = depth;
-            frame.motion_vectors[idx] = mv;
+            frame.motion_vectors[idx] = ApplyMotionVectorMode(mv, settings.motion_vector_mode, jitter_delta);
             frame.reactive_mask[idx] = reactive;
         }
     }
@@ -136,7 +191,7 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
     frame.context.color_space = core::ColorSpace::LinearSdr;
     frame.context.flags.reset_history = settings.reset_history;
     frame.context.flags.depth_inverted = false;
-    frame.context.flags.motion_vectors_jittered = false;
+    frame.context.flags.motion_vectors_jittered = settings.motion_vector_mode == MotionVectorMode::JitterContaminated;
     frame.context.exposure.exposure_scale = 1.0f;
     frame.context.exposure.pre_exposure = 1.0f;
     frame.context.color_input = Resource(core::ResourceKind::ColorInput, frame.color.data(), 0x1000, render_size, "synthetic_color_input_rgba8");
@@ -146,6 +201,7 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
     frame.context.reactive_mask = Resource(core::ResourceKind::ReactiveMask, frame.reactive_mask.data(), 0x1004, render_size, "synthetic_reactive_mask_f32");
     frame.context.notes.push_back("Synthetic wind-tunnel frame emits color/depth/MV/reactive/reset for SR validation.");
     frame.context.notes.push_back("Motion vectors are current-to-previous in pixel units and exclude jitter.");
+    frame.context.notes.push_back(std::string("Synthetic MV mode: ") + ToString(settings.motion_vector_mode));
     return frame;
 }
 

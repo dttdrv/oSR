@@ -177,13 +177,19 @@ gpu_upload_ms, gpu_reconstruct_ms, gpu_present_ms, cpu_frame_ms,
 validation_errors, validation_warnings
 ```
 
-`metrics.csv` should contain:
+`metrics.csv` should contain the generic quality probes plus temporal trust diagnostics:
 
 ```text
 frame_id, ghost_score, shimmer_score, disocclusion_leak,
 reactive_trail_score, edge_preservation, text_contrast,
 history_reject_pct, residual_search_pct, stable_tile_pct,
-motion_risk_tile_pct, reactive_tile_pct, disocclusion_tile_pct
+motion_risk_tile_pct, reactive_tile_pct, disocclusion_tile_pct,
+mv_luma_residual_mean, mv_luma_residual_p95,
+mv_depth_residual_mean, mv_depth_residual_p95,
+bad_history_trusted_pct, good_history_rejected_pct,
+reactive_history_trusted_pct, disocclusion_history_trusted_pct,
+trust_evidence_agreement_pct, history_trust_mean,
+accumulation_weight_mean
 ```
 
 `bookmarks.jsonl` should contain human notes:
@@ -353,6 +359,7 @@ Every bookmark and metric spike should write a compact diagnosis block into `war
 ### H4: Metrics
 
 - Implement ghost, shimmer, disocclusion leak, reactive trail, edge/text scores.
+- Implement CPU temporal diagnostics that reproject a deterministic previous frame through supplied motion vectors and score whether the trust policy accepts good history or rejects bad/reactive/disoccluded history.
 - Add threshold-based exit codes for headless runs.
 
 ### H5: Replay
