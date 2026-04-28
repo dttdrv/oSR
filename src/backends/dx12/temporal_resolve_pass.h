@@ -24,6 +24,9 @@ struct TemporalResolveConstants {
     float motion_rejection_pixels = 3.0f;
     float color_rejection_threshold = 0.16f;
     float depth_rejection_threshold = 0.035f;
+    float sharpening_amount = 0.28f;
+    float sharpening_low_trust_scale = 0.20f;
+    float sharpening_reactive_scale = 0.25f;
 };
 
 class TemporalResolvePass {

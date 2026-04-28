@@ -41,6 +41,7 @@ build_status:
     - DX12 compute spatial debug upscale now uses bilinear sampling and verifies readback with exact hashes plus max/mean byte deltas.
     - DX12 wind tunnel supports --reconstruction temporal-gpu for a single-frame GPU temporal resolve proof of life against the CPU oracle.
     - DX12 wind tunnel supports --headless --reconstruction temporal-gpu --frames N with persistent GPU output history copied forward each frame.
+    - CPU and DX12 temporal resolve paths apply confidence-gated detail recovery and report sharpening_amount_mean.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -88,6 +89,7 @@ next_actions:
   - Replace manual harness history-weight/rejection-risk proxy views with real temporal resolve debug maps once the harness owns frame history.
   - Tighten temporal-gpu parity by reducing max_abs_diff below the current 29-byte worst persistent-history edge-pixel delta.
   - Add temporal shader debug UAVs for history_weight, color_residual, and depth_residual.
+  - Add text/thin-geometry ROI gates so detail recovery cannot pass by over-sharpening noise.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.

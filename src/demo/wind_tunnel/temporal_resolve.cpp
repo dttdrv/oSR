@@ -21,6 +21,65 @@ uint32_t BlendColor(uint32_t current, uint32_t history, float history_weight) no
     return 0xff000000u | (blend(16) << 16) | (blend(8) << 8) | blend(0);
 }
 
+float ChannelFloat(uint32_t color, uint32_t shift) noexcept {
+    return static_cast<float>(Channel(color, shift));
+}
+
+uint32_t ApplyDetailRecovery(const std::vector<uint32_t>& current_display,
+                             core::Dimensions display_size,
+                             uint32_t x,
+                             uint32_t y,
+                             uint32_t resolved,
+                             float history_weight,
+                             float reactive,
+                             bool disoccluded,
+                             const TemporalResolveSettings& settings,
+                             float* applied_amount) noexcept {
+    if (applied_amount) {
+        *applied_amount = 0.0f;
+    }
+    if (settings.sharpening_amount <= 0.0f || disoccluded ||
+        current_display.size() != static_cast<size_t>(display_size.width) * display_size.height) {
+        return resolved;
+    }
+
+    const float trust_scale = std::lerp(std::clamp(settings.sharpening_low_trust_scale, 0.0f, 1.0f),
+                                        1.0f,
+                                        std::clamp(history_weight, 0.0f, 1.0f));
+    const float reactive_scale = std::lerp(1.0f,
+                                           std::clamp(settings.sharpening_reactive_scale, 0.0f, 1.0f),
+                                           std::clamp(reactive, 0.0f, 1.0f));
+    const float amount = std::clamp(settings.sharpening_amount, 0.0f, 1.0f) * trust_scale * reactive_scale;
+    if (amount <= 0.0f) {
+        return resolved;
+    }
+
+    const auto at = [&](uint32_t sx, uint32_t sy) {
+        return current_display[static_cast<size_t>(sy) * display_size.width + sx];
+    };
+    const uint32_t xl = x == 0 ? x : x - 1;
+    const uint32_t xr = std::min(x + 1, display_size.width - 1);
+    const uint32_t yu = y == 0 ? y : y - 1;
+    const uint32_t yd = std::min(y + 1, display_size.height - 1);
+    const uint32_t center = at(x, y);
+    const uint32_t left = at(xl, y);
+    const uint32_t right = at(xr, y);
+    const uint32_t up = at(x, yu);
+    const uint32_t down = at(x, yd);
+    const auto sharpen_channel = [&](uint32_t shift) {
+        const float detail = ChannelFloat(center, shift) -
+                             (ChannelFloat(left, shift) +
+                              ChannelFloat(right, shift) +
+                              ChannelFloat(up, shift) +
+                              ChannelFloat(down, shift)) * 0.25f;
+        return static_cast<uint32_t>(std::clamp(std::round(ChannelFloat(resolved, shift) + detail * amount), 0.0f, 255.0f));
+    };
+    if (applied_amount) {
+        *applied_amount = amount;
+    }
+    return 0xff000000u | (sharpen_channel(16) << 16) | (sharpen_channel(8) << 8) | sharpen_channel(0);
+}
+
 uint32_t SampleBilinearRgba8(const std::vector<uint32_t>& image,
                              core::Dimensions size,
                              float x,
@@ -133,6 +192,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
     double motion_weight_sum = 0.0;
     double color_residual_sum = 0.0;
     double depth_residual_sum = 0.0;
+    double sharpening_amount_sum = 0.0;
     const float display_per_render_x = static_cast<float>(display_size.width) / static_cast<float>(render_size.width);
     const float display_per_render_y = static_cast<float>(display_size.height) / static_cast<float>(render_size.height);
     const bool has_previous_depth = previous_frame &&
@@ -153,6 +213,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
             float previous_depth_sample = 0.0f;
             float history_weight = std::clamp(settings.max_history_weight, 0.0f, 1.0f);
             bool previous_depth_oob = false;
+            bool disoccluded = false;
 
             const float reactive = render_index < current_frame.reactive_mask.size() ? current_frame.reactive_mask[render_index] : 0.0f;
             if (reactive > 0.0f) {
@@ -211,6 +272,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
             if (has_previous_depth) {
                 if (previous_depth_oob) {
                     history_weight = 0.0f;
+                    disoccluded = true;
                     if (debug_maps) {
                         debug_maps->depth_residual[display_index] = 1.0f;
                     }
@@ -224,6 +286,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                     ++depth_samples;
                     if (settings.depth_rejection_threshold > 0.0f && depth_residual > settings.depth_rejection_threshold) {
                         history_weight = 0.0f;
+                        disoccluded = true;
                         ++depth_rejected;
                     } else if (settings.depth_rejection_threshold > 0.0f) {
                         history_weight *= std::clamp(1.0f - depth_residual / settings.depth_rejection_threshold, 0.0f, 1.0f);
@@ -241,7 +304,19 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 debug_maps->history_weight[display_index] = history_weight;
                 debug_maps->color_residual[display_index] = color_residual;
             }
-            output[display_index] = BlendColor(current_display[display_index], history_sample, history_weight);
+            const uint32_t blended = BlendColor(current_display[display_index], history_sample, history_weight);
+            float sharpening_amount = 0.0f;
+            output[display_index] = ApplyDetailRecovery(current_display,
+                                                        display_size,
+                                                        x,
+                                                        y,
+                                                        blended,
+                                                        history_weight,
+                                                        reactive,
+                                                        disoccluded,
+                                                        settings,
+                                                        &sharpening_amount);
+            sharpening_amount_sum += sharpening_amount;
             weight_sum += history_weight;
             weight_min = std::min(weight_min, static_cast<double>(history_weight));
             weight_max = std::max(weight_max, static_cast<double>(history_weight));
@@ -262,6 +337,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
         stats->color_residual_mean = display_pixels == 0 ? 0.0 : color_residual_sum / static_cast<double>(display_pixels);
         stats->depth_rejected_pct = Percent(depth_rejected, display_pixels);
         stats->depth_residual_mean = depth_samples == 0 ? 0.0 : depth_residual_sum / static_cast<double>(depth_samples);
+        stats->sharpening_amount_mean = display_pixels == 0 ? 0.0 : sharpening_amount_sum / static_cast<double>(display_pixels);
     }
     return output;
 }

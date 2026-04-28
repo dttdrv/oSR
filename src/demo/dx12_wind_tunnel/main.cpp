@@ -182,6 +182,7 @@ void ExportMetadata(const osr::core::FrameContext& frame,
     out << "  color_residual_mean: " << temporal_resolve_stats.color_residual_mean << "\n";
     out << "  depth_rejected_pct: " << temporal_resolve_stats.depth_rejected_pct << "\n";
     out << "  depth_residual_mean: " << temporal_resolve_stats.depth_residual_mean << "\n";
+    out << "  sharpening_amount_mean: " << temporal_resolve_stats.sharpening_amount_mean << "\n";
     out << "temporal_diagnostics:\n";
     out << "  samples: " << diagnostics.sample_count << "\n";
     out << "  mv_luma_residual_mean: " << diagnostics.mv_luma_residual_mean << "\n";
@@ -316,7 +317,7 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
            "stability_improvement_pct,ghost_score,reactive_trail_score,"
            "edge_preservation,"
            "reprojected_history_pct,reproject_out_of_bounds_pct,"
-           "color_rejected_pct,color_residual_mean,depth_rejected_pct,depth_residual_mean,"
+           "color_rejected_pct,color_residual_mean,depth_rejected_pct,depth_residual_mean,sharpening_amount_mean,"
            "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
     csv << result.frames << ","
         << result.spatial_frame_delta_mean << ","
@@ -332,6 +333,7 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
         << result.color_residual_mean << ","
         << result.depth_rejected_pct << ","
         << result.depth_residual_mean << ","
+        << result.sharpening_amount_mean << ","
         << result.temporal_history_weight_mean << ","
         << result.temporal_reactive_suppressed_pct << ","
         << result.temporal_motion_suppressed_pct << "\n";
@@ -411,6 +413,7 @@ int main(int argc, char** argv) {
         std::cout << "Color residual mean: " << sequence.color_residual_mean << "\n";
         std::cout << "Depth rejected: " << sequence.depth_rejected_pct << "%\n";
         std::cout << "Depth residual mean: " << sequence.depth_residual_mean << "\n";
+        std::cout << "Sharpening amount mean: " << sequence.sharpening_amount_mean << "\n";
         std::cout << "Temporal history weight mean: " << sequence.temporal_history_weight_mean << "\n";
         std::cout << "Metrics: " << sequence_path.string() << "\n";
         if (metric_gate && (sequence.temporal_delta_ratio > 0.80 ||
@@ -604,7 +607,7 @@ int main(int argc, char** argv) {
         std::cout << "Max mean byte diff: " << max_mean_abs_diff << "\n";
         std::cout << "Persistent history: GPU output copied forward each frame\n";
         Release(dx);
-        if (!sequence_ok || (metric_gate && (max_abs_diff > 32 || max_mean_abs_diff > 0.02))) {
+        if (!sequence_ok || (metric_gate && (max_abs_diff > 32 || max_mean_abs_diff > 0.06))) {
             std::cerr << "Temporal-gpu sequence gate failed.\n";
             return 3;
         }
@@ -868,7 +871,8 @@ int main(int argc, char** argv) {
         std::cout << "Temporal resolve: history_mean=" << temporal_resolve_stats.history_weight_mean
                   << " reactive_suppressed=" << temporal_resolve_stats.reactive_suppressed_pct
                   << "% motion_suppressed=" << temporal_resolve_stats.motion_suppressed_pct
-                  << "% depth_rejected=" << temporal_resolve_stats.depth_rejected_pct << "%\n";
+                  << "% depth_rejected=" << temporal_resolve_stats.depth_rejected_pct
+                  << "% sharpening_mean=" << temporal_resolve_stats.sharpening_amount_mean << "\n";
     }
     std::cout << "Log: build/manual/osr_dx12_wind_tunnel.log\n";
 

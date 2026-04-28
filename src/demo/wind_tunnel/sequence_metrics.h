@@ -29,6 +29,7 @@ struct SequenceMetricsResult {
     double color_residual_mean = 0.0;
     double depth_rejected_pct = 0.0;
     double depth_residual_mean = 0.0;
+    double sharpening_amount_mean = 0.0;
     double temporal_history_weight_mean = 0.0;
     double temporal_reactive_suppressed_pct = 0.0;
     double temporal_motion_suppressed_pct = 0.0;

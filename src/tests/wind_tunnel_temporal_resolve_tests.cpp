@@ -39,6 +39,9 @@ int main() {
     if (debug_maps.history_weight.size() != blended.size() || debug_maps.color_residual.size() != blended.size()) {
         return Fail("temporal resolve debug maps should match display output size");
     }
+    if (stats.sharpening_amount_mean <= 0.0 || stats.sharpening_amount_mean > settings.sharpening_amount) {
+        return Fail("temporal resolve should report bounded sharpening amount");
+    }
 
     frame.context.flags.reset_history = true;
     const auto reset = osr::demo::wind_tunnel::ResolveTemporalDisplay(current, history, frame, frame_settings.display_size, settings, &stats);
@@ -166,6 +169,28 @@ int main() {
                                                                                   &previous_depth);
     if (depth_reprojected[static_cast<size_t>(1) * 4 + 1] != 0xffffffffu) {
         return Fail("depth residual should use reprojected render-space coordinates");
+    }
+
+    custom.context.render_size = {3, 3};
+    custom.context.display_size = {3, 3};
+    custom.motion_vectors.assign(9, {});
+    custom.reactive_mask.assign(9, 0.0f);
+    repro_current.assign(9, 0xff404040u);
+    repro_current[4] = 0xffa0a0a0u;
+    repro_history = repro_current;
+    settings.max_history_weight = 0.0f;
+    settings.sharpening_amount = 0.25f;
+    settings.color_rejection_threshold = 0.0f;
+    settings.depth_rejection_threshold = 0.0f;
+    const auto sharpened = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current,
+                                                                           repro_history,
+                                                                           custom,
+                                                                           custom.context.display_size,
+                                                                           settings,
+                                                                           &stats);
+    const uint32_t center_red = (sharpened[4] >> 16) & 0xffu;
+    if (center_red <= 0xa0u) {
+        return Fail("confidence-gated detail recovery should boost trusted local contrast");
     }
 
     return 0;

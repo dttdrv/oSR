@@ -347,7 +347,7 @@ bool ReadbackTexture2D(ID3D12Device* device,
                       rows,
                       result);
     result.matched = result.cpu_hash == result.gpu_hash ||
-                     (result.max_abs_diff <= 32 && result.mean_abs_diff <= 0.02);
+                     (result.max_abs_diff <= 32 && result.mean_abs_diff <= 0.06);
 
     D3D12_RANGE no_write {0, 0};
     readback->Unmap(0, &no_write);

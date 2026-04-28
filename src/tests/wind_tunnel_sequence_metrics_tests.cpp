@@ -47,6 +47,9 @@ int main() {
     if (result.depth_residual_mean <= 0.0) {
         return Fail("sequence metrics should report depth residuals");
     }
+    if (result.sharpening_amount_mean <= 0.0 || result.sharpening_amount_mean > 1.0) {
+        return Fail("sequence metrics should report bounded sharpening amount");
+    }
     if (result.ghost_score > 0.45) {
         return Fail("temporal resolve should keep motion ghost score below gate");
     }

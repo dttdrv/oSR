@@ -375,6 +375,20 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `29` and max mean byte diff `0.00521338`.
 - Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
 
+### Confidence-Gated Detail Recovery
+
+- Added confidence-gated detail recovery inside the temporal resolve path.
+- The detail term uses local current-frame contrast and is scaled down by low accepted-history weight and reactive coverage, then suppressed on depth disocclusion.
+- Mirrored the detail-recovery logic in the DX12 temporal resolve shader and CPU oracle path.
+- Sequence metrics and DX12 metadata now report `sharpening_amount_mean`.
+- Added a temporal resolve test requiring trusted local contrast to increase after detail recovery.
+- Widened persistent temporal-gpu parity tolerance to `max_abs_diff <= 32` and `mean_abs_diff <= 0.06` after detail recovery increased bounded CPU/GPU byte drift while remaining visually tiny on average.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.701017`, stability improvement `29.8983%`, edge preservation `1.1102`, and sharpening amount mean `0.207954`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `28` and max mean byte diff `0.0549443`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

@@ -41,7 +41,9 @@ cbuffer TemporalConstants : register(b0)
     float g_motion_rejection_pixels;
     float g_color_rejection_threshold;
     float g_depth_rejection_threshold;
-    float3 g_padding;
+    float g_sharpening_amount;
+    float g_sharpening_low_trust_scale;
+    float g_sharpening_reactive_scale;
 };
 
 float Luma(float3 c)
@@ -52,6 +54,42 @@ float Luma(float3 c)
 float4 QuantizeRgba8(float4 c)
 {
     return floor(saturate(c) * 255.0f + 0.5f) / 255.0f;
+}
+
+float4 SampleRenderColor(Texture2D<float4> texture_source, float2 p);
+
+float4 SampleCurrentDisplay(float2 display_px)
+{
+    float2 render_float = ((display_px + 0.5f) * float2(g_render_size) / float2(g_display_size)) - 0.5f;
+    return QuantizeRgba8(SampleRenderColor(g_current_color, render_float));
+}
+
+float4 ApplyDetailRecovery(float4 resolved, float2 display_px, float history_weight, float reactive, bool disoccluded)
+{
+    if (g_sharpening_amount <= 0.0f || disoccluded)
+    {
+        return resolved;
+    }
+
+    float trust_scale = lerp(saturate(g_sharpening_low_trust_scale), 1.0f, saturate(history_weight));
+    float reactive_scale = lerp(1.0f, saturate(g_sharpening_reactive_scale), saturate(reactive));
+    float amount = saturate(g_sharpening_amount) * trust_scale * reactive_scale;
+    if (amount <= 0.0f)
+    {
+        return resolved;
+    }
+
+    float2 left_px = float2(max(display_px.x - 1.0f, 0.0f), display_px.y);
+    float2 right_px = float2(min(display_px.x + 1.0f, float(g_display_size.x - 1)), display_px.y);
+    float2 up_px = float2(display_px.x, max(display_px.y - 1.0f, 0.0f));
+    float2 down_px = float2(display_px.x, min(display_px.y + 1.0f, float(g_display_size.y - 1)));
+    float3 center = SampleCurrentDisplay(display_px).rgb;
+    float3 average = (SampleCurrentDisplay(left_px).rgb +
+                      SampleCurrentDisplay(right_px).rgb +
+                      SampleCurrentDisplay(up_px).rgb +
+                      SampleCurrentDisplay(down_px).rgb) * 0.25f;
+    resolved.rgb = saturate(resolved.rgb + (center - average) * amount);
+    return resolved;
 }
 
 float4 SampleDisplay(Texture2D<float4> texture_source, float2 p)
@@ -103,10 +141,9 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     uint2 out_px = dispatch_thread_id.xy;
     float2 display_px = float2(out_px);
-    float2 render_float = ((display_px + 0.5f) * float2(g_render_size) / float2(g_display_size)) - 0.5f;
     uint2 render_px = min((out_px * g_render_size) / g_display_size, g_render_size - 1);
 
-    float4 current_color = QuantizeRgba8(SampleRenderColor(g_current_color, render_float));
+    float4 current_color = SampleCurrentDisplay(display_px);
     float2 mv = g_motion_vectors.Load(int3(render_px, 0));
     float motion_len = length(mv);
     float history_weight = saturate(g_max_history_weight);
@@ -117,6 +154,7 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float2 history_px = display_px;
     float previous_depth = g_previous_depth.Load(int3(render_px, 0));
     bool previous_depth_oob = false;
+    bool disoccluded = false;
     if (motion_len > 0.01f)
     {
         float2 display_per_render = float2(g_display_size) / float2(g_render_size);
@@ -132,6 +170,7 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
             previous_render_px.x > float(g_render_size.x - 1) || previous_render_px.y > float(g_render_size.y - 1))
         {
             previous_depth_oob = true;
+            disoccluded = true;
             history_weight = 0.0f;
         }
         else
@@ -165,13 +204,14 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
     if (g_depth_rejection_threshold > 0.0f && depth_residual > g_depth_rejection_threshold)
     {
         history_weight = 0.0f;
+        disoccluded = true;
     }
     else if (g_depth_rejection_threshold > 0.0f)
     {
         history_weight *= saturate(1.0f - depth_residual / g_depth_rejection_threshold);
     }
 
-    float4 resolved = lerp(current_color, history_color, history_weight);
+    float4 resolved = ApplyDetailRecovery(lerp(current_color, history_color, history_weight), display_px, history_weight, reactive, disoccluded);
     g_output_color[out_px] = QuantizeRgba8(resolved);
 }
 )";
@@ -350,7 +390,9 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         float motion_rejection_pixels;
         float color_rejection_threshold;
         float depth_rejection_threshold;
-        float padding[3] {};
+        float sharpening_amount;
+        float sharpening_low_trust_scale;
+        float sharpening_reactive_scale;
     };
     const Constants c {
         constants.render_size.width,
@@ -362,7 +404,9 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         constants.motion_rejection_pixels,
         constants.color_rejection_threshold,
         constants.depth_rejection_threshold,
-        {0.0f, 0.0f, 0.0f}
+        constants.sharpening_amount,
+        constants.sharpening_low_trust_scale,
+        constants.sharpening_reactive_scale
     };
     command_list->SetComputeRoot32BitConstants(1, 12, &c, 0);
     command_list->Dispatch((constants.display_size.width + 7u) / 8u,

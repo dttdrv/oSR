@@ -67,6 +67,7 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     double color_residual_sum = 0.0;
     double depth_rejected_sum = 0.0;
     double depth_residual_sum = 0.0;
+    double sharpening_amount_sum = 0.0;
     double spatial_edge_sum = 0.0;
     double temporal_edge_sum = 0.0;
     uint32_t delta_count = 0;
@@ -102,6 +103,7 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
             color_residual_sum += stats.color_residual_mean;
             depth_rejected_sum += stats.depth_rejected_pct;
             depth_residual_sum += stats.depth_residual_mean;
+            sharpening_amount_sum += stats.sharpening_amount_mean;
             spatial_edge_sum += MeanEdgeEnergy(spatial, frame.context.display_size);
             temporal_edge_sum += MeanEdgeEnergy(temporal, frame.context.display_size);
             ++delta_count;
@@ -129,6 +131,7 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     result.color_residual_mean = delta_count == 0 ? 0.0 : color_residual_sum / static_cast<double>(delta_count);
     result.depth_rejected_pct = delta_count == 0 ? 0.0 : depth_rejected_sum / static_cast<double>(delta_count);
     result.depth_residual_mean = delta_count == 0 ? 0.0 : depth_residual_sum / static_cast<double>(delta_count);
+    result.sharpening_amount_mean = delta_count == 0 ? 0.0 : sharpening_amount_sum / static_cast<double>(delta_count);
     result.temporal_history_weight_mean = delta_count == 0 ? 0.0 : history_weight_sum / static_cast<double>(delta_count);
     result.temporal_reactive_suppressed_pct = delta_count == 0 ? 0.0 : reactive_sum / static_cast<double>(delta_count);
     result.temporal_motion_suppressed_pct = delta_count == 0 ? 0.0 : motion_sum / static_cast<double>(delta_count);
