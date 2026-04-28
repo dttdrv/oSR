@@ -249,6 +249,12 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
 - Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported spatial delta `0.00436588`, temporal delta `0.00192951`, temporal/spatial ratio `0.441952`.
 
+### DX12 Headless Sequence Mode
+
+- Added `--frames N` to `osr_dx12_wind_tunnel.exe` for headless multi-frame metric runs.
+- In `--headless --frames N` mode, the DX12 executable runs the deterministic sequence lab and writes `build/manual/osr_dx12_sequence_metrics.csv`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported spatial delta `0.0041617`, temporal delta `0.00178421`, temporal/spatial ratio `0.428722`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

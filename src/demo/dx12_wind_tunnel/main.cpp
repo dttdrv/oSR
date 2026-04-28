@@ -12,6 +12,7 @@
 #include "demo/dx12_wind_tunnel/dx12_texture_io.h"
 #include "demo/dx12_wind_tunnel/presenter.h"
 #include "demo/wind_tunnel/debug_dumps.h"
+#include "demo/wind_tunnel/sequence_metrics.h"
 #include "demo/wind_tunnel/synthetic_frame.h"
 #include "demo/wind_tunnel/temporal_diagnostics.h"
 #include "demo/wind_tunnel/temporal_resolve.h"
@@ -289,6 +290,24 @@ bool ParseReconstructionMode(const std::string& value, ReconstructionMode& mode)
     return true;
 }
 
+bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult& result,
+                             const std::filesystem::path& path) {
+    std::ofstream csv(path, std::ios::trunc);
+    if (!csv) {
+        return false;
+    }
+    csv << "frames,spatial_frame_delta_mean,temporal_frame_delta_mean,temporal_delta_ratio,"
+           "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
+    csv << result.frames << ","
+        << result.spatial_frame_delta_mean << ","
+        << result.temporal_frame_delta_mean << ","
+        << result.temporal_delta_ratio << ","
+        << result.temporal_history_weight_mean << ","
+        << result.temporal_reactive_suppressed_pct << ","
+        << result.temporal_motion_suppressed_pct << "\n";
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -298,6 +317,7 @@ int main(int argc, char** argv) {
     osr::core::Dimensions requested_display_size {1280, 800};
     float requested_render_scale = 2.0f / 3.0f;
     uint64_t requested_frame_id = 8;
+    uint32_t requested_frames = 1;
     bool requested_reset_history = false;
     ReconstructionMode reconstruction_mode = ReconstructionMode::SpatialGpu;
     auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
@@ -317,6 +337,8 @@ int main(int argc, char** argv) {
             requested_render_scale = static_cast<float>(std::atof(argv[++i]));
         } else if (std::string(argv[i]) == "--frame-id" && i + 1 < argc) {
             requested_frame_id = static_cast<uint64_t>(std::max(0, std::atoi(argv[++i])));
+        } else if (std::string(argv[i]) == "--frames" && i + 1 < argc) {
+            requested_frames = static_cast<uint32_t>(std::max(1, std::atoi(argv[++i])));
         } else if (std::string(argv[i]) == "--reset-history") {
             requested_reset_history = true;
         } else if ((std::string(argv[i]) == "--reconstruction" || std::string(argv[i]) == "--mode") && i + 1 < argc) {
@@ -334,6 +356,29 @@ int main(int argc, char** argv) {
 
     std::filesystem::create_directories("build/manual");
     osr::core::Logger::Instance().Configure("build/manual/osr_dx12_wind_tunnel.log", osr::core::LogLevel::Debug);
+
+    if (headless && requested_frames > 1) {
+        osr::demo::wind_tunnel::SequenceMetricsSettings sequence_settings;
+        sequence_settings.display_size = requested_display_size;
+        sequence_settings.render_scale = requested_render_scale;
+        sequence_settings.start_frame = requested_frame_id;
+        sequence_settings.frame_count = requested_frames;
+        const auto sequence = osr::demo::wind_tunnel::RunSequenceMetrics(sequence_settings);
+        const auto sequence_path = std::filesystem::path("build/manual/osr_dx12_sequence_metrics.csv");
+        WriteSequenceMetricsCsv(sequence, sequence_path);
+        std::cout << "oSR DX12 wind tunnel sequence lab\n";
+        std::cout << "Frames: " << sequence.frames << "\n";
+        std::cout << "Spatial frame delta mean: " << sequence.spatial_frame_delta_mean << "\n";
+        std::cout << "Temporal frame delta mean: " << sequence.temporal_frame_delta_mean << "\n";
+        std::cout << "Temporal/spatial delta ratio: " << sequence.temporal_delta_ratio << "\n";
+        std::cout << "Temporal history weight mean: " << sequence.temporal_history_weight_mean << "\n";
+        std::cout << "Metrics: " << sequence_path.string() << "\n";
+        if (metric_gate && sequence.temporal_delta_ratio > 0.80) {
+            std::cerr << "Metric gate failed: temporal delta ratio above 0.80.\n";
+            return 3;
+        }
+        return 0;
+    }
 
     Dx12Objects dx;
     if (!CreateDeviceObjects(dx)) {
