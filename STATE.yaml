@@ -11,6 +11,7 @@ build_status:
     - Visual Studio/MSBuild command-line tools were not available in this sandbox, so the AMD sample solution was not built.
     - Standalone WebGL 3D wind tunnel script passed a Node syntax check.
     - Playwright loaded the standalone 3D wind tunnel over temporary localhost and observed the expected page title.
+    - Native Win32 3D wind tunnel with settings panel compiled with direct MinGW and stayed open during launch smoke tests.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -34,6 +35,7 @@ target_games_for_initial_testing:
   samples:
     - AMD FidelityFX SDK FSR3 upscaler sample
     - Local synthetic DX12 harness
+    - Native Win32 3D wind tunnel executable for movement/settings/readable diagnostics
     - Standalone WebGL 3D wind tunnel for visual edge/jitter/render-scale inspection
   later_offline_games:
     - The Outer Worlds: Spacer's Choice Edition
@@ -51,5 +53,6 @@ next_actions:
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
   - Use tools/run_manual_console.bat for double-click manual testing until the DX12 harness exists.
+  - Use tools/run_3d_wind_tunnel.bat as the primary manual visual harness.
   - Use tools/run_3d_scene.bat for visual manual testing of render scale, jitter, thin-geometry aliasing, and debug view controls.
   - Promote the 3D wind tunnel concepts into the DX12 harness: depth output, motion-vector output, responsive mask output, history-reset triggers, and frame captures.

@@ -46,14 +46,31 @@ tools\run_quality_mode_demo.bat
 For a visual 3D edge and render-scale check:
 
 ```text
+tools\run_3d_wind_tunnel.bat
+```
+
+This builds and launches a native `.exe` with a simple 3D scene, free camera
+movement, a right-side settings panel, render-scale presets, debug views, jitter
+controls, and crisp overlay diagnostics. Controls:
+
+- Move: `W/A/S/D`, `Q/E`
+- Look: arrow keys or hold left mouse and drag
+- Presets: `1` native, `2` ultra quality, `3` quality, `4` balanced, `5` performance, `6` ultra performance
+- Custom scale: `-` / `=`
+- Debug/settings: `V` view mode, `J` jitter, `K` jitter length, `L` linear/nearest upscale, `F` freeze, `P` particles, `T` rails, `R` reset, `H` overlay
+
+The same core settings are also exposed as native controls in the panel: quality
+preset, render-scale slider, debug view, animation, jitter, freeze, upsample
+filter, rails, particles, and reset.
+
+The older standalone WebGL sketch remains available:
+
+```text
 tools\run_3d_scene.bat
 ```
 
-This opens a standalone WebGL "wind tunnel" with hard-edged cubes, thin rails,
-particles, subpixel jitter, DLSS/XeSS-style quality presets, a custom render-scale
-slider, freeze-frame, and edge/luma debug views. It is not the final DX12 runtime,
-but it is useful for manual inspection of aliasing, shimmer, and upscale behavior
-while the FFX bridge and DX12 harness are being wired.
+The native executable is now the primary manual visual test; the WebGL page is
+kept as a quick browser fallback while the DX12 harness is being wired.
 
 To build and run the current manual test suite:
 

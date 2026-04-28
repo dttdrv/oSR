@@ -82,6 +82,13 @@ add_executable(osr_quality_mode_demo
 )
 target_link_libraries(osr_quality_mode_demo PRIVATE osr_core)
 
+add_executable(osr_manual_3d_wind_tunnel
+    src/demo/manual_3d_wind_tunnel.cpp
+)
+if(WIN32)
+    target_link_libraries(osr_manual_3d_wind_tunnel PRIVATE user32 gdi32 comctl32)
+endif()
+
 if(OSR_BUILD_TESTS)
     enable_testing()
     add_executable(osr_frame_context_tests
