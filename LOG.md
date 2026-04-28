@@ -605,6 +605,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; output included `Capture analysis gate: ok reason=ok`.
 - Verification: `build/manual/captures/2026-04-28T21-39-05Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/capture_analysis.json` contained schema `osr.capture.analysis.v1`, threshold values, and text/specular/transparent/reactive ROI rows.
 
+### Capture Sweep Comparison Tool
+
+- Added `osr_capture_compare` and `tools/run_capture_compare.bat` to rank capture sessions that contain `capture_analysis.json`.
+- The first ranking score is hard-gated and higher-is-better: failed/missing captures sink below passing captures, while passing captures are scored from motion rejection, static history retention, text retention, material/reactive leak suppression, and color residuals.
+- The weighting follows the first sweep-scoring recommendation from the local research subagent: motion 25%, static 20%, reactive 15%, text 15%, specular 10%, transparent 7.5%, color residual 7.5%.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_capture_compare.bat build/manual/captures` exited `0` and ranked the current selected temporal-GPU capture with score `79.6913`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
