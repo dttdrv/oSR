@@ -674,6 +674,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Local NMS inspection: installed Steam build is at `C:/Program Files (x86)/Steam/steamapps/common/No Man's Sky`; `Binaries/NMS.exe` imports `libxess.dll` and only references `xessGetInputResolution`, `xessVKCreateContext`, `xessVKInit`, `xessVKExecute`, and `xessGetProperties` by name.
 - Local NMS settings inspection: `TKGRAPHICSSETTINGS.MXML` currently has `AntiAliasing` set to `XESS` and `XESSQuality` set to `Balanced`, so the next launch should naturally exercise the XeSS path.
 
+### No Man's Sky Proxy Install Scripts
+
+- Added `tools/install_xess_proxy_nms.bat` to build and smoke-test the proxy, preserve the game's original `Binaries/libxess.dll` as `libxess_real.dll`, and copy the oSR proxy into place.
+- Added `tools/restore_xess_proxy_nms.bat` to restore `libxess.dll` from `libxess_real.dll`.
+- These scripts intentionally keep the real Intel XeSS runtime beside the proxy because the proxy forwards calls rather than replacing XeSS reconstruction yet.
+- Verification: fake NMS layout under `build/manual/fake_nms/Binaries` installed successfully, preserved `libxess_real.dll`, restored successfully, and restored `libxess.dll` content matched the fake original.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

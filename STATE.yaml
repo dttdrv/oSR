@@ -80,6 +80,7 @@ build_status:
     - Quality/Balanced/Performance render-scale presets are now exact 0.66/0.58/0.50 across core, DX12, native 3D, and WebGL harness defaults.
     - tools/run_xess_proxy_smoke.bat builds an opt-in diagnostic libxess.dll proxy, verifies it loads, and verifies safe missing-libxess_real.dll logging.
     - Installed Steam No Man's Sky imports libxess.dll and references xessGetInputResolution, xessVKCreateContext, xessVKInit, xessVKExecute, and xessGetProperties; current settings select XESS Balanced.
+    - tools/install_xess_proxy_nms.bat and tools/restore_xess_proxy_nms.bat provide controlled install/restore for the No Man's Sky XeSS proxy proof.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
