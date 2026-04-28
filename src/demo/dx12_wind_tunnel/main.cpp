@@ -7,6 +7,7 @@
 #include "backends/dx12/temporal_resolve_pass.h"
 #include "core/frame_context.h"
 #include "core/logging.h"
+#include "core/quality_mode.h"
 #include "debug/capture_analysis.h"
 #include "debug/capture_pack.h"
 #include "debug/validation.h"
@@ -608,7 +609,7 @@ int main(int argc, char** argv) {
     int present_frames = -1;
     bool metric_gate = false;
     osr::core::Dimensions requested_display_size {1280, 800};
-    float requested_render_scale = 2.0f / 3.0f;
+    float requested_render_scale = osr::core::DefaultRenderScale(osr::core::QualityMode::Quality);
     uint64_t requested_frame_id = 8;
     uint32_t requested_frames = 1;
     int64_t requested_capture_frame_id = -1;

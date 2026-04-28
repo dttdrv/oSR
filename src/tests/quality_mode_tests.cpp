@@ -23,14 +23,17 @@ int main() {
 
     const Dimensions display {1920, 1200};
     const auto quality = BuildResolutionPlan(display, QualityMode::Quality);
-    Require(quality.render_size.width == 1280, "Quality mode should render 1920 wide output at 1280 wide.");
-    Require(quality.render_size.height == 800, "Quality mode should render 1200 high output at 800 high.");
+    Require(Near(quality.render_scale, 0.66f), "Quality mode should use 66 percent scale.");
+    Require(quality.render_size.width == 1267, "Quality mode should round 1920 wide output from 66 percent.");
+    Require(quality.render_size.height == 792, "Quality mode should use 66 percent height.");
 
     const auto balanced = BuildResolutionPlan(display, QualityMode::Balanced);
+    Require(Near(balanced.render_scale, 0.58f), "Balanced mode should use 58 percent scale.");
     Require(balanced.render_size.width == 1114, "Balanced mode width should round from 1920 * 0.58.");
     Require(balanced.render_size.height == 696, "Balanced mode height should round from 1200 * 0.58.");
 
     const auto performance = BuildResolutionPlan(display, QualityMode::Performance);
+    Require(Near(performance.render_scale, 0.5f), "Performance mode should use 50 percent scale.");
     Require(performance.render_size.width == 960, "Performance mode should use 50 percent width.");
     Require(performance.render_size.height == 600, "Performance mode should use 50 percent height.");
 
@@ -52,4 +55,3 @@ int main() {
 
     return 0;
 }
-

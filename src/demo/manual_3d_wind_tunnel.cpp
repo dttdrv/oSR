@@ -113,7 +113,7 @@ struct AppState {
     bool overlay = true;
     bool mouse_look = false;
     POINT last_mouse {};
-    float custom_scale = 0.667f;
+    float custom_scale = 0.66f;
     QualityPreset preset = QualityPreset::Quality;
     ViewMode view = ViewMode::Color;
     Camera camera;
@@ -184,7 +184,7 @@ float PresetScale(const AppState& app) {
     switch (app.preset) {
         case QualityPreset::Native: return 1.0f;
         case QualityPreset::UltraQuality: return 0.77f;
-        case QualityPreset::Quality: return 0.667f;
+        case QualityPreset::Quality: return 0.66f;
         case QualityPreset::Balanced: return 0.58f;
         case QualityPreset::Performance: return 0.5f;
         case QualityPreset::UltraPerformance: return 0.333f;

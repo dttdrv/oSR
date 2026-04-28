@@ -20,7 +20,7 @@ struct ResolutionPlan {
     QualityMode mode = QualityMode::Quality;
     Dimensions display_size = {};
     Dimensions render_size = {};
-    float render_scale = 0.6666667f;
+    float render_scale = 0.66f;
 };
 
 [[nodiscard]] const char* ToString(QualityMode mode) noexcept;
@@ -31,4 +31,3 @@ struct ResolutionPlan {
 [[nodiscard]] ResolutionPlan BuildCustomResolutionPlan(Dimensions display_size, float render_scale) noexcept;
 
 } // namespace osr::core
-

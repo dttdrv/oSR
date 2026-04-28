@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/frame_context.h"
+#include "core/quality_mode.h"
 #include "demo/wind_tunnel/temporal_resolve.h"
 
 #include <cstdint>
@@ -10,7 +11,7 @@ namespace osr::demo::wind_tunnel {
 
 struct SequenceMetricsSettings {
     core::Dimensions display_size {1280, 800};
-    float render_scale = 2.0f / 3.0f;
+    float render_scale = core::DefaultRenderScale(core::QualityMode::Quality);
     uint64_t start_frame = 1;
     uint32_t frame_count = 32;
     TemporalResolveSettings temporal_settings {};

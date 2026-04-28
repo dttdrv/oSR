@@ -644,6 +644,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 20 --capture-frame 16 --capture-run-name default_frame_16 --capture-gate-thresholds profiles/capture_gate.cfg` exited `1` as expected and wrote `debug_parity.json`.
 - Finding: frame `16` failure is localized history-weight parity drift: max `0.357684` at display pixel `(928,342)`, mean `0.000948854`; color residual max was `0.0759811`, depth residual max was negligible.
 
+### Quality Preset Scale Alignment
+
+- Changed the shared Quality render-scale preset from `2/3` to exact `0.66`.
+- Confirmed the requested preset contract: Quality `66%`, Balanced `58%`, Performance `50%`.
+- Updated the DX12 wind tunnel default, synthetic frame defaults, sequence metrics defaults, native 3D harness preset, and standalone WebGL harness preset to use the aligned Quality scale.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_quality_mode_demo.bat` exited `0`; for 1920x1200 it reported Quality `1267x792`, Balanced `1114x696`, Performance `960x600`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name quality_66_default --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed with render size `845x528` for 1280x800 output.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

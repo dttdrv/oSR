@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/frame_context.h"
+#include "core/quality_mode.h"
 #include "demo/wind_tunnel/synthetic_roi.h"
 
 #include <cstdint>
@@ -20,7 +21,7 @@ enum class MotionVectorMode {
 
 struct SyntheticFrameSettings {
     core::Dimensions display_size {1920, 1200};
-    float render_scale = 2.0f / 3.0f;
+    float render_scale = core::DefaultRenderScale(core::QualityMode::Quality);
     uint64_t frame_id = 0;
     bool jitter_enabled = true;
     uint32_t jitter_sequence_length = 16;

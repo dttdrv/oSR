@@ -22,12 +22,12 @@ float DefaultRenderScale(QualityMode mode) noexcept {
     switch (mode) {
     case QualityMode::Native: return 1.0f;
     case QualityMode::UltraQuality: return 0.77f;
-    case QualityMode::Quality: return 2.0f / 3.0f;
+    case QualityMode::Quality: return 0.66f;
     case QualityMode::Balanced: return 0.58f;
     case QualityMode::Performance: return 0.5f;
     case QualityMode::UltraPerformance: return 1.0f / 3.0f;
     case QualityMode::Custom:
-    default: return 2.0f / 3.0f;
+    default: return 0.66f;
     }
 }
 
@@ -66,4 +66,3 @@ ResolutionPlan BuildResolutionPlan(Dimensions display_size, QualityMode mode) no
 }
 
 } // namespace osr::core
-

@@ -77,6 +77,7 @@ build_status:
     - The default CPU and DX12 temporal resolve settings now use the sweep_conservative values: history 0.92, reactive penalty 0.95, motion 1.25, color 0.12, depth 0.025, clip 0.02.
     - tools/run_temporal_frame_sweep.bat ranks default temporal-GPU captures for frames 10/12/14; selected frame captures at 16/18 currently fail the debug-map parity gate.
     - Selected temporal-GPU captures write debug_parity.json; frame 16's current failure is a localized history-weight drift at display pixel 928,342.
+    - Quality/Balanced/Performance render-scale presets are now exact 0.66/0.58/0.50 across core, DX12, native 3D, and WebGL harness defaults.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
