@@ -66,6 +66,7 @@ target_link_libraries(osr_profiles PUBLIC osr_core)
 
 add_library(osr_debug STATIC
     src/debug/capture_dump.cpp
+    src/debug/capture_pack.cpp
     src/debug/overlay.cpp
     src/debug/validation.cpp
 )
@@ -98,6 +99,7 @@ endif()
 
 add_executable(osr_dx12_wind_tunnel
     src/demo/dx12_wind_tunnel/main.cpp
+    src/demo/dx12_wind_tunnel/dx12_texture_io.cpp
 )
 target_link_libraries(osr_dx12_wind_tunnel PRIVATE osr_core osr_debug osr_wind_tunnel osr_dx12)
 if(WIN32)
@@ -153,4 +155,10 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_wind_tunnel_synthetic_frame_tests PRIVATE osr_core osr_wind_tunnel)
     add_test(NAME wind_tunnel_synthetic_frame COMMAND osr_wind_tunnel_synthetic_frame_tests)
+
+    add_executable(osr_capture_pack_tests
+        src/tests/capture_pack_tests.cpp
+    )
+    target_link_libraries(osr_capture_pack_tests PRIVATE osr_core osr_debug)
+    add_test(NAME capture_pack COMMAND osr_capture_pack_tests)
 endif()

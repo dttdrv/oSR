@@ -83,7 +83,10 @@ tools\run_dx12_wind_tunnel.bat
 This creates real D3D12 resources for synthetic color, output, depth, motion
 vectors, and reactive mask buffers, exports them through `FrameContext`, calls
 the current DX12 debug-upscale path, and writes readable metadata to
-`build\manual\osr_dx12_wind_tunnel_metadata.txt`.
+`build\manual\osr_dx12_wind_tunnel_metadata.txt`. It also writes a capture pack
+under `build\manual\captures\...` with `session.json`, `frames.csv`,
+`metrics.csv`, `warnings.jsonl`, `bookmarks.jsonl`, and
+`frame_000001\frame_context.json`.
 
 To build and run the current manual test suite:
 

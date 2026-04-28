@@ -13,6 +13,7 @@ build_status:
     - Playwright loaded the standalone 3D wind tunnel over temporary localhost and observed the expected page title.
     - Native Win32 3D wind tunnel with settings panel compiled with direct MinGW and stayed open during launch smoke tests.
     - DX12 wind tunnel proof of life compiled and ran, creating D3D12 resources for color/output/depth/MV/reactive and validating FrameContext with zero errors.
+    - H1 buffer-truth path uploads synthetic color/depth/MV/reactive inputs to D3D12 textures, reads them back, hashes canonical rows, and writes a capture pack.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -62,3 +63,4 @@ next_actions:
   - Replace metadata-only DX12 debug upscale with command-list-recorded copy/debug passes.
   - Implement the research experiment ladder in RESEARCH.md, starting with motion-vector truth-table modes and trust-field debug metrics.
   - Implement HARNESS.md H0/H1: run manifest, frame metrics schema, capture pack writer, and DX12 buffer upload/readback/hash verification.
+  - Extend capture packs with raw texture dumps and debug-view images after swapchain/debug presentation is available.

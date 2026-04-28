@@ -153,6 +153,19 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Folded in external tooling research: PIX/RGP markers, optional RenderDoc trigger workflow, dump-around-frame captures, and secondary perceptual metrics such as FLIP/VMAF.
 - The immediate implementation order is H0/H1: shared run/capture schema, then DX12 buffer upload/readback/hash logging.
 
+### Harness H0/H1 Capture Pack And Buffer Truth
+
+- Added `src/debug/capture_pack.*` with a no-dependency capture-pack writer for `session.json`, `frames.csv`, `metrics.csv`, `warnings.jsonl`, `bookmarks.jsonl`, and per-frame `frame_context.json`.
+- Added `src/tests/capture_pack_tests.cpp` covering JSON escaping, CSV escaping, deterministic hashing, file creation, exact headers, warnings JSONL, escaped notes, and duplicate-session behavior.
+- Added `src/demo/dx12_wind_tunnel/dx12_texture_io.*` for D3D12 texture upload/readback using `GetCopyableFootprints`, padded row pitches, command-list copy barriers, a fence wait, and canonical unpadded-row hashing.
+- Updated the DX12 wind tunnel to upload/readback/hash synthetic color, depth, motion-vector, and reactive-mask textures. Metadata now records format, extent, row size, row pitch, total bytes, CPU hash, GPU hash, and match status.
+- Updated `tools/run_dx12_wind_tunnel.bat` and `tools/run_manual_tests.bat` for the new capture and texture I/O modules.
+- Verification: direct MinGW compile passed for `osr_capture_pack_tests.exe`.
+- Verification: `osr_capture_pack_tests.exe` passed.
+- Verification: direct MinGW compile passed for `osr_dx12_wind_tunnel.exe`.
+- Verification: `osr_dx12_wind_tunnel.exe` ran successfully and reported `Transfer hashes: matched`.
+- Verification details: `color_input`, `depth`, `motion_vectors`, and `reactive_mask` all had matching CPU/GPU hashes. Example run wrote capture pack `build/manual/captures/2026-04-28T11-47-27Z_dx12_wind_tunnel_h1_buffer_truth`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
