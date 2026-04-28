@@ -4,6 +4,8 @@ oSR is an early clean-room prototype for a DX12 temporal super-resolution replac
 
 Current phase: `phase_0`. See `ARCHITECTURE.md`, `ROADMAP.md`, `STATE.yaml`, and `LOG.md`.
 
+Harness plan: see `HARNESS.md` for the dual-mode eye-test plus logging/capture design.
+
 ## Build
 
 ```powershell

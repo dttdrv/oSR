@@ -144,6 +144,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Added concrete experiments for the DX12 wind tunnel: MV truth table, foreground-depth MV dilation, reactive-mask synthesis, trust heatmaps/metrics, risk-tile residual search, GPU confidence-gated sharpening, and optional tiny residual neural refinement only after deterministic trust works.
 - Folded in research-agent findings: baseline validators must include YCoCg/neighborhood and luma-variance clamps; SVGF motivates variance-guided trust; ReSTIR/Area ReSTIR motivate selective candidate reuse; Unreal TSR motivates history resurrection as a later experiment.
 
+### Harness Design
+
+- Added `HARNESS.md`, defining the dual-mode harness direction: one DX12 wind-tunnel executable for human eye testing and deterministic headless capture/metrics runs.
+- Design source notes: XeSS Inspector motivates overrides, overlays, histograms, and frame dumps; Unreal TSR motivates internal debug views; FSR2 debug checker motivates textual input validation; PIX timing/GPU capture docs motivate GPU markers, timestamps, and debug-layer-clean command recording.
+- The harness contract requires capture packs with `session.json`, `frames.csv`, `metrics.csv`, warnings/bookmarks, selected texture dumps, and replayable run configuration.
+- Folded in agent research naming the two modes as `Pilot Mode` and `Lab Mode`, with readable scene content, artifact tags, and metric-to-cause rules so eye-test notes become actionable tuning hypotheses.
+- Folded in external tooling research: PIX/RGP markers, optional RenderDoc trigger workflow, dump-around-frame captures, and secondary perceptual metrics such as FLIP/VMAF.
+- The immediate implementation order is H0/H1: shared run/capture schema, then DX12 buffer upload/readback/hash logging.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
