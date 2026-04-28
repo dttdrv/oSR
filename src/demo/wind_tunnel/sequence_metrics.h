@@ -13,6 +13,7 @@ struct SequenceMetricsSettings {
     float render_scale = 2.0f / 3.0f;
     uint64_t start_frame = 1;
     uint32_t frame_count = 32;
+    TemporalResolveSettings temporal_settings {};
 };
 
 struct SequenceMetricsResult {

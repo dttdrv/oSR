@@ -231,6 +231,21 @@ tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012
 
 The analyzer reads `artifacts.json` plus raw R32F/RG32F artifacts and reports history trust, color/depth residual candidate rejection, and motion activity percentages without launching the harness.
 
+Current temporal tuning flags:
+
+```text
+--history-weight 0.98
+--reactive-penalty 0.90
+--motion-rejection 2
+--color-rejection 0.16
+--depth-rejection 0.035
+--sharpening 0.28
+--sharpening-low-trust-scale 0.20
+--sharpening-reactive-scale 0.25
+```
+
+These flags are wired into the CPU sequence lab, single-frame temporal CPU/GPU runs, and temporal-GPU sequence runs.
+
 ## Metrics
 
 The first metrics should be deliberately simple and hard to game.

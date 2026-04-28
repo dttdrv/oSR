@@ -507,6 +507,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_capture_analyzer.bat build/manual/captures/2026-04-28T20-10-23Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012` exited `0`; output reported `history_mean=0.905448`, `history_trusted_pct=93.869`, `color_reject_candidate_pct=0.967187`, `depth_reject_candidate_pct=0.456934`, and `motion_active_pct=5.14925`.
 
+### Temporal Tuning CLI
+
+- Added DX12 wind-tunnel CLI flags for `--history-weight`, `--reactive-penalty`, `--motion-rejection`, `--color-rejection`, `--depth-rejection`, `--sharpening`, `--sharpening-low-trust-scale`, and `--sharpening-reactive-scale`.
+- The flags feed the CPU sequence lab, temporal CPU oracle, single-frame temporal GPU path, and temporal-GPU sequence path.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 32 --metric-gate --history-weight 0.98 --motion-rejection 2 --sharpening 0.28` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate --history-weight 0.98 --motion-rejection 2 --sharpening 0.28` exited `0`; latest selected capture was `build/manual/captures/2026-04-28T20-19-12Z_dx12_temporal_sequence_temporal_gpu_sequence_correct`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

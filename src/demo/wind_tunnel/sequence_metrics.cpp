@@ -206,7 +206,14 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
         TemporalResolveDebugMaps debug_maps;
         std::vector<uint32_t> temporal = spatial;
         if (!previous_temporal.empty() && has_previous_frame) {
-            temporal = ResolveTemporalDisplay(spatial, previous_temporal, frame, frame.context.display_size, {}, &stats, &previous_frame, &debug_maps);
+            temporal = ResolveTemporalDisplay(spatial,
+                                              previous_temporal,
+                                              frame,
+                                              frame.context.display_size,
+                                              settings.temporal_settings,
+                                              &stats,
+                                              &previous_frame,
+                                              &debug_maps);
         }
 
         if (!previous_spatial.empty()) {

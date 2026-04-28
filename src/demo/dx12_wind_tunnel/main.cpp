@@ -321,6 +321,22 @@ bool ParseReconstructionMode(const std::string& value, ReconstructionMode& mode)
     return true;
 }
 
+float ParseClampedFloat(const char* value, float min_value, float max_value) {
+    return std::clamp(static_cast<float>(std::atof(value)), min_value, max_value);
+}
+
+void ApplyTemporalSettings(osr::backends::dx12::TemporalResolveConstants& constants,
+                           const osr::demo::wind_tunnel::TemporalResolveSettings& settings) noexcept {
+    constants.max_history_weight = settings.max_history_weight;
+    constants.reactive_penalty = settings.reactive_penalty;
+    constants.motion_rejection_pixels = settings.motion_rejection_pixels;
+    constants.color_rejection_threshold = settings.color_rejection_threshold;
+    constants.depth_rejection_threshold = settings.depth_rejection_threshold;
+    constants.sharpening_amount = settings.sharpening_amount;
+    constants.sharpening_low_trust_scale = settings.sharpening_low_trust_scale;
+    constants.sharpening_reactive_scale = settings.sharpening_reactive_scale;
+}
+
 bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult& result,
                              const std::filesystem::path& path) {
     std::ofstream csv(path, std::ios::trunc);
@@ -511,6 +527,7 @@ int main(int argc, char** argv) {
     bool requested_reset_history = false;
     ReconstructionMode reconstruction_mode = ReconstructionMode::SpatialGpu;
     auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
+    osr::demo::wind_tunnel::TemporalResolveSettings temporal_settings;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--headless") {
             headless = true;
@@ -543,6 +560,22 @@ int main(int argc, char** argv) {
                 std::cerr << "Unknown --mv-mode. Use correct, zero, flip-x, flip-y, half-scale, double-scale, or jitter-contaminated.\n";
                 return 2;
             }
+        } else if (std::string(argv[i]) == "--history-weight" && i + 1 < argc) {
+            temporal_settings.max_history_weight = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--reactive-penalty" && i + 1 < argc) {
+            temporal_settings.reactive_penalty = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--motion-rejection" && i + 1 < argc) {
+            temporal_settings.motion_rejection_pixels = ParseClampedFloat(argv[++i], 0.0f, 1000000.0f);
+        } else if (std::string(argv[i]) == "--color-rejection" && i + 1 < argc) {
+            temporal_settings.color_rejection_threshold = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--depth-rejection" && i + 1 < argc) {
+            temporal_settings.depth_rejection_threshold = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--sharpening" && i + 1 < argc) {
+            temporal_settings.sharpening_amount = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--sharpening-low-trust-scale" && i + 1 < argc) {
+            temporal_settings.sharpening_low_trust_scale = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--sharpening-reactive-scale" && i + 1 < argc) {
+            temporal_settings.sharpening_reactive_scale = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
         }
     }
 
@@ -555,6 +588,7 @@ int main(int argc, char** argv) {
         sequence_settings.render_scale = requested_render_scale;
         sequence_settings.start_frame = requested_frame_id;
         sequence_settings.frame_count = requested_frames;
+        sequence_settings.temporal_settings = temporal_settings;
         const auto sequence = osr::demo::wind_tunnel::RunSequenceMetrics(sequence_settings);
         const auto sequence_path = std::filesystem::path("build/manual/osr_dx12_sequence_metrics.csv");
         WriteSequenceMetricsCsv(sequence, sequence_path);
@@ -719,7 +753,7 @@ int main(int argc, char** argv) {
                                                                                previous_cpu_temporal,
                                                                                frame,
                                                                                display_size,
-                                                                               {},
+                                                                               temporal_settings,
                                                                                &stats,
                                                                                &previous_frame,
                                                                                &cpu_debug_maps);
@@ -759,6 +793,7 @@ int main(int argc, char** argv) {
                 osr::backends::dx12::TemporalResolveConstants constants;
                 constants.render_size = render_size;
                 constants.display_size = display_size;
+                ApplyTemporalSettings(constants, temporal_settings);
                 constants.jitter_offset = frame.context.jitter_offset;
                 sequence_ok = temporal_pass.Dispatch(dx.command_list, frame.context, temporal_resources, constants) &&
                               osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);
@@ -966,12 +1001,11 @@ int main(int argc, char** argv) {
     std::vector<uint32_t> resolved_output = spatial_output;
     const bool temporal_mode = reconstruction_mode == ReconstructionMode::TemporalCpu || reconstruction_mode == ReconstructionMode::TemporalGpu;
     if (temporal_mode) {
-        osr::demo::wind_tunnel::TemporalResolveSettings resolve_settings;
         resolved_output = osr::demo::wind_tunnel::ResolveTemporalDisplay(spatial_output,
                                                                           previous_display_output,
                                                                           synthetic,
                                                                           display_size,
-                                                                          resolve_settings,
+                                                                          temporal_settings,
                                                                           &temporal_resolve_stats,
                                                                           &previous_synthetic,
                                                                           &temporal_debug_maps);
@@ -1023,6 +1057,7 @@ int main(int argc, char** argv) {
         osr::backends::dx12::TemporalResolveConstants temporal_constants;
         temporal_constants.render_size = render_size;
         temporal_constants.display_size = display_size;
+        ApplyTemporalSettings(temporal_constants, temporal_settings);
         temporal_constants.jitter_offset = synthetic.context.jitter_offset;
         dispatch_result = temporal_pass.Initialize(dx.device) &&
                           temporal_pass.Dispatch(dx.command_list, synthetic.context, temporal_resources, temporal_constants) &&
