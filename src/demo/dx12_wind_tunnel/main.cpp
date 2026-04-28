@@ -572,6 +572,7 @@ int main(int argc, char** argv) {
     uint64_t requested_frame_id = 8;
     uint32_t requested_frames = 1;
     int64_t requested_capture_frame_id = -1;
+    std::string requested_capture_run_name;
     bool requested_reset_history = false;
     ReconstructionMode reconstruction_mode = ReconstructionMode::SpatialGpu;
     auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
@@ -598,6 +599,8 @@ int main(int argc, char** argv) {
             requested_frames = static_cast<uint32_t>(std::max(1, std::atoi(argv[++i])));
         } else if ((std::string(argv[i]) == "--capture-frame" || std::string(argv[i]) == "--capture-frame-id") && i + 1 < argc) {
             requested_capture_frame_id = static_cast<int64_t>(std::max(0, std::atoi(argv[++i])));
+        } else if (std::string(argv[i]) == "--capture-run-name" && i + 1 < argc) {
+            requested_capture_run_name = argv[++i];
         } else if (std::string(argv[i]) == "--reset-history") {
             requested_reset_history = true;
         } else if ((std::string(argv[i]) == "--reconstruction" || std::string(argv[i]) == "--mode") && i + 1 < argc) {
@@ -892,11 +895,13 @@ int main(int argc, char** argv) {
                     if (sequence_ok) {
                         osr::debug::CapturePackConfig capture_config;
                         capture_config.root = "build/manual/captures";
+                        capture_config.run_name = requested_capture_run_name;
                         capture_config.scenario = "dx12_temporal_sequence";
                         capture_config.mode = std::string("temporal_gpu_sequence_") + osr::demo::wind_tunnel::ToString(mv_mode);
                         capture_config.algorithm = ToString(reconstruction_mode);
                         capture_config.analysis_gate_thresholds_path = capture_gate_thresholds_path.string();
                         capture_config.analysis_gate_thresholds_snapshot = capture_gate_thresholds_path.empty() ? "" : "capture_gate_thresholds.cfg";
+                        capture_config.overwrite_existing = !requested_capture_run_name.empty();
                         osr::debug::CapturePackWriter sequence_capture;
                         sequence_ok = sequence_capture.BeginSession(capture_config) &&
                                       sequence_capture.WriteSessionManifest(frame.context, GetCommandLineA()) &&

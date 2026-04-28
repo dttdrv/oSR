@@ -613,6 +613,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_capture_compare.bat build/manual/captures` exited `0` and ranked the current selected temporal-GPU capture with score `79.6913`.
 
+### Temporal Tuning Sweep Harness
+
+- Added `--capture-run-name` to the DX12 wind tunnel so selected-frame captures can use deterministic output directories and overwrite previous sweep runs.
+- Added `tools/run_temporal_tuning_sweep.bat`, which runs three temporal-GPU profiles (`sweep_balanced`, `sweep_conservative`, `sweep_detail`) and ranks their capture-analysis JSON outputs.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_temporal_tuning_sweep.bat` exited `0`; all three profiles passed capture analysis, and the current ranking was `sweep_conservative` score `79.7175`, `sweep_detail` score `79.6559`, `sweep_balanced` score `79.6025`.
+- Decision: treat `sweep_conservative` as the current evidence-backed tuning baseline until broader scenes or frame IDs overturn it.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
