@@ -64,6 +64,10 @@ struct CaptureAnalysisGateThresholds {
 [[nodiscard]] CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis);
 [[nodiscard]] CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis,
                                                                     const CaptureAnalysisGateThresholds& thresholds);
+[[nodiscard]] bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
+                                            const CaptureAnalysisGateResult& gate,
+                                            const CaptureAnalysisGateThresholds& thresholds,
+                                            const std::filesystem::path& path);
 [[nodiscard]] std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis);
 
 } // namespace osr::debug

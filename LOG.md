@@ -596,6 +596,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; output included `Capture analysis gate: ok reason=ok`.
 - Verification: `build/manual/captures/2026-04-28T21-35-05Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/session.json` contained both threshold provenance fields and the same capture directory contained `capture_gate_thresholds.cfg`.
 
+### Capture Analysis JSON Export
+
+- Added `WriteCaptureAnalysisJson` so offline and in-process capture analysis can persist machine-readable global, motion/static, ROI, gate, and threshold data.
+- DX12 temporal-GPU selected-frame captures now write `capture_analysis.json` after raw/debug artifacts are dumped.
+- The selected capture still only fails on the ROI gate when `--metric-gate` is enabled, but analysis JSON must be writable for selected captures.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; output included `Capture analysis gate: ok reason=ok`.
+- Verification: `build/manual/captures/2026-04-28T21-39-05Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/capture_analysis.json` contained schema `osr.capture.analysis.v1`, threshold values, and text/specular/transparent/reactive ROI rows.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

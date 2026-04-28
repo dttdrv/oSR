@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <iterator>
+#include <locale>
 #include <optional>
 #include <sstream>
 #include <vector>
@@ -29,6 +31,30 @@ std::string Trim(std::string value) {
     value.erase(value.begin(), std::find_if(value.begin(), value.end(), not_space));
     value.erase(std::find_if(value.rbegin(), value.rend(), not_space).base(), value.end());
     return value;
+}
+
+std::string JsonEscape(std::string_view value) {
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    for (const unsigned char ch : value) {
+        switch (ch) {
+        case '"': out << "\\\""; break;
+        case '\\': out << "\\\\"; break;
+        case '\b': out << "\\b"; break;
+        case '\f': out << "\\f"; break;
+        case '\n': out << "\\n"; break;
+        case '\r': out << "\\r"; break;
+        case '\t': out << "\\t"; break;
+        default:
+            if (ch < 0x20) {
+                out << "\\u00" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ch) << std::dec;
+            } else {
+                out << static_cast<char>(ch);
+            }
+            break;
+        }
+    }
+    return out.str();
 }
 
 std::optional<std::string> JsonStringValue(const std::string& object, const std::string& key) {
@@ -488,6 +514,76 @@ CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis
     gate.passed = true;
     gate.reason = "ok";
     return gate;
+}
+
+bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
+                              const CaptureAnalysisGateResult& gate,
+                              const CaptureAnalysisGateThresholds& thresholds,
+                              const std::filesystem::path& path) {
+    std::ofstream out(path, std::ios::trunc);
+    if (!out) {
+        return false;
+    }
+    out.imbue(std::locale::classic());
+    const auto write_value_stats = [&](const char* name, const CaptureValueStats& stats, bool trailing_comma) {
+        out << "    \"" << name << "\": {"
+            << "\"samples\":" << stats.samples << ","
+            << "\"min\":" << stats.min << ","
+            << "\"max\":" << stats.max << ","
+            << "\"mean\":" << stats.mean << ","
+            << "\"threshold\":" << stats.threshold << ","
+            << "\"over_threshold_pct\":" << stats.over_threshold_pct
+            << "}" << (trailing_comma ? "," : "") << "\n";
+    };
+    const auto write_region_stats = [&](const char* name, const CaptureRegionStats& stats, bool trailing_comma) {
+        out << "    \"" << name << "\": {"
+            << "\"samples\":" << stats.samples << ","
+            << "\"mean_history\":" << stats.mean_history << ","
+            << "\"history_trusted_pct\":" << stats.history_trusted_pct << ","
+            << "\"mean_color_residual\":" << stats.mean_color_residual
+            << "}" << (trailing_comma ? "," : "") << "\n";
+    };
+
+    out << "{\n";
+    out << "  \"schema\": \"osr.capture.analysis.v1\",\n";
+    out << "  \"ok\": " << (analysis.ok ? "true" : "false") << ",\n";
+    out << "  \"error\": \"" << JsonEscape(analysis.error) << "\",\n";
+    out << "  \"frame_id\": " << analysis.frame_id << ",\n";
+    out << "  \"display_size\": [" << analysis.display_size.width << ", " << analysis.display_size.height << "],\n";
+    out << "  \"render_size\": [" << analysis.render_size.width << ", " << analysis.render_size.height << "],\n";
+    out << "  \"gate\": {"
+        << "\"passed\":" << (gate.passed ? "true" : "false") << ","
+        << "\"reason\":\"" << JsonEscape(gate.reason) << "\""
+        << "},\n";
+    out << "  \"thresholds\": {"
+        << "\"max_motion_history_trusted_pct\":" << thresholds.max_motion_history_trusted_pct << ","
+        << "\"min_static_history_trusted_pct\":" << thresholds.min_static_history_trusted_pct << ","
+        << "\"min_text_history_trusted_pct\":" << thresholds.min_text_history_trusted_pct << ","
+        << "\"max_specular_history_trusted_pct\":" << thresholds.max_specular_history_trusted_pct << ","
+        << "\"max_transparent_history_trusted_pct\":" << thresholds.max_transparent_history_trusted_pct << ","
+        << "\"max_reactive_history_trusted_pct\":" << thresholds.max_reactive_history_trusted_pct << ","
+        << "\"max_color_reject_candidate_pct\":" << thresholds.max_color_reject_candidate_pct
+        << "},\n";
+    out << "  \"global\": {\n";
+    write_value_stats("history_weight", analysis.history_weight, true);
+    write_value_stats("color_residual", analysis.color_residual, true);
+    write_value_stats("depth_residual", analysis.depth_residual, true);
+    write_value_stats("motion_magnitude", analysis.motion_magnitude, false);
+    out << "  },\n";
+    out << "  \"motion_static_split\": {"
+        << "\"motion_region_history_trusted_pct\":" << analysis.motion_region_history_trusted_pct << ","
+        << "\"static_region_history_trusted_pct\":" << analysis.static_region_history_trusted_pct << ","
+        << "\"motion_region_mean_history\":" << analysis.motion_region_mean_history << ","
+        << "\"static_region_mean_history\":" << analysis.static_region_mean_history
+        << "},\n";
+    out << "  \"regions\": {\n";
+    write_region_stats("text", analysis.text_region, true);
+    write_region_stats("specular", analysis.specular_region, true);
+    write_region_stats("transparent", analysis.transparent_region, true);
+    write_region_stats("reactive", analysis.reactive_region, false);
+    out << "  }\n";
+    out << "}\n";
+    return true;
 }
 
 std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis) {

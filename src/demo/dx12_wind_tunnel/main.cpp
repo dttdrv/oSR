@@ -957,15 +957,21 @@ int main(int argc, char** argv) {
                         }
                         sequence_capture_written = dump.AllRequired();
                         bool selected_capture_analysis_ok = true;
-                        if (sequence_ok && sequence_capture_written && metric_gate) {
+                        if (sequence_ok && sequence_capture_written) {
                             const auto frame_capture_dir = sequence_capture.SessionPath() / frame_dir_name.str();
                             const auto analysis = osr::debug::AnalyzeCaptureFrame(frame_capture_dir);
                             const auto gate = osr::debug::EvaluateCaptureAnalysisGate(analysis, capture_gate_thresholds);
-                            selected_capture_analysis_ok = gate.passed;
-                            std::cout << osr::debug::SummarizeCaptureAnalysis(analysis) << "\n";
-                            std::cout << "Capture analysis gate: "
-                                      << (gate.passed ? "ok" : "FAILED")
-                                      << " reason=" << gate.reason << "\n";
+                            const bool wrote_analysis = osr::debug::WriteCaptureAnalysisJson(analysis,
+                                                                                              gate,
+                                                                                              capture_gate_thresholds,
+                                                                                              sequence_capture.SessionPath() / "capture_analysis.json");
+                            selected_capture_analysis_ok = wrote_analysis && (!metric_gate || gate.passed);
+                            if (metric_gate) {
+                                std::cout << osr::debug::SummarizeCaptureAnalysis(analysis) << "\n";
+                                std::cout << "Capture analysis gate: "
+                                          << (gate.passed ? "ok" : "FAILED")
+                                          << " reason=" << gate.reason << "\n";
+                            }
                         }
                         sequence_ok = sequence_ok && sequence_capture_written && selected_debug_parity_ok && selected_capture_analysis_ok;
                     }

@@ -20,6 +20,12 @@ void WriteRaw(const std::filesystem::path& path, const std::vector<T>& values) {
     out.write(reinterpret_cast<const char*>(values.data()), static_cast<std::streamsize>(values.size() * sizeof(T)));
 }
 
+bool Contains(const std::filesystem::path& path, const std::string& needle) {
+    std::ifstream in(path, std::ios::binary);
+    const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    return text.find(needle) != std::string::npos;
+}
+
 struct Float2 {
     float x;
     float y;
@@ -165,6 +171,16 @@ int main() {
     const auto loaded_thresholds = osr::debug::LoadCaptureAnalysisGateThresholds(dir.parent_path() / "thresholds.cfg");
     if (!osr::debug::EvaluateCaptureAnalysisGate(failing_analysis, loaded_thresholds).passed) {
         return Fail("ROI capture analysis gate should honor loaded threshold config");
+    }
+    const auto gate = osr::debug::EvaluateCaptureAnalysisGate(roi_analysis, loaded_thresholds);
+    const auto analysis_json = dir.parent_path() / "capture_analysis.json";
+    if (!osr::debug::WriteCaptureAnalysisJson(roi_analysis, gate, loaded_thresholds, analysis_json)) {
+        return Fail("capture analysis JSON export should succeed");
+    }
+    if (!Contains(analysis_json, "\"schema\": \"osr.capture.analysis.v1\"") ||
+        !Contains(analysis_json, "\"text\": {") ||
+        !Contains(analysis_json, "\"max_reactive_history_trusted_pct\":30")) {
+        return Fail("capture analysis JSON export missing expected fields");
     }
 
     const auto missing = osr::debug::AnalyzeCaptureFrame(dir / "missing");
