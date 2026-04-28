@@ -110,5 +110,47 @@ int main() {
         return Fail("color residual rejection stats should be populated");
     }
 
+    osr::demo::wind_tunnel::SyntheticFrame previous_depth = custom;
+    osr::demo::wind_tunnel::SyntheticFrame current_depth = custom;
+    previous_depth.depth.assign(16, 0.9f);
+    current_depth.depth.assign(16, 0.2f);
+    current_depth.motion_vectors.assign(16, {});
+    current_depth.reactive_mask.assign(16, 0.0f);
+    repro_current.assign(16, 0xff000000u);
+    repro_history.assign(16, 0xffffffffu);
+    settings.color_rejection_threshold = 0.0f;
+    settings.depth_rejection_threshold = 0.1f;
+    const auto depth_rejected = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current,
+                                                                               repro_history,
+                                                                               current_depth,
+                                                                               current_depth.context.display_size,
+                                                                               settings,
+                                                                               &stats,
+                                                                               &previous_depth);
+    if (depth_rejected[5] != repro_current[5]) {
+        return Fail("large depth residual should reject history");
+    }
+    if (stats.depth_rejected_pct <= 0.0 || stats.depth_residual_mean <= 0.0) {
+        return Fail("depth residual rejection stats should be populated");
+    }
+
+    previous_depth.depth.assign(16, 0.9f);
+    previous_depth.depth[static_cast<size_t>(1) * 4 + 2] = 0.2f;
+    current_depth.depth.assign(16, 0.2f);
+    current_depth.motion_vectors.assign(16, {});
+    current_depth.motion_vectors[static_cast<size_t>(1) * 4 + 1] = {1.0f, 0.0f};
+    repro_current.assign(16, 0xff000000u);
+    repro_history.assign(16, 0xffffffffu);
+    const auto depth_reprojected = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current,
+                                                                                  repro_history,
+                                                                                  current_depth,
+                                                                                  current_depth.context.display_size,
+                                                                                  settings,
+                                                                                  &stats,
+                                                                                  &previous_depth);
+    if (depth_reprojected[static_cast<size_t>(1) * 4 + 1] != 0xffffffffu) {
+        return Fail("depth residual should use reprojected render-space coordinates");
+    }
+
     return 0;
 }

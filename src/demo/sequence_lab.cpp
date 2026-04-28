@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
            "stability_improvement_pct,ghost_score,reactive_trail_score,"
            "edge_preservation,"
            "reprojected_history_pct,reproject_out_of_bounds_pct,"
-           "color_rejected_pct,color_residual_mean,"
+           "color_rejected_pct,color_residual_mean,depth_rejected_pct,depth_residual_mean,"
            "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
     csv << result.frames << ","
         << result.spatial_frame_delta_mean << ","
@@ -64,6 +64,8 @@ int main(int argc, char** argv) {
         << result.reproject_out_of_bounds_pct << ","
         << result.color_rejected_pct << ","
         << result.color_residual_mean << ","
+        << result.depth_rejected_pct << ","
+        << result.depth_residual_mean << ","
         << result.temporal_history_weight_mean << ","
         << result.temporal_reactive_suppressed_pct << ","
         << result.temporal_motion_suppressed_pct << "\n";
@@ -81,6 +83,8 @@ int main(int argc, char** argv) {
     std::cout << "Reproject OOB: " << result.reproject_out_of_bounds_pct << "%\n";
     std::cout << "Color rejected: " << result.color_rejected_pct << "%\n";
     std::cout << "Color residual mean: " << result.color_residual_mean << "\n";
+    std::cout << "Depth rejected: " << result.depth_rejected_pct << "%\n";
+    std::cout << "Depth residual mean: " << result.depth_residual_mean << "\n";
     std::cout << "Temporal history weight mean: " << result.temporal_history_weight_mean << "\n";
     std::cout << "Metrics: build/manual/osr_sequence_lab_metrics.csv\n";
 

@@ -284,6 +284,20 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.718624`, stability improvement `28.1376%`, ghost score `0.407826`, edge preservation `0.991795`, color rejected `0.274369%`.
 - Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
 
+### Depth-Aware History Rejection
+
+- Added depth residual rejection to the CPU temporal resolve using the previous frame's reprojected render-space depth sample.
+- Depth reprojection now uses render-space current-to-previous motion vectors separately from display-space history sampling, so depth validation tracks the same previous surface as the history sample.
+- Depth out-of-bounds reprojection rejects history instead of silently trusting same-pixel depth.
+- Final accepted history metrics now accumulate after color/depth rejection, making `ghost_score` and `reactive_trail_score` reflect accepted history rather than pre-rejection weight.
+- Tightened default temporal motion rejection from `5 px` to `3 px` after the 320x200 sequence test showed excessive moving-pixel history trust.
+- Sequence CSV/console output and DX12 metadata now report `depth_rejected_pct` and `depth_residual_mean`.
+- Added tests for depth mismatch rejection, reprojected-depth coordinate selection, sequence depth residual reporting, and the stricter `ghost_score <= 0.45` gate.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.726896`, stability improvement `27.3104%`, ghost score `0.216528`, edge preservation `0.992171`, depth rejected `0.331768%`, depth residual mean `0.00161099`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.718994`, stability improvement `28.1006%`, ghost score `0.257434`, edge preservation `0.992253`, depth rejected `0.325894%`, depth residual mean `0.0015555`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`, with matched transfer/readback hashes and temporal resolve depth rejected `0.391602%`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

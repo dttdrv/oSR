@@ -44,7 +44,10 @@ int main() {
     if (result.color_residual_mean <= 0.0) {
         return Fail("sequence metrics should report color residuals");
     }
-    if (result.ghost_score > 0.65) {
+    if (result.depth_residual_mean <= 0.0) {
+        return Fail("sequence metrics should report depth residuals");
+    }
+    if (result.ghost_score > 0.45) {
         return Fail("temporal resolve should keep motion ghost score below gate");
     }
     if (result.temporal_history_weight_mean <= 0.0 || result.temporal_history_weight_mean > 1.0) {

@@ -39,7 +39,8 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                                              const SyntheticFrame& current_frame,
                                              core::Dimensions display_size,
                                              const TemporalResolveSettings& settings,
-                                             TemporalResolveStats* stats) {
+                                             TemporalResolveStats* stats,
+                                             const SyntheticFrame* previous_frame) {
     const size_t display_pixels = static_cast<size_t>(display_size.width) * display_size.height;
     if (current_display.size() != display_pixels ||
         previous_history.size() != display_pixels ||
@@ -63,11 +64,19 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
     uint64_t reprojected_pixels = 0;
     uint64_t reproject_out_of_bounds = 0;
     uint64_t color_rejected = 0;
+    uint64_t depth_rejected = 0;
+    uint64_t depth_samples = 0;
     double reactive_weight_sum = 0.0;
     double motion_weight_sum = 0.0;
     double color_residual_sum = 0.0;
+    double depth_residual_sum = 0.0;
     const float display_per_render_x = static_cast<float>(display_size.width) / static_cast<float>(render_size.width);
     const float display_per_render_y = static_cast<float>(display_size.height) / static_cast<float>(render_size.height);
+    const bool has_previous_depth = previous_frame &&
+                                    previous_frame->context.render_size.width == render_size.width &&
+                                    previous_frame->context.render_size.height == render_size.height &&
+                                    previous_frame->depth.size() == current_frame.depth.size() &&
+                                    current_frame.depth.size() == static_cast<size_t>(render_size.width) * render_size.height;
 
     for (uint32_t y = 0; y < display_size.height; ++y) {
         const uint32_t ry = std::min(render_size.height - 1,
@@ -78,7 +87,9 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
             const size_t display_index = static_cast<size_t>(y) * display_size.width + x;
             const size_t render_index = static_cast<size_t>(ry) * render_size.width + rx;
             size_t history_index = display_index;
+            size_t previous_render_index = render_index;
             float history_weight = std::clamp(settings.max_history_weight, 0.0f, 1.0f);
+            bool previous_depth_oob = false;
 
             const float reactive = render_index < current_frame.reactive_mask.size() ? current_frame.reactive_mask[render_index] : 0.0f;
             if (reactive > 0.0f) {
@@ -102,6 +113,14 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                         history_index = static_cast<size_t>(hy) * display_size.width + static_cast<size_t>(hx);
                         ++reprojected_pixels;
                     }
+                    const int prx = static_cast<int>(std::lround(static_cast<float>(rx) + mv.x));
+                    const int pry = static_cast<int>(std::lround(static_cast<float>(ry) + mv.y));
+                    if (prx < 0 || pry < 0 || prx >= static_cast<int>(render_size.width) || pry >= static_cast<int>(render_size.height)) {
+                        history_weight = 0.0f;
+                        previous_depth_oob = true;
+                    } else {
+                        previous_render_index = static_cast<size_t>(pry) * render_size.width + static_cast<size_t>(prx);
+                    }
                 }
                 if (motion_length > settings.motion_rejection_pixels) {
                     history_weight = 0.0f;
@@ -110,12 +129,8 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                     history_weight *= std::clamp(1.0f - motion_length / settings.motion_rejection_pixels, 0.0f, 1.0f);
                 }
             }
-            if (reactive > 0.0f) {
-                reactive_weight_sum += history_weight;
-            }
             if (motion_pixel) {
                 ++motion_pixels;
-                motion_weight_sum += history_weight;
             }
 
             const float color_residual = std::abs(Luma(current_display[display_index]) - Luma(previous_history[history_index]));
@@ -125,6 +140,28 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 ++color_rejected;
             } else if (settings.color_rejection_threshold > 0.0f) {
                 history_weight *= std::clamp(1.0f - color_residual / settings.color_rejection_threshold, 0.0f, 1.0f);
+            }
+            if (has_previous_depth) {
+                if (previous_depth_oob) {
+                    history_weight = 0.0f;
+                    ++depth_rejected;
+                } else {
+                    const float depth_residual = std::abs(current_frame.depth[render_index] - previous_frame->depth[previous_render_index]);
+                    depth_residual_sum += depth_residual;
+                    ++depth_samples;
+                    if (settings.depth_rejection_threshold > 0.0f && depth_residual > settings.depth_rejection_threshold) {
+                        history_weight = 0.0f;
+                        ++depth_rejected;
+                    } else if (settings.depth_rejection_threshold > 0.0f) {
+                        history_weight *= std::clamp(1.0f - depth_residual / settings.depth_rejection_threshold, 0.0f, 1.0f);
+                    }
+                }
+            }
+            if (reactive > 0.0f) {
+                reactive_weight_sum += history_weight;
+            }
+            if (motion_pixel) {
+                motion_weight_sum += history_weight;
             }
 
             output[display_index] = BlendColor(current_display[display_index], previous_history[history_index], history_weight);
@@ -146,6 +183,8 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
         stats->reproject_out_of_bounds_pct = Percent(reproject_out_of_bounds, display_pixels);
         stats->color_rejected_pct = Percent(color_rejected, display_pixels);
         stats->color_residual_mean = display_pixels == 0 ? 0.0 : color_residual_sum / static_cast<double>(display_pixels);
+        stats->depth_rejected_pct = Percent(depth_rejected, display_pixels);
+        stats->depth_residual_mean = depth_samples == 0 ? 0.0 : depth_residual_sum / static_cast<double>(depth_samples);
     }
     return output;
 }

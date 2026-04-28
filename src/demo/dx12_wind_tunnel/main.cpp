@@ -172,6 +172,10 @@ void ExportMetadata(const osr::core::FrameContext& frame,
     out << "  history_weight_max: " << temporal_resolve_stats.history_weight_max << "\n";
     out << "  reactive_suppressed_pct: " << temporal_resolve_stats.reactive_suppressed_pct << "\n";
     out << "  motion_suppressed_pct: " << temporal_resolve_stats.motion_suppressed_pct << "\n";
+    out << "  color_rejected_pct: " << temporal_resolve_stats.color_rejected_pct << "\n";
+    out << "  color_residual_mean: " << temporal_resolve_stats.color_residual_mean << "\n";
+    out << "  depth_rejected_pct: " << temporal_resolve_stats.depth_rejected_pct << "\n";
+    out << "  depth_residual_mean: " << temporal_resolve_stats.depth_residual_mean << "\n";
     out << "temporal_diagnostics:\n";
     out << "  samples: " << diagnostics.sample_count << "\n";
     out << "  mv_luma_residual_mean: " << diagnostics.mv_luma_residual_mean << "\n";
@@ -300,7 +304,7 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
            "stability_improvement_pct,ghost_score,reactive_trail_score,"
            "edge_preservation,"
            "reprojected_history_pct,reproject_out_of_bounds_pct,"
-           "color_rejected_pct,color_residual_mean,"
+           "color_rejected_pct,color_residual_mean,depth_rejected_pct,depth_residual_mean,"
            "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
     csv << result.frames << ","
         << result.spatial_frame_delta_mean << ","
@@ -314,6 +318,8 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
         << result.reproject_out_of_bounds_pct << ","
         << result.color_rejected_pct << ","
         << result.color_residual_mean << ","
+        << result.depth_rejected_pct << ","
+        << result.depth_residual_mean << ","
         << result.temporal_history_weight_mean << ","
         << result.temporal_reactive_suppressed_pct << ","
         << result.temporal_motion_suppressed_pct << "\n";
@@ -391,6 +397,8 @@ int main(int argc, char** argv) {
         std::cout << "Reproject OOB: " << sequence.reproject_out_of_bounds_pct << "%\n";
         std::cout << "Color rejected: " << sequence.color_rejected_pct << "%\n";
         std::cout << "Color residual mean: " << sequence.color_residual_mean << "\n";
+        std::cout << "Depth rejected: " << sequence.depth_rejected_pct << "%\n";
+        std::cout << "Depth residual mean: " << sequence.depth_residual_mean << "\n";
         std::cout << "Temporal history weight mean: " << sequence.temporal_history_weight_mean << "\n";
         std::cout << "Metrics: " << sequence_path.string() << "\n";
         if (metric_gate && (sequence.temporal_delta_ratio > 0.80 ||
@@ -483,7 +491,8 @@ int main(int argc, char** argv) {
                                                                           synthetic,
                                                                           display_size,
                                                                           resolve_settings,
-                                                                          &temporal_resolve_stats);
+                                                                          &temporal_resolve_stats,
+                                                                          &previous_synthetic);
         synthetic.context.notes.push_back("CPU temporal resolve blended display-space history before DX12 presentation.");
     }
 
@@ -635,7 +644,8 @@ int main(int argc, char** argv) {
     if (reconstruction_mode == ReconstructionMode::TemporalCpu) {
         std::cout << "Temporal resolve: history_mean=" << temporal_resolve_stats.history_weight_mean
                   << " reactive_suppressed=" << temporal_resolve_stats.reactive_suppressed_pct
-                  << "% motion_suppressed=" << temporal_resolve_stats.motion_suppressed_pct << "%\n";
+                  << "% motion_suppressed=" << temporal_resolve_stats.motion_suppressed_pct
+                  << "% depth_rejected=" << temporal_resolve_stats.depth_rejected_pct << "%\n";
     }
     std::cout << "Log: build/manual/osr_dx12_wind_tunnel.log\n";
 

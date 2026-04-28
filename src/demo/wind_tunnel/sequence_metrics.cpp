@@ -65,9 +65,13 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     double reproject_oob_sum = 0.0;
     double color_rejected_sum = 0.0;
     double color_residual_sum = 0.0;
+    double depth_rejected_sum = 0.0;
+    double depth_residual_sum = 0.0;
     double spatial_edge_sum = 0.0;
     double temporal_edge_sum = 0.0;
     uint32_t delta_count = 0;
+    SyntheticFrame previous_frame;
+    bool has_previous_frame = false;
 
     for (uint32_t i = 0; i < settings.frame_count; ++i) {
         SyntheticFrameSettings frame_settings;
@@ -80,8 +84,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
 
         TemporalResolveStats stats;
         std::vector<uint32_t> temporal = spatial;
-        if (!previous_temporal.empty()) {
-            temporal = ResolveTemporalDisplay(spatial, previous_temporal, frame, frame.context.display_size, {}, &stats);
+        if (!previous_temporal.empty() && has_previous_frame) {
+            temporal = ResolveTemporalDisplay(spatial, previous_temporal, frame, frame.context.display_size, {}, &stats, &previous_frame);
         }
 
         if (!previous_spatial.empty()) {
@@ -96,6 +100,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
             reproject_oob_sum += stats.reproject_out_of_bounds_pct;
             color_rejected_sum += stats.color_rejected_pct;
             color_residual_sum += stats.color_residual_mean;
+            depth_rejected_sum += stats.depth_rejected_pct;
+            depth_residual_sum += stats.depth_residual_mean;
             spatial_edge_sum += MeanEdgeEnergy(spatial, frame.context.display_size);
             temporal_edge_sum += MeanEdgeEnergy(temporal, frame.context.display_size);
             ++delta_count;
@@ -103,6 +109,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
 
         previous_spatial = spatial;
         previous_temporal = temporal;
+        previous_frame = std::move(frame);
+        has_previous_frame = true;
     }
 
     result.frames = settings.frame_count;
@@ -119,6 +127,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     result.reproject_out_of_bounds_pct = delta_count == 0 ? 0.0 : reproject_oob_sum / static_cast<double>(delta_count);
     result.color_rejected_pct = delta_count == 0 ? 0.0 : color_rejected_sum / static_cast<double>(delta_count);
     result.color_residual_mean = delta_count == 0 ? 0.0 : color_residual_sum / static_cast<double>(delta_count);
+    result.depth_rejected_pct = delta_count == 0 ? 0.0 : depth_rejected_sum / static_cast<double>(delta_count);
+    result.depth_residual_mean = delta_count == 0 ? 0.0 : depth_residual_sum / static_cast<double>(delta_count);
     result.temporal_history_weight_mean = delta_count == 0 ? 0.0 : history_weight_sum / static_cast<double>(delta_count);
     result.temporal_reactive_suppressed_pct = delta_count == 0 ? 0.0 : reactive_sum / static_cast<double>(delta_count);
     result.temporal_motion_suppressed_pct = delta_count == 0 ? 0.0 : motion_sum / static_cast<double>(delta_count);

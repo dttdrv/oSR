@@ -1,4 +1,4 @@
-current_phase: phase_0
+current_phase: phase_4
 build_status:
   configured: true
   compiled: partial
@@ -30,6 +30,9 @@ build_status:
     - Sequence metric gates now include stability improvement, motion ghost proxy, and reactive trail proxy.
     - CPU temporal resolve now uses motion-compensated display-space history lookup from current-to-previous render-pixel motion vectors.
     - CPU temporal resolve rejects history using luma residuals at the reprojected sample and gates sequence runs on edge preservation.
+    - CPU temporal resolve rejects history using depth residuals at the reprojected render-space previous-depth sample.
+    - Sequence metrics and DX12 metadata now expose depth_rejected_pct and depth_residual_mean.
+    - Default motion rejection is tightened to 3 render pixels after final accepted-history ghost metrics exposed excessive low-resolution motion trust.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -60,35 +63,24 @@ target_games_for_initial_testing:
     - The Outer Worlds: Spacer's Choice Edition
     - RoboCop: Rogue City
 next_actions:
-  - Repair or replace the stale Ninja build directory.
+  - Replace runtime HLSL compilation with embedded shader bytecode.
+  - Add GPU timestamp queries for upload, reconstruct, readback, and present.
+  - Use tools/run_3d_wind_tunnel.bat as the primary manual visual harness.
+  - Use tools/run_dx12_wind_tunnel.bat to verify real D3D12 resource-backed FrameContext export.
+  - Use tools/run_3d_scene.bat for visual manual testing of render scale, jitter, thin-geometry aliasing, and debug view controls.
   - Build AMD FidelityFX_FSR_2022.sln once Visual Studio/MSBuild is available.
   - Wire FFX-style sample dispatch into FrameContext logging.
   - Run first sample proof of life and append results to LOG.md.
-  - Replace metadata-only DX12 debug pass with command-list recording.
-  - Replace runtime HLSL compilation with embedded shader bytecode.
-  - Add GPU timestamp queries for upload, reconstruct, readback, and present.
-  - Port trust-field CPU policy to command-list-recorded HLSL passes.
+  - Use --mv-mode sweeps to tune temporal trust thresholds and verify bad history is rejected before adding GPU temporal accumulation.
+  - Promote the temporal diagnostic verdict thresholds from initial coarse gates to scene-specific gates after multi-frame scenarios exist.
+  - Add headless multi-frame sweeps that compare correct vs corrupted motion-vector modes and fail on trust-regression thresholds.
+  - Refactor DX12 wind tunnel --frames N from CPU sequence metric mode into a true per-frame DX12 capture loop with capture-pack rows.
+  - Add shimmer/ghost/text/edge metrics over multi-frame sequences, not only one-frame diagnostics.
+  - Add bilinear history sampling for subpixel reprojected history instead of nearest history lookup.
+  - Add confidence-gated edge/text ROI metrics so readability and thin-geometry stability become first-class gates.
+  - Port sequence-lab temporal resolve from CPU display-space into a DX12 temporal pass with history textures.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
-  - Use tools/run_manual_console.bat for double-click manual testing until the DX12 harness exists.
-  - Use tools/run_3d_wind_tunnel.bat as the primary manual visual harness.
-  - Use tools/run_dx12_wind_tunnel.bat to verify real D3D12 resource-backed FrameContext export.
-  - Use tools/run_3d_scene.bat for visual manual testing of render scale, jitter, thin-geometry aliasing, and debug view controls.
-  - Add CPU upload and swapchain presentation to the DX12 wind tunnel.
-  - Replace metadata-only DX12 debug upscale with command-list-recorded copy/debug passes.
-  - Implement the research experiment ladder in RESEARCH.md, starting with motion-vector truth-table modes and trust-field debug metrics.
-  - Use --mv-mode sweeps to tune temporal trust thresholds and verify bad history is rejected before adding GPU temporal accumulation.
-  - Promote the temporal diagnostic verdict thresholds from initial coarse gates to scene-specific gates after multi-frame scenarios exist.
-  - Implement HARNESS.md H0/H1: run manifest, frame metrics schema, capture pack writer, and DX12 buffer upload/readback/hash verification.
-  - Extend capture packs with raw texture dumps and debug-view images after swapchain/debug presentation is available.
-  - Replace CPU nearest display upscale with a command-list-recorded debug upscale/copy shader.
-  - Add headless multi-frame sweeps that compare correct vs corrupted motion-vector modes and fail on trust-regression thresholds.
-  - Refactor DX12 wind tunnel --frames N from CPU sequence metric mode into a true per-frame DX12 capture loop with capture-pack rows.
-  - Add shimmer/ghost/text/edge metrics over multi-frame sequences, not only one-frame diagnostics.
-  - Add edge/text ROI metrics so temporal stability cannot pass by simply blurring readable detail.
-  - Add bilinear history sampling after nearest reprojection.
-  - Add depth residual rejection in addition to current luma residual rejection.
-  - Port sequence-lab temporal resolve from CPU display-space into a DX12 temporal pass with history textures.
