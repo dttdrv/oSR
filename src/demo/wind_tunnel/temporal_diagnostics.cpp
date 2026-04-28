@@ -16,6 +16,46 @@ float Luma(uint32_t rgba) noexcept {
     return r * 0.2126f + g * 0.7152f + b * 0.0722f;
 }
 
+float SampleBilinearLuma(const std::vector<uint32_t>& image,
+                         core::Dimensions size,
+                         float x,
+                         float y) noexcept {
+    x = std::clamp(x, 0.0f, static_cast<float>(size.width - 1));
+    y = std::clamp(y, 0.0f, static_cast<float>(size.height - 1));
+    const auto x0 = static_cast<uint32_t>(std::floor(x));
+    const auto y0 = static_cast<uint32_t>(std::floor(y));
+    const auto x1 = std::min(x0 + 1, size.width - 1);
+    const auto y1 = std::min(y0 + 1, size.height - 1);
+    const float tx = x - static_cast<float>(x0);
+    const float ty = y - static_cast<float>(y0);
+    const auto at = [&](uint32_t sx, uint32_t sy) {
+        return Luma(image[static_cast<size_t>(sy) * size.width + sx]);
+    };
+    const float top = at(x0, y0) + (at(x1, y0) - at(x0, y0)) * tx;
+    const float bottom = at(x0, y1) + (at(x1, y1) - at(x0, y1)) * tx;
+    return top + (bottom - top) * ty;
+}
+
+float SampleBilinearDepth(const std::vector<float>& image,
+                          core::Dimensions size,
+                          float x,
+                          float y) noexcept {
+    x = std::clamp(x, 0.0f, static_cast<float>(size.width - 1));
+    y = std::clamp(y, 0.0f, static_cast<float>(size.height - 1));
+    const auto x0 = static_cast<uint32_t>(std::floor(x));
+    const auto y0 = static_cast<uint32_t>(std::floor(y));
+    const auto x1 = std::min(x0 + 1, size.width - 1);
+    const auto y1 = std::min(y0 + 1, size.height - 1);
+    const float tx = x - static_cast<float>(x0);
+    const float ty = y - static_cast<float>(y0);
+    const auto at = [&](uint32_t sx, uint32_t sy) {
+        return image[static_cast<size_t>(sy) * size.width + sx];
+    };
+    const float top = at(x0, y0) + (at(x1, y0) - at(x0, y0)) * tx;
+    const float bottom = at(x0, y1) + (at(x1, y1) - at(x0, y1)) * tx;
+    return top + (bottom - top) * ty;
+}
+
 double Percent(uint64_t value, uint64_t total) noexcept {
     return total == 0 ? 0.0 : (static_cast<double>(value) * 100.0) / static_cast<double>(total);
 }
@@ -68,17 +108,16 @@ TemporalDiagnostics ComputeTemporalDiagnostics(const SyntheticFrame& previous,
         for (uint32_t x = 0; x < size.width; ++x) {
             const size_t idx = static_cast<size_t>(y) * size.width + x;
             const auto mv = current.motion_vectors[idx];
-            const int previous_x = static_cast<int>(std::lround(static_cast<float>(x) + mv.x));
-            const int previous_y = static_cast<int>(std::lround(static_cast<float>(y) + mv.y));
-            const bool out_of_bounds = previous_x < 0 || previous_y < 0 ||
-                                       previous_x >= static_cast<int>(size.width) ||
-                                       previous_y >= static_cast<int>(size.height);
-            const size_t previous_idx = out_of_bounds
-                ? idx
-                : static_cast<size_t>(previous_y) * size.width + static_cast<size_t>(previous_x);
+            const float previous_x = static_cast<float>(x) + mv.x;
+            const float previous_y = static_cast<float>(y) + mv.y;
+            const bool out_of_bounds = previous_x < 0.0f || previous_y < 0.0f ||
+                                       previous_x > static_cast<float>(size.width - 1) ||
+                                       previous_y > static_cast<float>(size.height - 1);
+            const float previous_luma = out_of_bounds ? Luma(previous.color[idx]) : SampleBilinearLuma(previous.color, size, previous_x, previous_y);
+            const float previous_depth = out_of_bounds ? previous.depth[idx] : SampleBilinearDepth(previous.depth, size, previous_x, previous_y);
 
-            const float luma_delta = std::abs(Luma(current.color[idx]) - Luma(previous.color[previous_idx]));
-            const float depth_delta = std::abs(current.depth[idx] - previous.depth[previous_idx]);
+            const float luma_delta = std::abs(Luma(current.color[idx]) - previous_luma);
+            const float depth_delta = std::abs(current.depth[idx] - previous_depth);
             const float reactive = idx < current.reactive_mask.size() ? current.reactive_mask[idx] : 0.0f;
             const bool disoccluded = out_of_bounds || depth_delta > settings.depth_good_threshold;
             const bool should_trust = !out_of_bounds &&

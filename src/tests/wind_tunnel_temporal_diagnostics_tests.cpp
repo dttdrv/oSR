@@ -58,6 +58,29 @@ int main() {
         return Fail("flipped MV diagnostics should emit at least one finding");
     }
 
+    osr::demo::wind_tunnel::SyntheticFrame previous_subpixel;
+    osr::demo::wind_tunnel::SyntheticFrame current_subpixel;
+    previous_subpixel.context.render_size = {2, 2};
+    current_subpixel.context.render_size = {2, 2};
+    previous_subpixel.color.assign(4, 0xff000000u);
+    current_subpixel.color.assign(4, 0xff000000u);
+    previous_subpixel.color[3] = 0xffffffffu;
+    current_subpixel.color[3] = 0xffffffffu;
+    previous_subpixel.depth.assign(4, 0.2f);
+    current_subpixel.depth.assign(4, 0.2f);
+    previous_subpixel.depth[3] = 0.6f;
+    current_subpixel.depth[3] = 0.6f;
+    current_subpixel.motion_vectors.assign(4, {});
+    current_subpixel.motion_vectors[0] = {0.5f, 0.5f};
+    current_subpixel.reactive_mask.assign(4, 0.0f);
+    const auto subpixel_report = osr::demo::wind_tunnel::ComputeTemporalDiagnostics(previous_subpixel, current_subpixel);
+    if (subpixel_report.mv_luma_residual_mean < 0.06 || subpixel_report.mv_luma_residual_mean > 0.07) {
+        return Fail("temporal diagnostics should bilinearly sample subpixel luma residuals");
+    }
+    if (subpixel_report.mv_depth_residual_mean < 0.024 || subpixel_report.mv_depth_residual_mean > 0.026) {
+        return Fail("temporal diagnostics should bilinearly sample subpixel depth residuals");
+    }
+
     for (const auto mode : {
              osr::demo::wind_tunnel::MotionVectorMode::Zero,
              osr::demo::wind_tunnel::MotionVectorMode::FlipX,

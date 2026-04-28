@@ -34,6 +34,7 @@ build_status:
     - Sequence metrics and DX12 metadata now expose depth_rejected_pct and depth_residual_mean.
     - Default motion rejection is tightened to 3 render pixels after final accepted-history ghost metrics exposed excessive low-resolution motion trust.
     - CPU temporal resolve uses bilinear sampling for reprojected display history and previous-depth residual validation.
+    - Temporal diagnostics now use the same bilinear subpixel luma/depth reprojection model as the CPU temporal resolve.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
