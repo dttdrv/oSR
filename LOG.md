@@ -166,6 +166,17 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `osr_dx12_wind_tunnel.exe` ran successfully and reported `Transfer hashes: matched`.
 - Verification details: `color_input`, `depth`, `motion_vectors`, and `reactive_mask` all had matching CPU/GPU hashes. Example run wrote capture pack `build/manual/captures/2026-04-28T11-47-27Z_dx12_wind_tunnel_h1_buffer_truth`.
 
+### DX12 Wind Tunnel H2 Presentation
+
+- Added `src/demo/dx12_wind_tunnel/display_upscale.*` for display-sized nearest upscaling of the synthetic color buffer.
+- Added `src/demo/dx12_wind_tunnel/presenter.*` for Win32 window creation, DXGI swapchain creation, backbuffer RTV setup, message pumping, and copying `color_output` to the swapchain backbuffer.
+- Updated `src/demo/dx12_wind_tunnel/main.cpp` with `--headless` and `--present-frames N` modes.
+- Updated `tools/run_dx12_wind_tunnel.bat` to forward command-line arguments.
+- Verification: direct MinGW compile passed for the refactored DX12 wind tunnel with presentation modules.
+- Verification: `osr_dx12_wind_tunnel.exe --headless` passed with validation `infos=0 warnings=0 errors=0` and matched transfer hashes.
+- Verification: `osr_dx12_wind_tunnel.exe --present-frames 3` opened the DX12 window, presented the display-sized color output, and exited cleanly.
+- Current limitation: H2 still uses CPU nearest upscale into `color_output`. The next step is a command-list-recorded GPU debug upscale/copy shader.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

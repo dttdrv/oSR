@@ -8,12 +8,15 @@
 #include "core/logging.h"
 #include "debug/capture_pack.h"
 #include "debug/validation.h"
+#include "demo/dx12_wind_tunnel/display_upscale.h"
 #include "demo/dx12_wind_tunnel/dx12_texture_io.h"
+#include "demo/dx12_wind_tunnel/presenter.h"
 #include "demo/wind_tunnel/synthetic_frame.h"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <cstdlib>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -190,7 +193,17 @@ void CountValidation(const osr::core::ValidationReport& report, uint32_t& errors
 
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    bool headless = false;
+    int present_frames = -1;
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "--headless") {
+            headless = true;
+        } else if (std::string(argv[i]) == "--present-frames" && i + 1 < argc) {
+            present_frames = std::max(0, std::atoi(argv[++i]));
+        }
+    }
+
     std::filesystem::create_directories("build/manual");
     osr::core::Logger::Instance().Configure("build/manual/osr_dx12_wind_tunnel.log", osr::core::LogLevel::Debug);
 
@@ -256,6 +269,7 @@ int main() {
 
     const bool transfer_ok =
         upload(dx.color_input, DXGI_FORMAT_R8G8B8A8_UNORM, render_size, synthetic.color.data(), static_cast<uint64_t>(render_size.width) * sizeof(uint32_t), "color_input") &&
+        upload(dx.color_output, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, osr::demo::dx12_wind_tunnel::UpscaleNearest(synthetic.color, render_size, display_size).data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "color_output") &&
         upload(dx.depth, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "depth") &&
         upload(dx.motion_vectors, DXGI_FORMAT_R32G32_FLOAT, render_size, synthetic.motion_vectors.data(), static_cast<uint64_t>(render_size.width) * sizeof(osr::demo::wind_tunnel::Float2Buffer), "motion_vectors") &&
         upload(dx.reactive_mask, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.reactive_mask.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "reactive_mask");
@@ -308,7 +322,31 @@ int main() {
     std::cout << "Transfer hashes: " << (transfer_ok ? "matched" : "FAILED") << "\n";
     std::cout << "Log: build/manual/osr_dx12_wind_tunnel.log\n";
 
-    const bool has_errors = report.HasErrors() || !transfer_ok || !capture_started;
+    osr::demo::dx12_wind_tunnel::PresentState present;
+    bool present_ok = true;
+    if (!headless) {
+        present_ok = osr::demo::dx12_wind_tunnel::CreatePresentState(GetModuleHandle(nullptr), dx.device, dx.queue, display_size, present);
+        if (present_ok) {
+            std::cout << "DX12 window open. Close it to exit.\n";
+            int frames_presented = 0;
+            while (osr::demo::dx12_wind_tunnel::PumpWindowMessages(present)) {
+                present_ok = osr::demo::dx12_wind_tunnel::PresentOutputTexture(dx.queue, dx.allocator, dx.command_list, dx.sync, dx.color_output, present);
+                if (!present_ok) {
+                    break;
+                }
+                ++frames_presented;
+                if (present_frames >= 0 && frames_presented >= present_frames) {
+                    break;
+                }
+                Sleep(16);
+            }
+        } else {
+            std::cerr << "Failed to create DX12 presentation window.\n";
+        }
+    }
+
+    const bool has_errors = report.HasErrors() || !transfer_ok || !capture_started || !present_ok;
+    osr::demo::dx12_wind_tunnel::ReleasePresentState(present);
     Release(dx);
     return has_errors ? 1 : 0;
 }

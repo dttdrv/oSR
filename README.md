@@ -88,6 +88,14 @@ under `build\manual\captures\...` with `session.json`, `frames.csv`,
 `metrics.csv`, `warnings.jsonl`, `bookmarks.jsonl`, and
 `frame_000001\frame_context.json`.
 
+By default it opens a DX12 window and presents the current display-sized color
+debug output. For deterministic lab runs:
+
+```text
+tools\run_dx12_wind_tunnel.bat --headless
+tools\run_dx12_wind_tunnel.bat --present-frames 3
+```
+
 To build and run the current manual test suite:
 
 ```text

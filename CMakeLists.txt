@@ -99,11 +99,13 @@ endif()
 
 add_executable(osr_dx12_wind_tunnel
     src/demo/dx12_wind_tunnel/main.cpp
+    src/demo/dx12_wind_tunnel/display_upscale.cpp
     src/demo/dx12_wind_tunnel/dx12_texture_io.cpp
+    src/demo/dx12_wind_tunnel/presenter.cpp
 )
 target_link_libraries(osr_dx12_wind_tunnel PRIVATE osr_core osr_debug osr_wind_tunnel osr_dx12)
 if(WIN32)
-    target_link_libraries(osr_dx12_wind_tunnel PRIVATE d3d12 dxgi dxguid)
+    target_link_libraries(osr_dx12_wind_tunnel PRIVATE d3d12 dxgi dxguid user32)
 endif()
 
 if(OSR_BUILD_TESTS)
