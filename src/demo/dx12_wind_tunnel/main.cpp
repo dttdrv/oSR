@@ -559,6 +559,7 @@ int main(int argc, char** argv) {
     ReconstructionMode reconstruction_mode = ReconstructionMode::SpatialGpu;
     auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
     osr::demo::wind_tunnel::TemporalResolveSettings temporal_settings;
+    osr::debug::CaptureAnalysisGateThresholds capture_gate_thresholds;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--headless") {
             headless = true;
@@ -609,6 +610,8 @@ int main(int argc, char** argv) {
             temporal_settings.sharpening_reactive_scale = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
         } else if (std::string(argv[i]) == "--history-clip-margin" && i + 1 < argc) {
             temporal_settings.history_clip_margin = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--capture-gate-thresholds" && i + 1 < argc) {
+            capture_gate_thresholds = osr::debug::LoadCaptureAnalysisGateThresholds(argv[++i]);
         }
     }
 
@@ -935,7 +938,7 @@ int main(int argc, char** argv) {
                         if (sequence_ok && sequence_capture_written && metric_gate) {
                             const auto frame_capture_dir = sequence_capture.SessionPath() / frame_dir_name.str();
                             const auto analysis = osr::debug::AnalyzeCaptureFrame(frame_capture_dir);
-                            const auto gate = osr::debug::EvaluateCaptureAnalysisGate(analysis);
+                            const auto gate = osr::debug::EvaluateCaptureAnalysisGate(analysis, capture_gate_thresholds);
                             selected_capture_analysis_ok = gate.passed;
                             std::cout << osr::debug::SummarizeCaptureAnalysis(analysis) << "\n";
                             std::cout << "Capture analysis gate: "

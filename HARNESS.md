@@ -249,6 +249,12 @@ Current temporal tuning flags:
 
 These flags are wired into the CPU sequence lab, single-frame temporal CPU/GPU runs, and temporal-GPU sequence runs.
 
+Selected-frame capture gates can use the same threshold file as the offline analyzer:
+
+```text
+--capture-gate-thresholds profiles\capture_gate.cfg
+```
+
 ## Metrics
 
 The first metrics should be deliberately simple and hard to game.
