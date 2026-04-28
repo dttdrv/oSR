@@ -42,6 +42,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     double motion_sum = 0.0;
     double reactive_history_weight_sum = 0.0;
     double motion_history_weight_sum = 0.0;
+    double reprojected_sum = 0.0;
+    double reproject_oob_sum = 0.0;
     uint32_t delta_count = 0;
 
     for (uint32_t i = 0; i < settings.frame_count; ++i) {
@@ -67,6 +69,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
             motion_sum += stats.motion_suppressed_pct;
             reactive_history_weight_sum += stats.reactive_history_weight_mean;
             motion_history_weight_sum += stats.motion_history_weight_mean;
+            reprojected_sum += stats.reprojected_history_pct;
+            reproject_oob_sum += stats.reproject_out_of_bounds_pct;
             ++delta_count;
         }
 
@@ -83,6 +87,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     result.stability_improvement_pct = (1.0 - result.temporal_delta_ratio) * 100.0;
     result.ghost_score = delta_count == 0 ? 0.0 : motion_history_weight_sum / static_cast<double>(delta_count);
     result.reactive_trail_score = delta_count == 0 ? 0.0 : reactive_history_weight_sum / static_cast<double>(delta_count);
+    result.reprojected_history_pct = delta_count == 0 ? 0.0 : reprojected_sum / static_cast<double>(delta_count);
+    result.reproject_out_of_bounds_pct = delta_count == 0 ? 0.0 : reproject_oob_sum / static_cast<double>(delta_count);
     result.temporal_history_weight_mean = delta_count == 0 ? 0.0 : history_weight_sum / static_cast<double>(delta_count);
     result.temporal_reactive_suppressed_pct = delta_count == 0 ? 0.0 : reactive_sum / static_cast<double>(delta_count);
     result.temporal_motion_suppressed_pct = delta_count == 0 ? 0.0 : motion_sum / static_cast<double>(delta_count);

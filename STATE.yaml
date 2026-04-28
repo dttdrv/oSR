@@ -28,6 +28,7 @@ build_status:
     - osr_sequence_lab.exe compares spatial versus temporal-cpu over deterministic multi-frame synthetic sequences and writes CSV metrics.
     - osr_dx12_wind_tunnel.exe supports --headless --frames N for deterministic sequence metrics through the main DX12 harness executable.
     - Sequence metric gates now include stability improvement, motion ghost proxy, and reactive trail proxy.
+    - CPU temporal resolve now uses motion-compensated display-space history lookup from current-to-previous render-pixel motion vectors.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -87,4 +88,5 @@ next_actions:
   - Refactor DX12 wind tunnel --frames N from CPU sequence metric mode into a true per-frame DX12 capture loop with capture-pack rows.
   - Add shimmer/ghost/text/edge metrics over multi-frame sequences, not only one-frame diagnostics.
   - Add edge/text ROI metrics so temporal stability cannot pass by simply blurring readable detail.
+  - Add bilinear history sampling and color/depth residual rejection after the nearest reprojection path.
   - Port sequence-lab temporal resolve from CPU display-space into a DX12 temporal pass with history textures.

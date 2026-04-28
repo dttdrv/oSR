@@ -265,6 +265,16 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.432007`, stability improvement `56.7993%`, ghost score `0.407826`, reactive trail score `0.00368511`.
 - Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
 
+### Motion-Compensated Temporal Resolve
+
+- Updated `ResolveTemporalDisplay` to sample previous display history using current-to-previous render-pixel motion vectors scaled into display pixels.
+- Out-of-bounds reprojection now falls back to current color and reports `reproject_out_of_bounds_pct`.
+- Sequence metrics now report `reprojected_history_pct` and `reproject_out_of_bounds_pct`.
+- Added exact temporal resolve tests for positive-X reprojection, render-to-display MV scaling, and out-of-bounds fallback.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.44874`, reprojected history `5.13261%`, OOB `0%`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.436929`, reprojected history `5.1424%`, OOB `0%`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

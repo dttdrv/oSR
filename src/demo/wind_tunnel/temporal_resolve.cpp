@@ -53,8 +53,12 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
     uint64_t motion_suppressed = 0;
     uint64_t reactive_pixels = 0;
     uint64_t motion_pixels = 0;
+    uint64_t reprojected_pixels = 0;
+    uint64_t reproject_out_of_bounds = 0;
     double reactive_weight_sum = 0.0;
     double motion_weight_sum = 0.0;
+    const float display_per_render_x = static_cast<float>(display_size.width) / static_cast<float>(render_size.width);
+    const float display_per_render_y = static_cast<float>(display_size.height) / static_cast<float>(render_size.height);
 
     for (uint32_t y = 0; y < display_size.height; ++y) {
         const uint32_t ry = std::min(render_size.height - 1,
@@ -64,6 +68,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                                          static_cast<uint32_t>((static_cast<uint64_t>(x) * render_size.width) / display_size.width));
             const size_t display_index = static_cast<size_t>(y) * display_size.width + x;
             const size_t render_index = static_cast<size_t>(ry) * render_size.width + rx;
+            size_t history_index = display_index;
             float history_weight = std::clamp(settings.max_history_weight, 0.0f, 1.0f);
 
             const float reactive = render_index < current_frame.reactive_mask.size() ? current_frame.reactive_mask[render_index] : 0.0f;
@@ -78,6 +83,17 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 const auto mv = current_frame.motion_vectors[render_index];
                 const float motion_length = std::sqrt(mv.x * mv.x + mv.y * mv.y);
                 motion_pixel = motion_length > 0.01f;
+                if (motion_pixel) {
+                    const int hx = static_cast<int>(std::lround(static_cast<float>(x) + mv.x * display_per_render_x));
+                    const int hy = static_cast<int>(std::lround(static_cast<float>(y) + mv.y * display_per_render_y));
+                    if (hx < 0 || hy < 0 || hx >= static_cast<int>(display_size.width) || hy >= static_cast<int>(display_size.height)) {
+                        history_weight = 0.0f;
+                        ++reproject_out_of_bounds;
+                    } else {
+                        history_index = static_cast<size_t>(hy) * display_size.width + static_cast<size_t>(hx);
+                        ++reprojected_pixels;
+                    }
+                }
                 if (motion_length > settings.motion_rejection_pixels) {
                     history_weight = 0.0f;
                     ++motion_suppressed;
@@ -93,7 +109,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 motion_weight_sum += history_weight;
             }
 
-            output[display_index] = BlendColor(current_display[display_index], previous_history[display_index], history_weight);
+            output[display_index] = BlendColor(current_display[display_index], previous_history[history_index], history_weight);
             weight_sum += history_weight;
             weight_min = std::min(weight_min, static_cast<double>(history_weight));
             weight_max = std::max(weight_max, static_cast<double>(history_weight));
@@ -108,6 +124,8 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
         stats->motion_suppressed_pct = Percent(motion_suppressed, display_pixels);
         stats->reactive_history_weight_mean = reactive_pixels == 0 ? 0.0 : reactive_weight_sum / static_cast<double>(reactive_pixels);
         stats->motion_history_weight_mean = motion_pixels == 0 ? 0.0 : motion_weight_sum / static_cast<double>(motion_pixels);
+        stats->reprojected_history_pct = Percent(reprojected_pixels, display_pixels);
+        stats->reproject_out_of_bounds_pct = Percent(reproject_out_of_bounds, display_pixels);
     }
     return output;
 }

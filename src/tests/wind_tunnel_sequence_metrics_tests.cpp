@@ -35,6 +35,9 @@ int main() {
     if (result.reactive_trail_score > 0.12) {
         return Fail("temporal resolve should keep reactive trail score low");
     }
+    if (result.reprojected_history_pct <= 0.0) {
+        return Fail("temporal resolve should reproject some moving history");
+    }
     if (result.ghost_score > 0.65) {
         return Fail("temporal resolve should keep motion ghost score below gate");
     }

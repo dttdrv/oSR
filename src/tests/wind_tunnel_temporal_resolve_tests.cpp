@@ -49,5 +49,52 @@ int main() {
         return Fail("full reactive mask should suppress history");
     }
 
+    osr::demo::wind_tunnel::SyntheticFrame custom;
+    custom.context.render_size = {4, 4};
+    custom.context.display_size = {4, 4};
+    custom.motion_vectors.resize(16);
+    custom.reactive_mask.resize(16, 0.0f);
+    std::vector<uint32_t> repro_current(16, 0xff000000u);
+    std::vector<uint32_t> repro_history(16, 0xff000000u);
+    repro_history[static_cast<size_t>(1) * 4 + 2] = 0xffffffffu;
+    settings.max_history_weight = 1.0f;
+    settings.motion_rejection_pixels = 1000000.0f;
+    custom.motion_vectors[static_cast<size_t>(1) * 4 + 1] = {1.0f, 0.0f};
+    const auto repro = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current, repro_history, custom, custom.context.display_size, settings, &stats);
+    if (repro[static_cast<size_t>(1) * 4 + 1] != 0xffffffffu) {
+        return Fail("positive X motion should sample history to the right");
+    }
+    if (stats.reprojected_history_pct <= 0.0) {
+        return Fail("reprojection stats should count reprojected pixels");
+    }
+
+    custom.context.render_size = {3, 1};
+    custom.context.display_size = {6, 2};
+    custom.motion_vectors.assign(3, {});
+    custom.reactive_mask.assign(3, 0.0f);
+    repro_current.assign(12, 0xff000000u);
+    repro_history.assign(12, 0xff000000u);
+    repro_history[static_cast<size_t>(1) * 6 + 4] = 0xff00ff00u;
+    custom.motion_vectors[static_cast<size_t>(0) * 3 + 1] = {1.0f, 0.0f};
+    const auto scaled = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current, repro_history, custom, custom.context.display_size, settings, &stats);
+    if (scaled[static_cast<size_t>(1) * 6 + 2] != 0xff00ff00u) {
+        return Fail("render-space motion should scale to display-space history lookup");
+    }
+
+    custom.context.render_size = {4, 4};
+    custom.context.display_size = {4, 4};
+    custom.motion_vectors.assign(16, {});
+    custom.reactive_mask.assign(16, 0.0f);
+    repro_current.assign(16, 0xff101010u);
+    repro_history.assign(16, 0xffffffffu);
+    custom.motion_vectors[0] = {-4.0f, 0.0f};
+    const auto oob = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current, repro_history, custom, custom.context.display_size, settings, &stats);
+    if (oob[0] != repro_current[0]) {
+        return Fail("out-of-bounds reprojection should fall back to current color");
+    }
+    if (stats.reproject_out_of_bounds_pct <= 0.0) {
+        return Fail("out-of-bounds reprojection should be counted");
+    }
+
     return 0;
 }

@@ -22,6 +22,8 @@ struct SequenceMetricsResult {
     double stability_improvement_pct = 0.0;
     double ghost_score = 0.0;
     double reactive_trail_score = 0.0;
+    double reprojected_history_pct = 0.0;
+    double reproject_out_of_bounds_pct = 0.0;
     double temporal_history_weight_mean = 0.0;
     double temporal_reactive_suppressed_pct = 0.0;
     double temporal_motion_suppressed_pct = 0.0;

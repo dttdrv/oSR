@@ -48,6 +48,7 @@ int main(int argc, char** argv) {
     std::ofstream csv("build/manual/osr_sequence_lab_metrics.csv", std::ios::trunc);
     csv << "frames,spatial_frame_delta_mean,temporal_frame_delta_mean,temporal_delta_ratio,"
            "stability_improvement_pct,ghost_score,reactive_trail_score,"
+           "reprojected_history_pct,reproject_out_of_bounds_pct,"
            "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
     csv << result.frames << ","
         << result.spatial_frame_delta_mean << ","
@@ -56,6 +57,8 @@ int main(int argc, char** argv) {
         << result.stability_improvement_pct << ","
         << result.ghost_score << ","
         << result.reactive_trail_score << ","
+        << result.reprojected_history_pct << ","
+        << result.reproject_out_of_bounds_pct << ","
         << result.temporal_history_weight_mean << ","
         << result.temporal_reactive_suppressed_pct << ","
         << result.temporal_motion_suppressed_pct << "\n";
@@ -68,6 +71,8 @@ int main(int argc, char** argv) {
     std::cout << "Stability improvement: " << result.stability_improvement_pct << "%\n";
     std::cout << "Ghost score: " << result.ghost_score << "\n";
     std::cout << "Reactive trail score: " << result.reactive_trail_score << "\n";
+    std::cout << "Reprojected history: " << result.reprojected_history_pct << "%\n";
+    std::cout << "Reproject OOB: " << result.reproject_out_of_bounds_pct << "%\n";
     std::cout << "Temporal history weight mean: " << result.temporal_history_weight_mean << "\n";
     std::cout << "Metrics: build/manual/osr_sequence_lab_metrics.csv\n";
 

@@ -298,6 +298,7 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
     }
     csv << "frames,spatial_frame_delta_mean,temporal_frame_delta_mean,temporal_delta_ratio,"
            "stability_improvement_pct,ghost_score,reactive_trail_score,"
+           "reprojected_history_pct,reproject_out_of_bounds_pct,"
            "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
     csv << result.frames << ","
         << result.spatial_frame_delta_mean << ","
@@ -306,6 +307,8 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
         << result.stability_improvement_pct << ","
         << result.ghost_score << ","
         << result.reactive_trail_score << ","
+        << result.reprojected_history_pct << ","
+        << result.reproject_out_of_bounds_pct << ","
         << result.temporal_history_weight_mean << ","
         << result.temporal_reactive_suppressed_pct << ","
         << result.temporal_motion_suppressed_pct << "\n";
@@ -378,6 +381,8 @@ int main(int argc, char** argv) {
         std::cout << "Stability improvement: " << sequence.stability_improvement_pct << "%\n";
         std::cout << "Ghost score: " << sequence.ghost_score << "\n";
         std::cout << "Reactive trail score: " << sequence.reactive_trail_score << "\n";
+        std::cout << "Reprojected history: " << sequence.reprojected_history_pct << "%\n";
+        std::cout << "Reproject OOB: " << sequence.reproject_out_of_bounds_pct << "%\n";
         std::cout << "Temporal history weight mean: " << sequence.temporal_history_weight_mean << "\n";
         std::cout << "Metrics: " << sequence_path.string() << "\n";
         if (metric_gate && (sequence.temporal_delta_ratio > 0.80 ||
