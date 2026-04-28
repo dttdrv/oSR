@@ -79,6 +79,7 @@ build_status:
     - Selected temporal-GPU captures write debug_parity.json; frame 16's current failure is a localized history-weight drift at display pixel 928,342.
     - Quality/Balanced/Performance render-scale presets are now exact 0.66/0.58/0.50 across core, DX12, native 3D, and WebGL harness defaults.
     - tools/run_xess_proxy_smoke.bat builds an opt-in diagnostic libxess.dll proxy, verifies it loads, and verifies safe missing-libxess_real.dll logging.
+    - Installed Steam No Man's Sky imports libxess.dll and references xessGetInputResolution, xessVKCreateContext, xessVKInit, xessVKExecute, and xessGetProperties; current settings select XESS Balanced.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -96,7 +97,6 @@ known_working_assumptions:
   - Manual quality control uses DLSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
 unknowns:
   - Final exported DLL names for the first wrapper packaging mode.
-  - Exact XeSS export set required by the installed No Man's Sky build.
   - Motion-vector convention and exposure behavior for first real-game target.
 target_games_for_initial_testing:
   samples:

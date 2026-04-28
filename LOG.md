@@ -671,6 +671,8 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_xess_proxy_smoke.bat` exited `0`; smoke loaded `build/manual/xess_proxy/libxess.dll`, called `xessGetVersion`, and verified expected log entries when `libxess_real.dll` was absent.
 - Verification: MinGW `objdump -p build/manual/xess_proxy/libxess.dll` showed undecorated XeSS exports including `xessD3D12Execute`, `xessVKExecute`, `xessGetOptimalInputResolution`, `xessSetLoggingCallback`, and `xessStartDump`.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
+- Local NMS inspection: installed Steam build is at `C:/Program Files (x86)/Steam/steamapps/common/No Man's Sky`; `Binaries/NMS.exe` imports `libxess.dll` and only references `xessGetInputResolution`, `xessVKCreateContext`, `xessVKInit`, `xessVKExecute`, and `xessGetProperties` by name.
+- Local NMS settings inspection: `TKGRAPHICSSETTINGS.MXML` currently has `AntiAliasing` set to `XESS` and `XESSQuality` set to `Balanced`, so the next launch should naturally exercise the XeSS path.
 
 ### Research Links
 
