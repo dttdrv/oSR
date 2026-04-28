@@ -355,6 +355,104 @@ bool ReadbackTexture2D(ID3D12Device* device,
     return true;
 }
 
+bool ReadbackTexture2DBytes(ID3D12Device* device,
+                            ID3D12CommandQueue* queue,
+                            ID3D12CommandAllocator* allocator,
+                            ID3D12GraphicsCommandList* command_list,
+                            Dx12Sync& sync,
+                            ID3D12Resource* texture,
+                            DXGI_FORMAT format,
+                            core::Dimensions extent,
+                            uint64_t row_bytes,
+                            const std::string& name,
+                            std::vector<uint8_t>& bytes,
+                            TextureTransferResult& result) {
+    if (!device || !queue || !allocator || !command_list || !texture || row_bytes == 0) {
+        return false;
+    }
+
+    const auto desc = texture->GetDesc();
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint {};
+    UINT rows = 0;
+    UINT64 copied_row_size = 0;
+    UINT64 total_bytes = 0;
+    device->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, &rows, &copied_row_size, &total_bytes);
+    if (row_bytes > copied_row_size) {
+        return false;
+    }
+
+    ID3D12Resource* readback = nullptr;
+    if (!CreateBuffer(device, D3D12_HEAP_TYPE_READBACK, total_bytes, D3D12_RESOURCE_STATE_COPY_DEST, &readback)) {
+        return false;
+    }
+
+    if (Failed(allocator->Reset(), "Reset allocator") ||
+        Failed(command_list->Reset(allocator, nullptr), "Reset command list")) {
+        SafeRelease(readback);
+        return false;
+    }
+
+    D3D12_RESOURCE_BARRIER to_copy_source {};
+    to_copy_source.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    to_copy_source.Transition.pResource = texture;
+    to_copy_source.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    to_copy_source.Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    to_copy_source.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+    command_list->ResourceBarrier(1, &to_copy_source);
+
+    D3D12_TEXTURE_COPY_LOCATION texture_location {};
+    texture_location.pResource = texture;
+    texture_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    texture_location.SubresourceIndex = 0;
+
+    D3D12_TEXTURE_COPY_LOCATION readback_location {};
+    readback_location.pResource = readback;
+    readback_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+    readback_location.PlacedFootprint = footprint;
+    command_list->CopyTextureRegion(&readback_location, 0, 0, 0, &texture_location, nullptr);
+
+    D3D12_RESOURCE_BARRIER to_shader_read = to_copy_source;
+    to_shader_read.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+    to_shader_read.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    command_list->ResourceBarrier(1, &to_shader_read);
+
+    if (!ExecuteAndWait(queue, command_list, sync)) {
+        SafeRelease(readback);
+        return false;
+    }
+
+    uint8_t* mapped_readback = nullptr;
+    D3D12_RANGE read_range {static_cast<SIZE_T>(footprint.Offset), static_cast<SIZE_T>(footprint.Offset + total_bytes)};
+    if (Failed(readback->Map(0, &read_range, reinterpret_cast<void**>(&mapped_readback)), "Map readback")) {
+        SafeRelease(readback);
+        return false;
+    }
+
+    bytes.assign(static_cast<size_t>(row_bytes) * rows, 0);
+    for (UINT y = 0; y < rows; ++y) {
+        std::memcpy(bytes.data() + static_cast<uint64_t>(y) * row_bytes,
+                    mapped_readback + footprint.Offset + static_cast<uint64_t>(y) * footprint.Footprint.RowPitch,
+                    static_cast<size_t>(row_bytes));
+    }
+
+    result.name = name;
+    result.format = format;
+    result.extent = extent;
+    result.row_size_bytes = row_bytes;
+    result.row_pitch = footprint.Footprint.RowPitch;
+    result.total_bytes = total_bytes;
+    result.cpu_hash = 0;
+    result.gpu_hash = HashLinearRows(bytes.data(), row_bytes, row_bytes, rows);
+    result.max_abs_diff = 0;
+    result.mean_abs_diff = 0.0;
+    result.matched = true;
+
+    D3D12_RANGE no_write {0, 0};
+    readback->Unmap(0, &no_write);
+    SafeRelease(readback);
+    return true;
+}
+
 bool AllTransfersMatched(const std::vector<TextureTransferResult>& results) noexcept {
     return std::all_of(results.begin(), results.end(), [](const TextureTransferResult& result) {
         return result.matched;

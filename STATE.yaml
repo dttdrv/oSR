@@ -48,6 +48,8 @@ build_status:
     - Synthetic and native 3D wind tunnels include specular glint and transparent-pane material stress targets.
     - Sequence and DX12 metric gates now include specular_history_leak and transparent_history_leak from temporal debug history-weight maps.
     - Capture-pack metrics.csv now includes thin/text/material ROI metric columns and temporal captures populate material leak values.
+    - Temporal-gpu shader writes history_weight, color_residual, and depth_residual R32F debug UAVs.
+    - Single-frame temporal-gpu capture packs dump shader-produced temporal debug maps as PGM artifacts.
     - Temporal diagnostics use a 0.90 reactive trust penalty to align with the resolve path's reactive-history suppression policy.
     - Temporal resolve now uses a 0.84 clean-history ceiling while retaining residual/depth/reactive rejection.
     - DX12 temporal shader now quantizes the temporal blend before detail recovery to match the CPU oracle ordering.
@@ -99,7 +101,8 @@ next_actions:
   - Tighten temporal-gpu parity by reducing max_abs_diff below the current 30-byte worst persistent-history edge-pixel delta.
   - Add temporal shader debug UAVs for history_weight, color_residual, and depth_residual.
   - Add ROI-labeled per-region capture rows for text, specular glints, transparent panes, reactive particles, and corrupted-MV stress regions.
-  - Add shader debug UAVs for material/history leak visualization in temporal-gpu captures.
+  - Add temporal-gpu debug map comparisons against CPU debug maps for numeric parity beyond output color.
+  - Add temporal-gpu sequence capture mode that writes selected debug maps for one or more frames without dumping every frame by default.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.

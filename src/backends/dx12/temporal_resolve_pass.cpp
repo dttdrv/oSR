@@ -6,6 +6,7 @@
 
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace osr::backends::dx12 {
 
@@ -31,6 +32,9 @@ Texture2D<float> g_previous_depth : register(t3);
 Texture2D<float2> g_motion_vectors : register(t4);
 Texture2D<float> g_reactive_mask : register(t5);
 RWTexture2D<float4> g_output_color : register(u0);
+RWTexture2D<float> g_debug_history_weight : register(u1);
+RWTexture2D<float> g_debug_color_residual : register(u2);
+RWTexture2D<float> g_debug_depth_residual : register(u3);
 
 cbuffer TemporalConstants : register(b0)
 {
@@ -214,6 +218,9 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float4 blended = QuantizeRgba8(lerp(current_color, history_color, history_weight));
     float4 resolved = ApplyDetailRecovery(blended, display_px, history_weight, reactive, disoccluded);
     g_output_color[out_px] = QuantizeRgba8(resolved);
+    g_debug_history_weight[out_px] = history_weight;
+    g_debug_color_residual[out_px] = color_residual;
+    g_debug_depth_residual[out_px] = depth_residual;
 }
 )";
 
@@ -246,7 +253,7 @@ bool TemporalResolvePass::Initialize(void* native_device) {
     ranges[0].BaseShaderRegister = 0;
     ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    ranges[1].NumDescriptors = 1;
+    ranges[1].NumDescriptors = 4;
     ranges[1].BaseShaderRegister = 0;
     ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
@@ -317,7 +324,7 @@ bool TemporalResolvePass::Initialize(void* native_device) {
 
     D3D12_DESCRIPTOR_HEAP_DESC heap_desc {};
     heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    heap_desc.NumDescriptors = 7;
+    heap_desc.NumDescriptors = 10;
     heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     if (Failed(native_device_->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&descriptor_heap_)))) {
         core::Logger::Instance().Log(core::LogLevel::Error, 0, "dx12.temporal_resolve", "Failed to create descriptor heap.");
@@ -336,7 +343,10 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         !resources.current_color || !resources.previous_history ||
         !resources.current_depth || !resources.previous_depth ||
         !resources.motion_vectors || !resources.reactive_mask ||
-        !resources.output_color) {
+        !resources.output_color ||
+        !resources.debug_history_weight ||
+        !resources.debug_color_residual ||
+        !resources.debug_depth_residual) {
         core::Logger::Instance().Log(core::LogLevel::Error, frame.frame_id, "dx12.temporal_resolve", "Missing temporal resolve resource.");
         return false;
     }
@@ -360,20 +370,37 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
     write_srv(resources.motion_vectors, DXGI_FORMAT_R32G32_FLOAT, 4);
     write_srv(resources.reactive_mask, DXGI_FORMAT_R32_FLOAT, 5);
 
-    D3D12_UNORDERED_ACCESS_VIEW_DESC uav {};
-    uav.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    uav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-    auto uav_handle = cpu;
-    uav_handle.ptr += 6ull * descriptor_size_;
-    native_device_->CreateUnorderedAccessView(resources.output_color, nullptr, &uav, uav_handle);
+    auto write_uav = [&](ID3D12Resource* resource, DXGI_FORMAT format, uint32_t slot) {
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uav {};
+        uav.Format = format;
+        uav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+        auto handle = cpu;
+        handle.ptr += static_cast<size_t>(6u + slot) * descriptor_size_;
+        native_device_->CreateUnorderedAccessView(resource, nullptr, &uav, handle);
+    };
+    write_uav(resources.output_color, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+    write_uav(resources.debug_history_weight, DXGI_FORMAT_R32_FLOAT, 1);
+    write_uav(resources.debug_color_residual, DXGI_FORMAT_R32_FLOAT, 2);
+    write_uav(resources.debug_depth_residual, DXGI_FORMAT_R32_FLOAT, 3);
 
-    D3D12_RESOURCE_BARRIER to_uav {};
-    to_uav.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    to_uav.Transition.pResource = resources.output_color;
-    to_uav.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-    to_uav.Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-    to_uav.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    command_list->ResourceBarrier(1, &to_uav);
+    std::vector<D3D12_RESOURCE_BARRIER> to_uav;
+    auto push_transition = [&](ID3D12Resource* resource) {
+        if (!resource) {
+            return;
+        }
+        D3D12_RESOURCE_BARRIER barrier {};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = resource;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        to_uav.push_back(barrier);
+    };
+    push_transition(resources.output_color);
+    push_transition(resources.debug_history_weight);
+    push_transition(resources.debug_color_residual);
+    push_transition(resources.debug_depth_residual);
+    command_list->ResourceBarrier(static_cast<UINT>(to_uav.size()), to_uav.data());
 
     ID3D12DescriptorHeap* heaps[] = {descriptor_heap_};
     command_list->SetDescriptorHeaps(1, heaps);
@@ -414,13 +441,25 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
                            (constants.display_size.height + 7u) / 8u,
                            1);
 
-    D3D12_RESOURCE_BARRIER barriers[2] {};
-    barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-    barriers[0].UAV.pResource = resources.output_color;
-    barriers[1] = to_uav;
-    barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-    command_list->ResourceBarrier(2, barriers);
+    std::vector<D3D12_RESOURCE_BARRIER> barriers;
+    auto push_uav_barrier = [&](ID3D12Resource* resource) {
+        if (!resource) {
+            return;
+        }
+        D3D12_RESOURCE_BARRIER barrier {};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barrier.UAV.pResource = resource;
+        barriers.push_back(barrier);
+    };
+    push_uav_barrier(resources.output_color);
+    push_uav_barrier(resources.debug_history_weight);
+    push_uav_barrier(resources.debug_color_residual);
+    push_uav_barrier(resources.debug_depth_residual);
+    for (auto barrier : to_uav) {
+        std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
+        barriers.push_back(barrier);
+    }
+    command_list->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
 
     std::ostringstream message;
     message << "Dispatch temporal resolve groups=("

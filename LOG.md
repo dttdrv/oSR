@@ -435,6 +435,17 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`; latest capture metrics row reported specular leak `0.0636396` and transparent leak `0.116467`.
 
+### Temporal-GPU Debug UAV Maps
+
+- Added temporal-GPU shader UAV outputs for `history_weight`, `color_residual`, and `depth_residual`.
+- The DX12 temporal pass now binds 6 SRVs plus 4 UAVs and transitions the output/debug UAVs back to shader-readable state after dispatch.
+- Added a raw DX12 texture readback helper so R32F debug UAV textures can be copied into `TemporalResolveDebugMaps`.
+- Single-frame temporal-GPU captures now dump shader-produced `history_weight.pgm`, `color_residual.pgm`, and `depth_residual.pgm`, with artifact manifest entries and frame-context notes confirming GPU debug map readback.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`; latest capture `2026-04-28T19-34-22Z_dx12_wind_tunnel_h1_buffer_truth_correct` contains all three temporal debug PGM maps from GPU UAV readback.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `32` and max mean byte diff `0.0120251`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --reconstruction temporal-cpu --metric-gate` exited `0`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

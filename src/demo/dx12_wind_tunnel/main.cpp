@@ -22,6 +22,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <cstring>
 #include <cstdlib>
 #include <sstream>
 #include <string>
@@ -50,6 +51,9 @@ struct Dx12Objects {
     ID3D12Resource* previous_depth = nullptr;
     ID3D12Resource* motion_vectors = nullptr;
     ID3D12Resource* reactive_mask = nullptr;
+    ID3D12Resource* debug_history_weight = nullptr;
+    ID3D12Resource* debug_color_residual = nullptr;
+    ID3D12Resource* debug_depth_residual = nullptr;
 };
 
 enum class ReconstructionMode {
@@ -59,6 +63,9 @@ enum class ReconstructionMode {
 };
 
 void Release(Dx12Objects& dx) {
+    SafeRelease(dx.debug_depth_residual);
+    SafeRelease(dx.debug_color_residual);
+    SafeRelease(dx.debug_history_weight);
     SafeRelease(dx.reactive_mask);
     SafeRelease(dx.motion_vectors);
     SafeRelease(dx.previous_depth);
@@ -345,6 +352,15 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
     return true;
 }
 
+std::vector<float> FloatBytesToVector(const std::vector<uint8_t>& bytes, osr::core::Dimensions size) {
+    std::vector<float> out(static_cast<size_t>(size.width) * size.height, 0.0f);
+    const size_t byte_count = std::min(bytes.size(), out.size() * sizeof(float));
+    if (byte_count > 0) {
+        std::memcpy(out.data(), bytes.data(), byte_count);
+    }
+    return out;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -466,6 +482,9 @@ int main(int argc, char** argv) {
         ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_NONE, &dx.previous_depth, L"oSR sequence previous depth");
         ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32G32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.motion_vectors, L"oSR sequence motion vectors");
         ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.reactive_mask, L"oSR sequence reactive mask");
+        ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.debug_history_weight, L"oSR sequence debug history weight");
+        ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.debug_color_residual, L"oSR sequence debug color residual");
+        ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.debug_depth_residual, L"oSR sequence debug depth residual");
         if (!ok) {
             std::cerr << "Failed to create sequence D3D12 textures.\n";
             Release(dx);
@@ -529,6 +548,7 @@ int main(int argc, char** argv) {
         uint32_t max_abs_diff = 0;
         uint32_t frames_checked = 0;
         bool sequence_ok = true;
+        const std::vector<float> zero_debug(static_cast<size_t>(display_size.width) * display_size.height, 0.0f);
 
         for (uint32_t frame_index = 0; frame_index < requested_frames && sequence_ok; ++frame_index) {
             osr::demo::wind_tunnel::SyntheticFrameSettings frame_settings;
@@ -563,7 +583,10 @@ int main(int argc, char** argv) {
                 upload_sequence(dx.color_output, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, cpu_temporal.data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "sequence_color_output_reference") &&
                 upload_sequence(dx.depth, DXGI_FORMAT_R32_FLOAT, render_size, frame.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "sequence_depth") &&
                 upload_sequence(dx.motion_vectors, DXGI_FORMAT_R32G32_FLOAT, render_size, frame.motion_vectors.data(), static_cast<uint64_t>(render_size.width) * sizeof(osr::demo::wind_tunnel::Float2Buffer), "sequence_motion_vectors") &&
-                upload_sequence(dx.reactive_mask, DXGI_FORMAT_R32_FLOAT, render_size, frame.reactive_mask.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "sequence_reactive_mask");
+                upload_sequence(dx.reactive_mask, DXGI_FORMAT_R32_FLOAT, render_size, frame.reactive_mask.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "sequence_reactive_mask") &&
+                upload_sequence(dx.debug_history_weight, DXGI_FORMAT_R32_FLOAT, display_size, zero_debug.data(), static_cast<uint64_t>(display_size.width) * sizeof(float), "sequence_debug_history_weight_zero") &&
+                upload_sequence(dx.debug_color_residual, DXGI_FORMAT_R32_FLOAT, display_size, zero_debug.data(), static_cast<uint64_t>(display_size.width) * sizeof(float), "sequence_debug_color_residual_zero") &&
+                upload_sequence(dx.debug_depth_residual, DXGI_FORMAT_R32_FLOAT, display_size, zero_debug.data(), static_cast<uint64_t>(display_size.width) * sizeof(float), "sequence_debug_depth_residual_zero");
             if (!sequence_ok) {
                 break;
             }
@@ -583,6 +606,9 @@ int main(int argc, char** argv) {
                 temporal_resources.motion_vectors = dx.motion_vectors;
                 temporal_resources.reactive_mask = dx.reactive_mask;
                 temporal_resources.output_color = dx.color_output;
+                temporal_resources.debug_history_weight = dx.debug_history_weight;
+                temporal_resources.debug_color_residual = dx.debug_color_residual;
+                temporal_resources.debug_depth_residual = dx.debug_depth_residual;
                 osr::backends::dx12::TemporalResolveConstants constants;
                 constants.render_size = render_size;
                 constants.display_size = display_size;
@@ -655,6 +681,9 @@ int main(int argc, char** argv) {
     ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_NONE, &dx.previous_depth, L"oSR previous depth");
     ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32G32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.motion_vectors, L"oSR synthetic motion vectors");
     ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.reactive_mask, L"oSR synthetic reactive mask");
+    ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.debug_history_weight, L"oSR debug history weight");
+    ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.debug_color_residual, L"oSR debug color residual");
+    ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.debug_depth_residual, L"oSR debug depth residual");
     if (!ok) {
         std::cerr << "Failed to create one or more D3D12 textures.\n";
         Release(dx);
@@ -714,6 +743,7 @@ int main(int argc, char** argv) {
             : "CPU temporal resolve produced the parity reference for the GPU temporal pass.");
     }
 
+    const std::vector<float> zero_debug(static_cast<size_t>(display_size.width) * display_size.height, 0.0f);
     const bool transfer_ok =
         upload(dx.color_input, DXGI_FORMAT_R8G8B8A8_UNORM, render_size, synthetic.color.data(), static_cast<uint64_t>(render_size.width) * sizeof(uint32_t), "color_input") &&
         upload(dx.color_output, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, resolved_output.data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "color_output") &&
@@ -721,7 +751,11 @@ int main(int argc, char** argv) {
         upload(dx.depth, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "depth") &&
         upload(dx.previous_depth, DXGI_FORMAT_R32_FLOAT, render_size, previous_synthetic.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "previous_depth") &&
         upload(dx.motion_vectors, DXGI_FORMAT_R32G32_FLOAT, render_size, synthetic.motion_vectors.data(), static_cast<uint64_t>(render_size.width) * sizeof(osr::demo::wind_tunnel::Float2Buffer), "motion_vectors") &&
-        upload(dx.reactive_mask, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.reactive_mask.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "reactive_mask");
+        upload(dx.reactive_mask, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.reactive_mask.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "reactive_mask") &&
+        (reconstruction_mode != ReconstructionMode::TemporalGpu ||
+         (upload(dx.debug_history_weight, DXGI_FORMAT_R32_FLOAT, display_size, zero_debug.data(), static_cast<uint64_t>(display_size.width) * sizeof(float), "debug_history_weight_zero") &&
+          upload(dx.debug_color_residual, DXGI_FORMAT_R32_FLOAT, display_size, zero_debug.data(), static_cast<uint64_t>(display_size.width) * sizeof(float), "debug_color_residual_zero") &&
+          upload(dx.debug_depth_residual, DXGI_FORMAT_R32_FLOAT, display_size, zero_debug.data(), static_cast<uint64_t>(display_size.width) * sizeof(float), "debug_depth_residual_zero")));
     synthetic.context.notes.push_back(transfer_ok ? "D3D12 upload/readback hashes matched CPU buffers." : "D3D12 upload/readback hash mismatch detected.");
 
     const auto report = osr::core::ValidateFrameContext(synthetic.context);
@@ -746,6 +780,9 @@ int main(int argc, char** argv) {
         temporal_resources.motion_vectors = dx.motion_vectors;
         temporal_resources.reactive_mask = dx.reactive_mask;
         temporal_resources.output_color = dx.color_output;
+        temporal_resources.debug_history_weight = dx.debug_history_weight;
+        temporal_resources.debug_color_residual = dx.debug_color_residual;
+        temporal_resources.debug_depth_residual = dx.debug_depth_residual;
         osr::backends::dx12::TemporalResolveConstants temporal_constants;
         temporal_constants.render_size = render_size;
         temporal_constants.display_size = display_size;
@@ -773,6 +810,64 @@ int main(int argc, char** argv) {
     const bool reconstructed_output_match = reconstructed_output_readback && reconstructed_output.matched;
     if (!reconstructed_output.name.empty()) {
         transfers.push_back(reconstructed_output);
+    }
+    if (dispatch_result && reconstruction_mode == ReconstructionMode::TemporalGpu) {
+        std::vector<uint8_t> history_bytes;
+        std::vector<uint8_t> color_residual_bytes;
+        std::vector<uint8_t> depth_residual_bytes;
+        osr::demo::dx12_wind_tunnel::TextureTransferResult history_readback;
+        osr::demo::dx12_wind_tunnel::TextureTransferResult color_residual_readback;
+        osr::demo::dx12_wind_tunnel::TextureTransferResult depth_residual_readback;
+        const uint64_t debug_row_bytes = static_cast<uint64_t>(display_size.width) * sizeof(float);
+        const bool debug_readback =
+            osr::demo::dx12_wind_tunnel::ReadbackTexture2DBytes(dx.device,
+                                                                dx.queue,
+                                                                dx.allocator,
+                                                                dx.command_list,
+                                                                dx.sync,
+                                                                dx.debug_history_weight,
+                                                                DXGI_FORMAT_R32_FLOAT,
+                                                                display_size,
+                                                                debug_row_bytes,
+                                                                "debug_history_weight_after_dispatch",
+                                                                history_bytes,
+                                                                history_readback) &&
+            osr::demo::dx12_wind_tunnel::ReadbackTexture2DBytes(dx.device,
+                                                                dx.queue,
+                                                                dx.allocator,
+                                                                dx.command_list,
+                                                                dx.sync,
+                                                                dx.debug_color_residual,
+                                                                DXGI_FORMAT_R32_FLOAT,
+                                                                display_size,
+                                                                debug_row_bytes,
+                                                                "debug_color_residual_after_dispatch",
+                                                                color_residual_bytes,
+                                                                color_residual_readback) &&
+            osr::demo::dx12_wind_tunnel::ReadbackTexture2DBytes(dx.device,
+                                                                dx.queue,
+                                                                dx.allocator,
+                                                                dx.command_list,
+                                                                dx.sync,
+                                                                dx.debug_depth_residual,
+                                                                DXGI_FORMAT_R32_FLOAT,
+                                                                display_size,
+                                                                debug_row_bytes,
+                                                                "debug_depth_residual_after_dispatch",
+                                                                depth_residual_bytes,
+                                                                depth_residual_readback);
+        if (debug_readback) {
+            temporal_debug_maps.display_size = display_size;
+            temporal_debug_maps.history_weight = FloatBytesToVector(history_bytes, display_size);
+            temporal_debug_maps.color_residual = FloatBytesToVector(color_residual_bytes, display_size);
+            temporal_debug_maps.depth_residual = FloatBytesToVector(depth_residual_bytes, display_size);
+            transfers.push_back(history_readback);
+            transfers.push_back(color_residual_readback);
+            transfers.push_back(depth_residual_readback);
+            synthetic.context.notes.push_back("Temporal-gpu debug maps were read back from shader UAVs.");
+        } else {
+            synthetic.context.notes.push_back("Temporal-gpu debug map readback failed; CPU oracle maps remain in capture.");
+        }
     }
     synthetic.context.notes.push_back(reconstructed_output_match ? "D3D12 debug upscale output matched CPU nearest reference." : "D3D12 debug upscale output did not match CPU nearest reference.");
 
