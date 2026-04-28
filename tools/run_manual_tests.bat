@@ -19,6 +19,9 @@ if errorlevel 1 goto fail
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/sharpening_tests.cpp src/reconstruction/sharpening.cpp -o build\manual\osr_sharpening_tests.exe && build\manual\osr_sharpening_tests.exe
 if errorlevel 1 goto fail
 
+"%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/wind_tunnel_synthetic_frame_tests.cpp src/demo/wind_tunnel/synthetic_frame.cpp src/core/frame_context.cpp src/core/quality_mode.cpp -o build\manual\osr_wind_tunnel_synthetic_frame_tests.exe && build\manual\osr_wind_tunnel_synthetic_frame_tests.exe
+if errorlevel 1 goto fail
+
 echo.
 echo All manual tests passed.
 pause
@@ -29,4 +32,3 @@ echo.
 echo Manual tests failed.
 pause
 exit /b 1
-

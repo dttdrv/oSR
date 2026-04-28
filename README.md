@@ -72,6 +72,17 @@ tools\run_3d_scene.bat
 The native executable is now the primary manual visual test; the WebGL page is
 kept as a quick browser fallback while the DX12 harness is being wired.
 
+For the first DX12 harness proof of life:
+
+```text
+tools\run_dx12_wind_tunnel.bat
+```
+
+This creates real D3D12 resources for synthetic color, output, depth, motion
+vectors, and reactive mask buffers, exports them through `FrameContext`, calls
+the current DX12 debug-upscale path, and writes readable metadata to
+`build\manual\osr_dx12_wind_tunnel_metadata.txt`.
+
 To build and run the current manual test suite:
 
 ```text

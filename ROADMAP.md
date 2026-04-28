@@ -28,6 +28,7 @@ Pass gate:
 - Capture is disabled by default.
 - Manual harnesses expose the same diagnostic concepts before game interception is trusted: render scale, jitter, freeze/reset, edge views, and later depth/MV/mask views.
 - The native manual 3D wind tunnel stays open as an `.exe`, supports camera movement/settings, and gives readable diagnostics for manual testing.
+- The DX12 wind tunnel creates resource-backed synthetic color/output/depth/MV/reactive inputs and validates them through `FrameContext`.
 
 ## Phase 3: Deterministic Spatial Upscaler
 

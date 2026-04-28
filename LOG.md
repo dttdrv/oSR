@@ -123,6 +123,20 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: short GUI smoke tests launched `osr_3d_wind_tunnel.exe`, confirmed the process was still running after three seconds, then stopped it.
 - Current limitation: the executable uses a deterministic software rasterizer into a Win32 DIB, not DX12. It is intentionally a control/readability/manual-testing harness before the DX12 buffer-producing harness.
 
+### DX12 Wind Tunnel Proof Of Life
+
+- Added reusable `src/demo/wind_tunnel/synthetic_frame.*` to emit deterministic SR inputs: color, depth, current-to-previous pixel motion vectors, reactive mask, jitter, reset flag, dimensions, exposure defaults, and a normalized `FrameContext`.
+- Added `src/tests/wind_tunnel_synthetic_frame_tests.cpp` covering render size, buffer sizes, validation, reset propagation, finite MV/depth values, reactive coverage, foreground depth, and jitter bounds.
+- Added `src/demo/dx12_wind_tunnel/main.cpp` and `tools/run_dx12_wind_tunnel.bat`.
+- The DX12 proof creates a D3D12 device, command queue, command allocator/list, and real `ID3D12Resource` textures for color input, color output, depth, motion vectors, and reactive mask.
+- The proof replaces synthetic CPU buffer pointers with D3D12 resource pointers in `FrameContext`, validates the result, calls `Dx12Backend::DispatchDebugUpscale`, and writes readable metadata to `build/manual/osr_dx12_wind_tunnel_metadata.txt`.
+- Verification: direct MinGW compile passed for `osr_wind_tunnel_synthetic_frame_tests.exe`.
+- Verification: `osr_wind_tunnel_synthetic_frame_tests.exe` passed.
+- Verification: direct MinGW compile passed for `osr_dx12_wind_tunnel.exe`.
+- Verification: `osr_dx12_wind_tunnel.exe` ran successfully; output reported render `853x533`, display `1280x800`, validation `infos=0 warnings=0 errors=0`.
+- Verification: DX12 log recorded `Dispatch debug upscale shader=spatial_debug_upscale.hlsl view=Final groups=(160,100) srv=4 uav=1 cbv=1 internal_uav=1 mode=dx12_command_recording_pending`.
+- Current limitation: D3D12 textures are allocated and exported, but CPU upload, swapchain presentation, and actual command-list reconstruction passes are next.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
