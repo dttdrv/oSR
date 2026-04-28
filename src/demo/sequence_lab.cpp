@@ -47,11 +47,15 @@ int main(int argc, char** argv) {
     std::filesystem::create_directories("build/manual");
     std::ofstream csv("build/manual/osr_sequence_lab_metrics.csv", std::ios::trunc);
     csv << "frames,spatial_frame_delta_mean,temporal_frame_delta_mean,temporal_delta_ratio,"
+           "stability_improvement_pct,ghost_score,reactive_trail_score,"
            "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
     csv << result.frames << ","
         << result.spatial_frame_delta_mean << ","
         << result.temporal_frame_delta_mean << ","
         << result.temporal_delta_ratio << ","
+        << result.stability_improvement_pct << ","
+        << result.ghost_score << ","
+        << result.reactive_trail_score << ","
         << result.temporal_history_weight_mean << ","
         << result.temporal_reactive_suppressed_pct << ","
         << result.temporal_motion_suppressed_pct << "\n";
@@ -61,11 +65,16 @@ int main(int argc, char** argv) {
     std::cout << "Spatial frame delta mean: " << result.spatial_frame_delta_mean << "\n";
     std::cout << "Temporal frame delta mean: " << result.temporal_frame_delta_mean << "\n";
     std::cout << "Temporal/spatial delta ratio: " << result.temporal_delta_ratio << "\n";
+    std::cout << "Stability improvement: " << result.stability_improvement_pct << "%\n";
+    std::cout << "Ghost score: " << result.ghost_score << "\n";
+    std::cout << "Reactive trail score: " << result.reactive_trail_score << "\n";
     std::cout << "Temporal history weight mean: " << result.temporal_history_weight_mean << "\n";
     std::cout << "Metrics: build/manual/osr_sequence_lab_metrics.csv\n";
 
-    if (metric_gate && result.temporal_delta_ratio > 0.80) {
-        std::cerr << "Metric gate failed: temporal delta ratio above 0.80.\n";
+    if (metric_gate && (result.temporal_delta_ratio > 0.80 ||
+                        result.ghost_score > 0.45 ||
+                        result.reactive_trail_score > 0.12)) {
+        std::cerr << "Metric gate failed: temporal stability, ghost, or reactive-trail score outside threshold.\n";
         return 3;
     }
     return 0;

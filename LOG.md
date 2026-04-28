@@ -255,6 +255,16 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - In `--headless --frames N` mode, the DX12 executable runs the deterministic sequence lab and writes `build/manual/osr_dx12_sequence_metrics.csv`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported spatial delta `0.0041617`, temporal delta `0.00178421`, temporal/spatial ratio `0.428722`.
 
+### Sequence Ghost And Reactive Metrics
+
+- Extended temporal resolve stats with reactive-history and motion-history weight means.
+- Extended sequence metrics with `stability_improvement_pct`, `ghost_score`, and `reactive_trail_score`.
+- Tightened default temporal motion rejection from `12 px` to `5 px` after the new ghost score flagged excessive moving-pixel history trust.
+- Sequence metric gates now fail on temporal delta ratio, ghost score, or reactive trail score.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.445084`, stability improvement `55.4916%`, ghost score `0.362473`, reactive trail score `0.00192502`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.432007`, stability improvement `56.7993%`, ghost score `0.407826`, reactive trail score `0.00368511`.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

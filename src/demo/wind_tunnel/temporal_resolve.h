@@ -11,7 +11,7 @@ namespace osr::demo::wind_tunnel {
 struct TemporalResolveSettings {
     float max_history_weight = 0.72f;
     float reactive_penalty = 0.90f;
-    float motion_rejection_pixels = 12.0f;
+    float motion_rejection_pixels = 5.0f;
 };
 
 struct TemporalResolveStats {
@@ -20,6 +20,8 @@ struct TemporalResolveStats {
     double history_weight_max = 0.0;
     double reactive_suppressed_pct = 0.0;
     double motion_suppressed_pct = 0.0;
+    double reactive_history_weight_mean = 0.0;
+    double motion_history_weight_mean = 0.0;
 };
 
 [[nodiscard]] std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& current_display,

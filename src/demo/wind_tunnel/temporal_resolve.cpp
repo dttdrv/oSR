@@ -51,6 +51,10 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
     double weight_max = 0.0;
     uint64_t reactive_suppressed = 0;
     uint64_t motion_suppressed = 0;
+    uint64_t reactive_pixels = 0;
+    uint64_t motion_pixels = 0;
+    double reactive_weight_sum = 0.0;
+    double motion_weight_sum = 0.0;
 
     for (uint32_t y = 0; y < display_size.height; ++y) {
         const uint32_t ry = std::min(render_size.height - 1,
@@ -66,17 +70,27 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
             if (reactive > 0.0f) {
                 history_weight *= std::clamp(1.0f - reactive * settings.reactive_penalty, 0.0f, 1.0f);
                 ++reactive_suppressed;
+                ++reactive_pixels;
             }
 
+            bool motion_pixel = false;
             if (render_index < current_frame.motion_vectors.size()) {
                 const auto mv = current_frame.motion_vectors[render_index];
                 const float motion_length = std::sqrt(mv.x * mv.x + mv.y * mv.y);
+                motion_pixel = motion_length > 0.01f;
                 if (motion_length > settings.motion_rejection_pixels) {
                     history_weight = 0.0f;
                     ++motion_suppressed;
                 } else if (settings.motion_rejection_pixels > 0.0f) {
                     history_weight *= std::clamp(1.0f - motion_length / settings.motion_rejection_pixels, 0.0f, 1.0f);
                 }
+            }
+            if (reactive > 0.0f) {
+                reactive_weight_sum += history_weight;
+            }
+            if (motion_pixel) {
+                ++motion_pixels;
+                motion_weight_sum += history_weight;
             }
 
             output[display_index] = BlendColor(current_display[display_index], previous_history[display_index], history_weight);
@@ -92,6 +106,8 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
         stats->history_weight_max = display_pixels == 0 ? 0.0 : weight_max;
         stats->reactive_suppressed_pct = Percent(reactive_suppressed, display_pixels);
         stats->motion_suppressed_pct = Percent(motion_suppressed, display_pixels);
+        stats->reactive_history_weight_mean = reactive_pixels == 0 ? 0.0 : reactive_weight_sum / static_cast<double>(reactive_pixels);
+        stats->motion_history_weight_mean = motion_pixels == 0 ? 0.0 : motion_weight_sum / static_cast<double>(motion_pixels);
     }
     return output;
 }
