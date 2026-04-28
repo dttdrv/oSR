@@ -470,6 +470,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`.
 
+### Per-Map Debug Parity Metrics
+
+- Extended capture-pack `metrics.csv` with per-map CPU-vs-GPU debug parity columns for history weight, color residual, and depth residual max/mean absolute error.
+- Single-frame temporal-GPU captures and selected temporal-GPU sequence captures now populate these columns.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`; latest capture reports history-weight map parity `max_abs=0.183646`, `mean_abs=0.000826349`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 9 --metric-gate` exited `0`; latest selected sequence capture reports history-weight map parity `max_abs=0.21041`, `mean_abs=0.00036304`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

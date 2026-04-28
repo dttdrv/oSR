@@ -46,6 +46,12 @@ struct HarnessMetricRow {
     double text_readability_contrast = 0.0;
     double specular_history_leak = 0.0;
     double transparent_history_leak = 0.0;
+    double debug_history_weight_max_abs = 0.0;
+    double debug_history_weight_mean_abs = 0.0;
+    double debug_color_residual_max_abs = 0.0;
+    double debug_color_residual_mean_abs = 0.0;
+    double debug_depth_residual_max_abs = 0.0;
+    double debug_depth_residual_mean_abs = 0.0;
     double history_reject_pct = 0.0;
     double residual_search_pct = 0.0;
     double mv_luma_residual_mean = 0.0;

@@ -766,6 +766,15 @@ int main(int argc, char** argv) {
                             metrics.specular_history_leak = osr::demo::wind_tunnel::MeanMaterialHistoryLeak(gpu_debug_maps, display_size, frame.context.frame_id, true);
                             metrics.transparent_history_leak = osr::demo::wind_tunnel::MeanMaterialHistoryLeak(gpu_debug_maps, display_size, frame.context.frame_id, false);
                             metrics.history_reject_pct = 100.0 - stats.history_weight_mean * 100.0;
+                            const auto history_diff = CompareFloatMaps(cpu_debug_maps.history_weight, gpu_debug_maps.history_weight);
+                            const auto color_diff = CompareFloatMaps(cpu_debug_maps.color_residual, gpu_debug_maps.color_residual);
+                            const auto depth_diff = CompareFloatMaps(cpu_debug_maps.depth_residual, gpu_debug_maps.depth_residual);
+                            metrics.debug_history_weight_max_abs = history_diff.max_abs;
+                            metrics.debug_history_weight_mean_abs = history_diff.mean_abs;
+                            metrics.debug_color_residual_max_abs = color_diff.max_abs;
+                            metrics.debug_color_residual_mean_abs = color_diff.mean_abs;
+                            metrics.debug_depth_residual_max_abs = depth_diff.max_abs;
+                            metrics.debug_depth_residual_mean_abs = depth_diff.mean_abs;
                             sequence_capture.WriteMetricRow(metrics);
                             sequence_capture.WriteValidationWarnings(frame.context.frame_id, capture_report);
                             sequence_capture.WriteFrameContextJson(frame.context);
@@ -976,6 +985,9 @@ int main(int argc, char** argv) {
         transfers.push_back(reconstructed_output);
     }
     FloatMapDiff debug_map_diff;
+    FloatMapDiff history_debug_map_diff;
+    FloatMapDiff color_debug_map_diff;
+    FloatMapDiff depth_debug_map_diff;
     bool debug_map_parity_checked = false;
     bool debug_map_parity_ok = true;
     if (dispatch_result && reconstruction_mode == ReconstructionMode::TemporalGpu) {
@@ -1030,10 +1042,10 @@ int main(int argc, char** argv) {
             gpu_debug_maps.history_weight = FloatBytesToVector(history_bytes, display_size);
             gpu_debug_maps.color_residual = FloatBytesToVector(color_residual_bytes, display_size);
             gpu_debug_maps.depth_residual = FloatBytesToVector(depth_residual_bytes, display_size);
-            debug_map_diff = MaxFloatDiff(CompareFloatMaps(cpu_debug_maps.history_weight, gpu_debug_maps.history_weight),
-                                          CompareFloatMaps(cpu_debug_maps.color_residual, gpu_debug_maps.color_residual));
-            debug_map_diff = MaxFloatDiff(debug_map_diff,
-                                          CompareFloatMaps(cpu_debug_maps.depth_residual, gpu_debug_maps.depth_residual));
+            history_debug_map_diff = CompareFloatMaps(cpu_debug_maps.history_weight, gpu_debug_maps.history_weight);
+            color_debug_map_diff = CompareFloatMaps(cpu_debug_maps.color_residual, gpu_debug_maps.color_residual);
+            depth_debug_map_diff = CompareFloatMaps(cpu_debug_maps.depth_residual, gpu_debug_maps.depth_residual);
+            debug_map_diff = MaxFloatDiff(MaxFloatDiff(history_debug_map_diff, color_debug_map_diff), depth_debug_map_diff);
             debug_map_parity_checked = true;
             debug_map_parity_ok = debug_map_diff.max_abs <= 0.25 && debug_map_diff.mean_abs <= 0.002;
             temporal_debug_maps.display_size = display_size;
@@ -1101,6 +1113,12 @@ int main(int argc, char** argv) {
                                                                                                synthetic.context.display_size,
                                                                                                synthetic.context.frame_id,
                                                                                                false);
+            metrics.debug_history_weight_max_abs = history_debug_map_diff.max_abs;
+            metrics.debug_history_weight_mean_abs = history_debug_map_diff.mean_abs;
+            metrics.debug_color_residual_max_abs = color_debug_map_diff.max_abs;
+            metrics.debug_color_residual_mean_abs = color_debug_map_diff.mean_abs;
+            metrics.debug_depth_residual_max_abs = depth_debug_map_diff.max_abs;
+            metrics.debug_depth_residual_mean_abs = depth_debug_map_diff.mean_abs;
         }
         capture.WriteMetricRow(metrics);
         capture.WriteValidationWarnings(synthetic.context.frame_id, report);
