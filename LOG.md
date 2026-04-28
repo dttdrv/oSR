@@ -636,6 +636,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_temporal_frame_sweep.bat` exited `0`; ranking was `default_frame_10` score `82.5936`, `default_frame_14` score `81.7476`, `default_frame_12` score `79.7175`.
 - Failure recorded: attempted selected captures at frames `16` and `18` exited `1` with `Temporal-gpu sequence gate failed` after the selected debug-map parity check, while still writing capture directories. Treat this as the next focused parity target rather than loosening the gate.
 
+### Debug Parity Failure Metadata
+
+- Selected temporal-GPU captures now write `debug_parity.json` with CPU-vs-GPU history-weight, color-residual, and depth-residual max/mean differences plus worst-pixel locations.
+- The DX12 sequence path now prints the selected debug parity max/mean/worst pixel when this gate fails.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 20 --capture-frame 16 --capture-run-name default_frame_16 --capture-gate-thresholds profiles/capture_gate.cfg` exited `1` as expected and wrote `debug_parity.json`.
+- Finding: frame `16` failure is localized history-weight parity drift: max `0.357684` at display pixel `(928,342)`, mean `0.000948854`; color residual max was `0.0759811`, depth residual max was negligible.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

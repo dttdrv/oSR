@@ -63,6 +63,8 @@ struct Dx12Objects {
 struct FloatMapDiff {
     double max_abs = 0.0;
     double mean_abs = 0.0;
+    uint32_t worst_x = 0;
+    uint32_t worst_y = 0;
 };
 
 enum class ReconstructionMode {
@@ -404,7 +406,9 @@ std::vector<float> FloatBytesToVector(const std::vector<uint8_t>& bytes, osr::co
     return out;
 }
 
-FloatMapDiff CompareFloatMaps(const std::vector<float>& expected, const std::vector<float>& actual) {
+FloatMapDiff CompareFloatMaps(const std::vector<float>& expected,
+                              const std::vector<float>& actual,
+                              osr::core::Dimensions size = {}) {
     FloatMapDiff diff;
     if (expected.size() != actual.size() || expected.empty()) {
         diff.max_abs = 1.0;
@@ -414,7 +418,13 @@ FloatMapDiff CompareFloatMaps(const std::vector<float>& expected, const std::vec
     double sum = 0.0;
     for (size_t i = 0; i < expected.size(); ++i) {
         const double delta = std::abs(static_cast<double>(expected[i]) - static_cast<double>(actual[i]));
-        diff.max_abs = std::max(diff.max_abs, delta);
+        if (delta > diff.max_abs) {
+            diff.max_abs = delta;
+            if (size.IsValid() && size.width > 0) {
+                diff.worst_x = static_cast<uint32_t>(i % size.width);
+                diff.worst_y = static_cast<uint32_t>(i / size.width);
+            }
+        }
         sum += delta;
     }
     diff.mean_abs = sum / static_cast<double>(expected.size());
@@ -422,7 +432,37 @@ FloatMapDiff CompareFloatMaps(const std::vector<float>& expected, const std::vec
 }
 
 FloatMapDiff MaxFloatDiff(FloatMapDiff lhs, FloatMapDiff rhs) noexcept {
-    return {std::max(lhs.max_abs, rhs.max_abs), std::max(lhs.mean_abs, rhs.mean_abs)};
+    FloatMapDiff out = lhs.max_abs >= rhs.max_abs ? lhs : rhs;
+    out.mean_abs = std::max(lhs.mean_abs, rhs.mean_abs);
+    return out;
+}
+
+bool WriteDebugParityJson(const std::filesystem::path& path,
+                          const FloatMapDiff& history,
+                          const FloatMapDiff& color,
+                          const FloatMapDiff& depth,
+                          bool passed) {
+    std::ofstream out(path, std::ios::trunc);
+    if (!out) {
+        return false;
+    }
+    out << "{\n";
+    out << "  \"schema\": \"osr.debug.parity.v1\",\n";
+    out << "  \"passed\": " << (passed ? "true" : "false") << ",\n";
+    out << "  \"thresholds\": {\"max_abs\":0.35,\"mean_abs\":0.002},\n";
+    auto write_map = [&](const char* name, const FloatMapDiff& diff, bool trailing_comma) {
+        out << "  \"" << name << "\": {"
+            << "\"max_abs\":" << diff.max_abs << ","
+            << "\"mean_abs\":" << diff.mean_abs << ","
+            << "\"worst_x\":" << diff.worst_x << ","
+            << "\"worst_y\":" << diff.worst_y
+            << "}" << (trailing_comma ? "," : "") << "\n";
+    };
+    write_map("history_weight", history, true);
+    write_map("color_residual", color, true);
+    write_map("depth_residual", depth, false);
+    out << "}\n";
+    return true;
 }
 
 std::vector<uint32_t> Rgba8BytesToVector(const std::vector<uint8_t>& bytes, osr::core::Dimensions size) {
@@ -930,11 +970,22 @@ int main(int argc, char** argv) {
                             metrics.specular_history_leak = osr::demo::wind_tunnel::MeanMaterialHistoryLeak(gpu_debug_maps, display_size, frame.context.frame_id, true);
                             metrics.transparent_history_leak = osr::demo::wind_tunnel::MeanMaterialHistoryLeak(gpu_debug_maps, display_size, frame.context.frame_id, false);
                             metrics.history_reject_pct = 100.0 - stats.history_weight_mean * 100.0;
-                            const auto history_diff = CompareFloatMaps(cpu_debug_maps.history_weight, gpu_debug_maps.history_weight);
-                            const auto color_diff = CompareFloatMaps(cpu_debug_maps.color_residual, gpu_debug_maps.color_residual);
-                            const auto depth_diff = CompareFloatMaps(cpu_debug_maps.depth_residual, gpu_debug_maps.depth_residual);
+                            const auto history_diff = CompareFloatMaps(cpu_debug_maps.history_weight, gpu_debug_maps.history_weight, display_size);
+                            const auto color_diff = CompareFloatMaps(cpu_debug_maps.color_residual, gpu_debug_maps.color_residual, display_size);
+                            const auto depth_diff = CompareFloatMaps(cpu_debug_maps.depth_residual, gpu_debug_maps.depth_residual, display_size);
                             const auto selected_debug_diff = MaxFloatDiff(MaxFloatDiff(history_diff, color_diff), depth_diff);
                             selected_debug_parity_ok = selected_debug_diff.max_abs <= 0.35 && selected_debug_diff.mean_abs <= 0.002;
+                            const bool wrote_debug_parity = WriteDebugParityJson(sequence_capture.SessionPath() / "debug_parity.json",
+                                                                                 history_diff,
+                                                                                 color_diff,
+                                                                                 depth_diff,
+                                                                                 selected_debug_parity_ok);
+                            selected_debug_parity_ok = selected_debug_parity_ok && wrote_debug_parity;
+                            if (!selected_debug_parity_ok) {
+                                std::cerr << "Selected debug parity failed: max_abs=" << selected_debug_diff.max_abs
+                                          << " mean_abs=" << selected_debug_diff.mean_abs
+                                          << " worst=(" << selected_debug_diff.worst_x << "," << selected_debug_diff.worst_y << ")\n";
+                            }
                             metrics.debug_history_weight_max_abs = history_diff.max_abs;
                             metrics.debug_history_weight_mean_abs = history_diff.mean_abs;
                             metrics.debug_color_residual_max_abs = color_diff.max_abs;
@@ -1240,9 +1291,9 @@ int main(int argc, char** argv) {
             gpu_debug_maps.history_weight = FloatBytesToVector(history_bytes, display_size);
             gpu_debug_maps.color_residual = FloatBytesToVector(color_residual_bytes, display_size);
             gpu_debug_maps.depth_residual = FloatBytesToVector(depth_residual_bytes, display_size);
-            history_debug_map_diff = CompareFloatMaps(cpu_debug_maps.history_weight, gpu_debug_maps.history_weight);
-            color_debug_map_diff = CompareFloatMaps(cpu_debug_maps.color_residual, gpu_debug_maps.color_residual);
-            depth_debug_map_diff = CompareFloatMaps(cpu_debug_maps.depth_residual, gpu_debug_maps.depth_residual);
+            history_debug_map_diff = CompareFloatMaps(cpu_debug_maps.history_weight, gpu_debug_maps.history_weight, display_size);
+            color_debug_map_diff = CompareFloatMaps(cpu_debug_maps.color_residual, gpu_debug_maps.color_residual, display_size);
+            depth_debug_map_diff = CompareFloatMaps(cpu_debug_maps.depth_residual, gpu_debug_maps.depth_residual, display_size);
             debug_map_diff = MaxFloatDiff(MaxFloatDiff(history_debug_map_diff, color_debug_map_diff), depth_debug_map_diff);
             debug_map_parity_checked = true;
             debug_map_parity_ok = debug_map_diff.max_abs <= 0.25 && debug_map_diff.mean_abs <= 0.002;
