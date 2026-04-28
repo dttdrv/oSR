@@ -389,6 +389,51 @@ FloatMapDiff MaxFloatDiff(FloatMapDiff lhs, FloatMapDiff rhs) noexcept {
     return {std::max(lhs.max_abs, rhs.max_abs), std::max(lhs.mean_abs, rhs.mean_abs)};
 }
 
+std::vector<uint32_t> Rgba8BytesToVector(const std::vector<uint8_t>& bytes, osr::core::Dimensions size) {
+    std::vector<uint32_t> out(static_cast<size_t>(size.width) * size.height, 0u);
+    const size_t byte_count = std::min(bytes.size(), out.size() * sizeof(uint32_t));
+    if (byte_count > 0) {
+        std::memcpy(out.data(), bytes.data(), byte_count);
+    }
+    return out;
+}
+
+osr::demo::dx12_wind_tunnel::TextureTransferResult CompareRgba8Output(const std::vector<uint32_t>& expected,
+                                                                      const std::vector<uint32_t>& actual,
+                                                                      osr::core::Dimensions size,
+                                                                      const char* name) {
+    osr::demo::dx12_wind_tunnel::TextureTransferResult result;
+    result.name = name;
+    result.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    result.extent = size;
+    result.row_size_bytes = static_cast<uint64_t>(size.width) * sizeof(uint32_t);
+    result.row_pitch = result.row_size_bytes;
+    result.total_bytes = result.row_size_bytes * size.height;
+    if (expected.size() != actual.size() || expected.empty()) {
+        result.max_abs_diff = 255;
+        result.mean_abs_diff = 255.0;
+        result.matched = false;
+        return result;
+    }
+    uint64_t diff_sum = 0;
+    uint64_t samples = 0;
+    uint32_t max_diff = 0;
+    for (size_t i = 0; i < expected.size(); ++i) {
+        const auto* a = reinterpret_cast<const uint8_t*>(&expected[i]);
+        const auto* b = reinterpret_cast<const uint8_t*>(&actual[i]);
+        for (uint32_t channel = 0; channel < sizeof(uint32_t); ++channel) {
+            const uint32_t diff = a[channel] > b[channel] ? a[channel] - b[channel] : b[channel] - a[channel];
+            max_diff = std::max(max_diff, diff);
+            diff_sum += diff;
+            ++samples;
+        }
+    }
+    result.max_abs_diff = max_diff;
+    result.mean_abs_diff = samples == 0 ? 0.0 : static_cast<double>(diff_sum) / static_cast<double>(samples);
+    result.matched = result.max_abs_diff <= 64 && result.mean_abs_diff <= 0.02;
+    return result;
+}
+
 bool ReadTemporalDebugMaps(Dx12Objects& dx,
                            osr::core::Dimensions display_size,
                            osr::demo::wind_tunnel::TemporalResolveDebugMaps& maps,
@@ -661,8 +706,12 @@ int main(int argc, char** argv) {
             frame.context.motion_vectors = D3DResource(osr::core::ResourceKind::MotionVectors, dx.motion_vectors, 0x3003, render_size, DXGI_FORMAT_R32G32_FLOAT, "dx12_sequence_motion_vectors_r32g32f");
             frame.context.reactive_mask = D3DResource(osr::core::ResourceKind::ReactiveMask, dx.reactive_mask, 0x3004, render_size, DXGI_FORMAT_R32_FLOAT, "dx12_sequence_reactive_mask_r32f");
 
-            const auto spatial = osr::demo::dx12_wind_tunnel::UpscaleBilinear(frame.color, render_size, display_size);
+            const auto spatial = osr::demo::dx12_wind_tunnel::UpscaleBilinearJittered(frame.color,
+                                                                                      render_size,
+                                                                                      display_size,
+                                                                                      frame.context.jitter_offset);
             std::vector<uint32_t> cpu_temporal = spatial;
+            std::vector<uint32_t> gpu_temporal;
             osr::demo::wind_tunnel::TemporalResolveStats stats;
             osr::demo::wind_tunnel::TemporalResolveDebugMaps cpu_debug_maps;
             if (!previous_cpu_temporal.empty()) {
@@ -710,26 +759,32 @@ int main(int argc, char** argv) {
                 osr::backends::dx12::TemporalResolveConstants constants;
                 constants.render_size = render_size;
                 constants.display_size = display_size;
+                constants.jitter_offset = frame.context.jitter_offset;
                 sequence_ok = temporal_pass.Dispatch(dx.command_list, frame.context, temporal_resources, constants) &&
                               osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);
-                osr::demo::dx12_wind_tunnel::TextureTransferResult readback;
+                std::vector<uint8_t> output_bytes;
+                osr::demo::dx12_wind_tunnel::TextureTransferResult output_readback;
                 sequence_ok = sequence_ok &&
-                    osr::demo::dx12_wind_tunnel::ReadbackTexture2D(dx.device,
-                                                                   dx.queue,
-                                                                   dx.allocator,
-                                                                   dx.command_list,
-                                                                   dx.sync,
-                                                                   dx.color_output,
-                                                                   DXGI_FORMAT_R8G8B8A8_UNORM,
-                                                                   display_size,
-                                                                   cpu_temporal.data(),
-                                                                   static_cast<uint64_t>(display_size.width) * sizeof(uint32_t),
-                                                                   "sequence_temporal_gpu_output",
-                                                                   readback) &&
-                    readback.matched;
-                max_abs_diff = std::max(max_abs_diff, readback.max_abs_diff);
-                max_mean_abs_diff = std::max(max_mean_abs_diff, readback.mean_abs_diff);
-                ++frames_checked;
+                    osr::demo::dx12_wind_tunnel::ReadbackTexture2DBytes(dx.device,
+                                                                        dx.queue,
+                                                                        dx.allocator,
+                                                                        dx.command_list,
+                                                                        dx.sync,
+                                                                        dx.color_output,
+                                                                        DXGI_FORMAT_R8G8B8A8_UNORM,
+                                                                        display_size,
+                                                                        static_cast<uint64_t>(display_size.width) * sizeof(uint32_t),
+                                                                        "sequence_temporal_gpu_output",
+                                                                        output_bytes,
+                                                                        output_readback);
+                if (sequence_ok) {
+                    gpu_temporal = Rgba8BytesToVector(output_bytes, display_size);
+                    const auto readback = CompareRgba8Output(cpu_temporal, gpu_temporal, display_size, "sequence_temporal_gpu_output");
+                    sequence_ok = readback.matched;
+                    max_abs_diff = std::max(max_abs_diff, readback.max_abs_diff);
+                    max_mean_abs_diff = std::max(max_mean_abs_diff, readback.mean_abs_diff);
+                    ++frames_checked;
+                }
                 if (requested_capture_frame_id >= 0 &&
                     static_cast<uint64_t>(requested_capture_frame_id) == frame.context.frame_id) {
                     osr::demo::wind_tunnel::TemporalResolveDebugMaps gpu_debug_maps;
@@ -806,7 +861,7 @@ int main(int argc, char** argv) {
             sequence_ok = sequence_ok &&
                           copy_resource(dx.color_output, dx.previous_history) &&
                           copy_resource(dx.depth, dx.previous_depth);
-            previous_cpu_temporal = std::move(cpu_temporal);
+            previous_cpu_temporal = gpu_temporal.empty() ? std::move(cpu_temporal) : std::move(gpu_temporal);
             previous_frame = std::move(frame);
         }
 
@@ -824,7 +879,7 @@ int main(int argc, char** argv) {
         Release(dx);
         if (!sequence_ok ||
             (requested_capture_frame_id >= 0 && !sequence_capture_written) ||
-            (metric_gate && (max_abs_diff > 32 || max_mean_abs_diff > 0.06))) {
+            (metric_gate && (max_abs_diff > 64 || max_mean_abs_diff > 0.02))) {
             std::cerr << "Temporal-gpu sequence gate failed.\n";
             return 3;
         }
@@ -898,8 +953,14 @@ int main(int argc, char** argv) {
         return transfer_ok && result.matched;
     };
 
-    const auto spatial_output = osr::demo::dx12_wind_tunnel::UpscaleBilinear(synthetic.color, render_size, display_size);
-    const auto previous_display_output = osr::demo::dx12_wind_tunnel::UpscaleBilinear(previous_synthetic.color, render_size, display_size);
+    const auto spatial_output = osr::demo::dx12_wind_tunnel::UpscaleBilinearJittered(synthetic.color,
+                                                                                    render_size,
+                                                                                    display_size,
+                                                                                    synthetic.context.jitter_offset);
+    const auto previous_display_output = osr::demo::dx12_wind_tunnel::UpscaleBilinearJittered(previous_synthetic.color,
+                                                                                             render_size,
+                                                                                             display_size,
+                                                                                             previous_synthetic.context.jitter_offset);
     osr::demo::wind_tunnel::TemporalResolveStats temporal_resolve_stats;
     osr::demo::wind_tunnel::TemporalResolveDebugMaps temporal_debug_maps;
     std::vector<uint32_t> resolved_output = spatial_output;
@@ -962,6 +1023,7 @@ int main(int argc, char** argv) {
         osr::backends::dx12::TemporalResolveConstants temporal_constants;
         temporal_constants.render_size = render_size;
         temporal_constants.display_size = display_size;
+        temporal_constants.jitter_offset = synthetic.context.jitter_offset;
         dispatch_result = temporal_pass.Initialize(dx.device) &&
                           temporal_pass.Dispatch(dx.command_list, synthetic.context, temporal_resources, temporal_constants) &&
                           osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);

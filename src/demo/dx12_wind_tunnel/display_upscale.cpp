@@ -66,6 +66,13 @@ std::vector<uint32_t> UpscaleNearest(const std::vector<uint32_t>& src,
 std::vector<uint32_t> UpscaleBilinear(const std::vector<uint32_t>& src,
                                       core::Dimensions src_size,
                                       core::Dimensions dst_size) {
+    return UpscaleBilinearJittered(src, src_size, dst_size, {});
+}
+
+std::vector<uint32_t> UpscaleBilinearJittered(const std::vector<uint32_t>& src,
+                                              core::Dimensions src_size,
+                                              core::Dimensions dst_size,
+                                              core::Float2 jitter_offset) {
     if (Invalid(src, src_size, dst_size)) {
         return {};
     }
@@ -73,9 +80,9 @@ std::vector<uint32_t> UpscaleBilinear(const std::vector<uint32_t>& src,
     const float scale_x = static_cast<float>(src_size.width) / static_cast<float>(dst_size.width);
     const float scale_y = static_cast<float>(src_size.height) / static_cast<float>(dst_size.height);
     for (uint32_t y = 0; y < dst_size.height; ++y) {
-        const float sy = (static_cast<float>(y) + 0.5f) * scale_y - 0.5f;
+        const float sy = (static_cast<float>(y) + 0.5f) * scale_y - 0.5f - jitter_offset.y;
         for (uint32_t x = 0; x < dst_size.width; ++x) {
-            const float sx = (static_cast<float>(x) + 0.5f) * scale_x - 0.5f;
+            const float sx = (static_cast<float>(x) + 0.5f) * scale_x - 0.5f - jitter_offset.x;
             dst[static_cast<size_t>(y) * dst_size.width + x] = BilinearSample(src, src_size, sx, sy);
         }
     }

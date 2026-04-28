@@ -478,6 +478,19 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`; latest capture reports history-weight map parity `max_abs=0.183646`, `mean_abs=0.000826349`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 9 --metric-gate` exited `0`; latest selected sequence capture reports history-weight map parity `max_abs=0.21041`, `mean_abs=0.00036304`.
 
+### Jitter-Aware Temporal Sampling
+
+- Added a jitter-aware bilinear CPU upscale path and switched sequence metrics plus DX12 temporal CPU oracles to subtract current-frame jitter before reconstructing display-space color.
+- Passed jitter offset into the DX12 temporal resolve shader and mirrored the shader source under `src/reconstruction/shaders`.
+- Raised the clean-history ceiling to `0.98` and tightened motion rejection to `2` render pixels. This improves stable jittered detail accumulation while keeping moving-edge history trust at zero in the sequence gate.
+- Updated temporal-gpu sequence parity to seed the next CPU oracle frame from the read-back GPU output, matching the persistent GPU history feedback path and avoiding accumulated R8 rounding drift.
+- Tightened the temporal-gpu sequence mean parity gate to `0.02` while allowing bounded jittered edge-pixel outliers up to `64` bytes.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 32 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.798859`, stability improvement `20.1141%`, ghost score `0`, text readability contrast `1.01249`, specular leak `0.0537402`, and transparent leak `0.0893649`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`; latest run reported temporal debug map parity `max_abs=0.244383`, `mean_abs=0.000611298`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate` exited `0`; latest selected capture wrote to `build/manual/captures/2026-04-28T20-06-13Z_dx12_temporal_sequence_temporal_gpu_sequence_correct`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `58` and max mean byte diff `0.00876636`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

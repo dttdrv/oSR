@@ -41,5 +41,17 @@ int main() {
         return Fail("bilinear upscale should reject invalid dimensions");
     }
 
+    const std::vector<uint32_t> ramp {
+        0xff000000u, 0xff400000u, 0xff800000u, 0xffc00000u
+    };
+    const auto unjittered = osr::demo::dx12_wind_tunnel::UpscaleBilinearJittered(ramp, {4, 1}, {4, 1}, {});
+    const auto shifted = osr::demo::dx12_wind_tunnel::UpscaleBilinearJittered(ramp, {4, 1}, {4, 1}, {0.5f, 0.0f});
+    if (unjittered.size() != 4 || shifted.size() != 4) {
+        return Fail("jitter-aware upscale output size mismatch");
+    }
+    if (Red(shifted[2]) >= Red(unjittered[2])) {
+        return Fail("positive jitter should sample earlier source coordinates for unjittered reconstruction");
+    }
+
     return 0;
 }

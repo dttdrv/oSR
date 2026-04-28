@@ -32,7 +32,7 @@ build_status:
     - CPU temporal resolve rejects history using luma residuals at the reprojected sample and gates sequence runs on edge preservation.
     - CPU temporal resolve rejects history using depth residuals at the reprojected render-space previous-depth sample.
     - Sequence metrics and DX12 metadata now expose depth_rejected_pct and depth_residual_mean.
-    - Default motion rejection is tightened to 3 render pixels after final accepted-history ghost metrics exposed excessive low-resolution motion trust.
+    - Default motion rejection is tightened to 2 render pixels after jitter-aware history accumulation exposed excessive low-resolution motion trust.
     - CPU temporal resolve uses bilinear sampling for reprojected display history and previous-depth residual validation.
     - Temporal diagnostics now use the same bilinear subpixel luma/depth reprojection model as the CPU temporal resolve.
     - Sequence lab and DX12 temporal-cpu mode now use a bilinear spatial base instead of nearest-neighbor color.
@@ -54,8 +54,10 @@ build_status:
     - Temporal-gpu sequence runs support --capture-frame / --capture-frame-id to dump one selected frame's GPU debug maps into a normal capture pack.
     - Capture-pack metrics include per-map CPU-vs-GPU debug parity columns for history weight, color residual, and depth residual.
     - Temporal diagnostics use a 0.90 reactive trust penalty to align with the resolve path's reactive-history suppression policy.
-    - Temporal resolve now uses a 0.84 clean-history ceiling while retaining residual/depth/reactive rejection.
+    - Temporal resolve now uses a 0.98 clean-history ceiling with stronger motion rejection to recover stable jittered detail without trusting moving edges.
     - DX12 temporal shader now quantizes the temporal blend before detail recovery to match the CPU oracle ordering.
+    - CPU sequence metrics and DX12 temporal shader sampling now compensate current-frame jitter before reconstructing display-space color.
+    - Temporal-gpu sequence parity uses read-back GPU output as the next CPU oracle history seed so the gate measures per-dispatch shader drift instead of compounding CPU/GPU R8 feedback differences.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -101,7 +103,7 @@ next_actions:
   - Add shimmer/ghost/text/edge metrics over multi-frame sequences, not only one-frame diagnostics.
   - Add confidence-gated edge/text ROI metrics so readability and thin-geometry stability become first-class gates.
   - Replace manual harness history-weight/rejection-risk proxy views with real temporal resolve debug maps once the harness owns frame history.
-  - Tighten temporal-gpu parity by reducing max_abs_diff below the current 30-byte worst persistent-history edge-pixel delta.
+  - Add location-aware reporting for the worst temporal-gpu sequence parity pixel so jittered edge outliers can be classified by ROI.
   - Add temporal shader debug UAVs for history_weight, color_residual, and depth_residual.
   - Add ROI-labeled per-region capture rows for text, specular glints, transparent panes, reactive particles, and corrupted-MV stress regions.
   - Add automated gates for selected sequence debug-map parity metrics after thresholds are calibrated across more frame IDs.

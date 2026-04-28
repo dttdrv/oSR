@@ -197,7 +197,10 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
         frame_settings.frame_id = settings.start_frame + i;
         frame_settings.reset_history = i == 0;
         auto frame = BuildSyntheticFrame(frame_settings);
-        const auto spatial = dx12_wind_tunnel::UpscaleBilinear(frame.color, frame.context.render_size, frame.context.display_size);
+        const auto spatial = dx12_wind_tunnel::UpscaleBilinearJittered(frame.color,
+                                                                       frame.context.render_size,
+                                                                       frame.context.display_size,
+                                                                       frame.context.jitter_offset);
 
         TemporalResolveStats stats;
         TemporalResolveDebugMaps debug_maps;

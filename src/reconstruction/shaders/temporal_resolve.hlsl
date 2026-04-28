@@ -21,6 +21,7 @@ cbuffer TemporalConstants : register(b0)
     float g_sharpening_amount;
     float g_sharpening_low_trust_scale;
     float g_sharpening_reactive_scale;
+    float2 g_jitter_offset;
 };
 
 float Luma(float3 c)
@@ -37,7 +38,7 @@ float4 SampleRenderColor(Texture2D<float4> texture_source, float2 p);
 
 float4 SampleCurrentDisplay(float2 display_px)
 {
-    float2 render_float = ((display_px + 0.5f) * float2(g_render_size) / float2(g_display_size)) - 0.5f;
+    float2 render_float = ((display_px + 0.5f) * float2(g_render_size) / float2(g_display_size)) - 0.5f - g_jitter_offset;
     return QuantizeRgba8(SampleRenderColor(g_current_color, render_float));
 }
 

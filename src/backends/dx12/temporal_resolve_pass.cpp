@@ -48,6 +48,7 @@ cbuffer TemporalConstants : register(b0)
     float g_sharpening_amount;
     float g_sharpening_low_trust_scale;
     float g_sharpening_reactive_scale;
+    float2 g_jitter_offset;
 };
 
 float Luma(float3 c)
@@ -64,7 +65,7 @@ float4 SampleRenderColor(Texture2D<float4> texture_source, float2 p);
 
 float4 SampleCurrentDisplay(float2 display_px)
 {
-    float2 render_float = ((display_px + 0.5f) * float2(g_render_size) / float2(g_display_size)) - 0.5f;
+    float2 render_float = ((display_px + 0.5f) * float2(g_render_size) / float2(g_display_size)) - 0.5f - g_jitter_offset;
     return QuantizeRgba8(SampleRenderColor(g_current_color, render_float));
 }
 
@@ -264,7 +265,7 @@ bool TemporalResolvePass::Initialize(void* native_device) {
     root_params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     root_params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     root_params[1].Constants.ShaderRegister = 0;
-    root_params[1].Constants.Num32BitValues = 12;
+    root_params[1].Constants.Num32BitValues = 14;
     root_params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
     D3D12_ROOT_SIGNATURE_DESC root_desc {};
@@ -421,6 +422,8 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         float sharpening_amount;
         float sharpening_low_trust_scale;
         float sharpening_reactive_scale;
+        float jitter_x;
+        float jitter_y;
     };
     const Constants c {
         constants.render_size.width,
@@ -434,9 +437,11 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         constants.depth_rejection_threshold,
         constants.sharpening_amount,
         constants.sharpening_low_trust_scale,
-        constants.sharpening_reactive_scale
+        constants.sharpening_reactive_scale,
+        constants.jitter_offset.x,
+        constants.jitter_offset.y
     };
-    command_list->SetComputeRoot32BitConstants(1, 12, &c, 0);
+    command_list->SetComputeRoot32BitConstants(1, 14, &c, 0);
     command_list->Dispatch((constants.display_size.width + 7u) / 8u,
                            (constants.display_size.height + 7u) / 8u,
                            1);
