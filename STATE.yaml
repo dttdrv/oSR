@@ -78,6 +78,7 @@ build_status:
     - tools/run_temporal_frame_sweep.bat ranks default temporal-GPU captures for frames 10/12/14; selected frame captures at 16/18 currently fail the debug-map parity gate.
     - Selected temporal-GPU captures write debug_parity.json; frame 16's current failure is a localized history-weight drift at display pixel 928,342.
     - Quality/Balanced/Performance render-scale presets are now exact 0.66/0.58/0.50 across core, DX12, native 3D, and WebGL harness defaults.
+    - tools/run_xess_proxy_smoke.bat builds an opt-in diagnostic libxess.dll proxy, verifies it loads, and verifies safe missing-libxess_real.dll logging.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -95,7 +96,7 @@ known_working_assumptions:
   - Manual quality control uses DLSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
 unknowns:
   - Final exported DLL names for the first wrapper packaging mode.
-  - Whether the first sample will call the bridge directly or through a renamed loader DLL.
+  - Exact XeSS export set required by the installed No Man's Sky build.
   - Motion-vector convention and exposure behavior for first real-game target.
 target_games_for_initial_testing:
   samples:
@@ -105,6 +106,7 @@ target_games_for_initial_testing:
     - Native Win32 3D wind tunnel executable for movement/settings/readable diagnostics
     - Standalone WebGL 3D wind tunnel for visual edge/jitter/render-scale inspection
   later_offline_games:
+    - No Man's Sky
     - The Outer Worlds: Spacer's Choice Edition
     - RoboCop: Rogue City
 next_actions:
@@ -133,3 +135,5 @@ next_actions:
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
+  - Copy the installed game's XeSS runtime to libxess_real.dll beside the proxy and run the first No Man's Sky launch/log proof.
+  - Add XeSS execute-parameter struct decoding once the exact SDK header version used by the target game is identified.

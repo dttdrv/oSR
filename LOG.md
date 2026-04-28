@@ -653,11 +653,31 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_quality_mode_demo.bat` exited `0`; for 1920x1200 it reported Quality `1267x792`, Balanced `1114x696`, Performance `960x600`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name quality_66_default --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed with render size `845x528` for 1280x800 output.
 
+### XeSS Proxy Research Pass
+
+- Researched the XeSS-SR deployment and call boundaries before committing the game-facing proxy design.
+- Intel documents `libxess.dll` as the D3D12/Vulkan runtime and `libxess_dx11.dll` as the separate D3D11 runtime, with D3D12/Vulkan execution recording commands into the caller's command list rather than submitting GPU work directly.
+- Intel documents the minimum temporal SR input model as jitter, input color, motion vectors, and optionally depth when low-resolution undilated motion vectors are supplied.
+- Microsoft documents that DLL loading can be controlled by specifying a full path and `LoadLibraryEx` search flags; the proxy therefore loads adjacent `libxess_real.dll` by absolute path with explicit DLL-load-directory/application/system search flags.
+- Decision: build an opt-in diagnostic `libxess.dll` proxy first, not a full XeSS runtime replacement. The proxy forwards to `libxess_real.dll`, logs init/execute/version/property calls, and does not alter image output.
+- Sources: Intel XeSS-SR Developer Guide, Microsoft DLL search order documentation, OptiScaler README/manual installation docs.
+
+### XeSS Proxy Smoke
+
+- Added Windows-only `osr_xess_proxy` opt-in CMake target and `tools/run_xess_proxy_smoke.bat` direct-build smoke test.
+- Added `src/interop/xess_bridge/xess_proxy.cpp`, exporting common XeSS-SR D3D12/Vulkan entrypoints and forwarding them to adjacent `libxess_real.dll`.
+- Kept the normal `xess_bridge` module marked out of v0; the proxy is a diagnostic bridge for real-game loading proof-of-life.
+- The proxy logs to `osr_logs/osr_xess_proxy.log` beside the DLL by default, or to `OSR_XESS_PROXY_LOG` if set.
+- Verification: `tools/run_xess_proxy_smoke.bat` exited `0`; smoke loaded `build/manual/xess_proxy/libxess.dll`, called `xessGetVersion`, and verified expected log entries when `libxess_real.dll` was absent.
+- Verification: MinGW `objdump -p build/manual/xess_proxy/libxess.dll` showed undecorated XeSS exports including `xessD3D12Execute`, `xessVKExecute`, `xessGetOptimalInputResolution`, `xessSetLoggingCallback`, and `xessStartDump`.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
 - AMD FSR Super Resolution upscaler integration: <https://gpuopen.com/manuals/fsr_sdk/techniques/super-resolution-upscaler/>
 - AMD FSR3 dispatch description fields: <https://gpuopen.com/manuals/fidelityfx_sdk/reference_documentation/structs/ffx_fsr3_upscaler_dispatch_description/>
 - Intel XeSS-SR integration guide: <https://www.intel.com/content/www/us/en/developer/articles/technical/xess-sr-developer-guide.html>
+- Microsoft DLL search order: <https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order>
 - NVIDIA Streamline programming model: <https://github.com/NVIDIA-RTX/Streamline/blob/main/docs/ProgrammingGuide.md>
 - Microsoft DirectSR input model: <https://microsoft.github.io/DirectX-Specs/DirectSR/DirectSR.html>

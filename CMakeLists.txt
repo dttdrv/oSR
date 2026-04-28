@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(OSR_BUILD_TESTS "Build oSR tests" ON)
+option(OSR_BUILD_XESS_PROXY "Build the Windows libxess.dll diagnostic proxy" OFF)
 
 add_library(osr_core STATIC
     src/core/config.cpp
@@ -57,6 +58,18 @@ add_library(osr_vendor_stubs STATIC
 )
 target_include_directories(osr_vendor_stubs PUBLIC src)
 target_link_libraries(osr_vendor_stubs PUBLIC osr_core)
+
+if(WIN32 AND OSR_BUILD_XESS_PROXY)
+    add_library(osr_xess_proxy SHARED
+        src/interop/xess_bridge/xess_proxy.cpp
+    )
+    target_include_directories(osr_xess_proxy PUBLIC src)
+    target_link_libraries(osr_xess_proxy PRIVATE osr_core)
+    set_target_properties(osr_xess_proxy PROPERTIES
+        OUTPUT_NAME "libxess"
+        PREFIX ""
+    )
+endif()
 
 add_library(osr_profiles STATIC
     src/profiles/game_profile.cpp
@@ -233,4 +246,11 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_capture_compare_tests PRIVATE osr_core osr_debug)
     add_test(NAME capture_compare COMMAND osr_capture_compare_tests)
+
+    if(WIN32 AND OSR_BUILD_XESS_PROXY)
+        add_executable(osr_xess_proxy_smoke
+            src/tests/xess_proxy_smoke.cpp
+        )
+        add_test(NAME xess_proxy_smoke COMMAND osr_xess_proxy_smoke $<TARGET_FILE:osr_xess_proxy>)
+    endif()
 endif()

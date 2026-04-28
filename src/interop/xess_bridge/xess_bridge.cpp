@@ -2,7 +2,6 @@
 
 namespace osr::interop::xess_bridge {
 
-static_assert(!XessBridge{}.EnabledInV0(), "XeSS bridge is intentionally out of scope for v0.");
+static_assert(!XessBridge{}.EnabledInV0(), "Full XeSS runtime replacement remains out of v0; the proxy DLL is an opt-in diagnostic bridge.");
 
 } // namespace osr::interop::xess_bridge
-

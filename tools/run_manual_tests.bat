@@ -46,6 +46,9 @@ if errorlevel 1 goto fail
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/capture_compare_tests.cpp src/debug/capture_compare.cpp src/debug/capture_pack.cpp src/core/frame_context.cpp -o build\manual\osr_capture_compare_tests.exe && build\manual\osr_capture_compare_tests.exe
 if errorlevel 1 goto fail
 
+call tools\run_xess_proxy_smoke.bat
+if errorlevel 1 goto fail
+
 echo.
 echo All manual tests passed.
 if not "%OSR_NO_PAUSE%"=="1" pause
