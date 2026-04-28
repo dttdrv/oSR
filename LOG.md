@@ -298,6 +298,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.718994`, stability improvement `28.1006%`, ghost score `0.257434`, edge preservation `0.992253`, depth rejected `0.325894%`, depth residual mean `0.0015555`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`, with matched transfer/readback hashes and temporal resolve depth rejected `0.391602%`.
 
+### Bilinear Reprojected History Sampling
+
+- Replaced nearest display-history lookup with bilinear sampling for motion-compensated history reads.
+- Replaced rounded previous-depth lookup with bilinear render-space depth sampling for depth residual validation.
+- Added a subpixel reprojection test that expects a half-pixel motion vector to sample the midpoint between black and white previous-history pixels.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.72697`, stability improvement `27.303%`, ghost score `0.214908`, edge preservation `0.992234`, depth rejected `0.360193%`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.719025`, stability improvement `28.0975%`, ghost score `0.255567`, edge preservation `0.992275`, depth rejected `0.353423%`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

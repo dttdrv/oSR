@@ -21,6 +21,59 @@ uint32_t BlendColor(uint32_t current, uint32_t history, float history_weight) no
     return 0xff000000u | (blend(16) << 16) | (blend(8) << 8) | blend(0);
 }
 
+uint32_t SampleBilinearRgba8(const std::vector<uint32_t>& image,
+                             core::Dimensions size,
+                             float x,
+                             float y) noexcept {
+    if (image.size() != static_cast<size_t>(size.width) * size.height || !size.IsValid()) {
+        return 0xff000000u;
+    }
+    x = std::clamp(x, 0.0f, static_cast<float>(size.width - 1));
+    y = std::clamp(y, 0.0f, static_cast<float>(size.height - 1));
+    const auto x0 = static_cast<uint32_t>(std::floor(x));
+    const auto y0 = static_cast<uint32_t>(std::floor(y));
+    const auto x1 = std::min(x0 + 1, size.width - 1);
+    const auto y1 = std::min(y0 + 1, size.height - 1);
+    const float tx = x - static_cast<float>(x0);
+    const float ty = y - static_cast<float>(y0);
+    const auto at = [&](uint32_t sx, uint32_t sy) {
+        return image[static_cast<size_t>(sy) * size.width + sx];
+    };
+    const auto sample_channel = [&](uint32_t shift) {
+        const float c00 = static_cast<float>(Channel(at(x0, y0), shift));
+        const float c10 = static_cast<float>(Channel(at(x1, y0), shift));
+        const float c01 = static_cast<float>(Channel(at(x0, y1), shift));
+        const float c11 = static_cast<float>(Channel(at(x1, y1), shift));
+        const float top = c00 + (c10 - c00) * tx;
+        const float bottom = c01 + (c11 - c01) * tx;
+        return static_cast<uint32_t>(std::clamp(std::round(top + (bottom - top) * ty), 0.0f, 255.0f));
+    };
+    return 0xff000000u | (sample_channel(16) << 16) | (sample_channel(8) << 8) | sample_channel(0);
+}
+
+float SampleBilinearFloat(const std::vector<float>& image,
+                          core::Dimensions size,
+                          float x,
+                          float y) noexcept {
+    if (image.size() != static_cast<size_t>(size.width) * size.height || !size.IsValid()) {
+        return 0.0f;
+    }
+    x = std::clamp(x, 0.0f, static_cast<float>(size.width - 1));
+    y = std::clamp(y, 0.0f, static_cast<float>(size.height - 1));
+    const auto x0 = static_cast<uint32_t>(std::floor(x));
+    const auto y0 = static_cast<uint32_t>(std::floor(y));
+    const auto x1 = std::min(x0 + 1, size.width - 1);
+    const auto y1 = std::min(y0 + 1, size.height - 1);
+    const float tx = x - static_cast<float>(x0);
+    const float ty = y - static_cast<float>(y0);
+    const auto at = [&](uint32_t sx, uint32_t sy) {
+        return image[static_cast<size_t>(sy) * size.width + sx];
+    };
+    const float top = at(x0, y0) + (at(x1, y0) - at(x0, y0)) * tx;
+    const float bottom = at(x0, y1) + (at(x1, y1) - at(x0, y1)) * tx;
+    return top + (bottom - top) * ty;
+}
+
 float Luma(uint32_t color) noexcept {
     const float r = static_cast<float>(Channel(color, 16)) / 255.0f;
     const float g = static_cast<float>(Channel(color, 8)) / 255.0f;
@@ -86,8 +139,8 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                                          static_cast<uint32_t>((static_cast<uint64_t>(x) * render_size.width) / display_size.width));
             const size_t display_index = static_cast<size_t>(y) * display_size.width + x;
             const size_t render_index = static_cast<size_t>(ry) * render_size.width + rx;
-            size_t history_index = display_index;
-            size_t previous_render_index = render_index;
+            uint32_t history_sample = previous_history[display_index];
+            float previous_depth_sample = 0.0f;
             float history_weight = std::clamp(settings.max_history_weight, 0.0f, 1.0f);
             bool previous_depth_oob = false;
 
@@ -104,22 +157,22 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 const float motion_length = std::sqrt(mv.x * mv.x + mv.y * mv.y);
                 motion_pixel = motion_length > 0.01f;
                 if (motion_pixel) {
-                    const int hx = static_cast<int>(std::lround(static_cast<float>(x) + mv.x * display_per_render_x));
-                    const int hy = static_cast<int>(std::lround(static_cast<float>(y) + mv.y * display_per_render_y));
-                    if (hx < 0 || hy < 0 || hx >= static_cast<int>(display_size.width) || hy >= static_cast<int>(display_size.height)) {
+                    const float hx = static_cast<float>(x) + mv.x * display_per_render_x;
+                    const float hy = static_cast<float>(y) + mv.y * display_per_render_y;
+                    if (hx < 0.0f || hy < 0.0f || hx > static_cast<float>(display_size.width - 1) || hy > static_cast<float>(display_size.height - 1)) {
                         history_weight = 0.0f;
                         ++reproject_out_of_bounds;
                     } else {
-                        history_index = static_cast<size_t>(hy) * display_size.width + static_cast<size_t>(hx);
+                        history_sample = SampleBilinearRgba8(previous_history, display_size, hx, hy);
                         ++reprojected_pixels;
                     }
-                    const int prx = static_cast<int>(std::lround(static_cast<float>(rx) + mv.x));
-                    const int pry = static_cast<int>(std::lround(static_cast<float>(ry) + mv.y));
-                    if (prx < 0 || pry < 0 || prx >= static_cast<int>(render_size.width) || pry >= static_cast<int>(render_size.height)) {
+                    const float prx = static_cast<float>(rx) + mv.x;
+                    const float pry = static_cast<float>(ry) + mv.y;
+                    if (prx < 0.0f || pry < 0.0f || prx > static_cast<float>(render_size.width - 1) || pry > static_cast<float>(render_size.height - 1)) {
                         history_weight = 0.0f;
                         previous_depth_oob = true;
                     } else {
-                        previous_render_index = static_cast<size_t>(pry) * render_size.width + static_cast<size_t>(prx);
+                        previous_depth_sample = SampleBilinearFloat(previous_frame ? previous_frame->depth : current_frame.depth, render_size, prx, pry);
                     }
                 }
                 if (motion_length > settings.motion_rejection_pixels) {
@@ -133,7 +186,11 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 ++motion_pixels;
             }
 
-            const float color_residual = std::abs(Luma(current_display[display_index]) - Luma(previous_history[history_index]));
+            if (!motion_pixel && has_previous_depth) {
+                previous_depth_sample = previous_frame->depth[render_index];
+            }
+
+            const float color_residual = std::abs(Luma(current_display[display_index]) - Luma(history_sample));
             color_residual_sum += color_residual;
             if (settings.color_rejection_threshold > 0.0f && color_residual > settings.color_rejection_threshold) {
                 history_weight = 0.0f;
@@ -146,7 +203,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                     history_weight = 0.0f;
                     ++depth_rejected;
                 } else {
-                    const float depth_residual = std::abs(current_frame.depth[render_index] - previous_frame->depth[previous_render_index]);
+                    const float depth_residual = std::abs(current_frame.depth[render_index] - previous_depth_sample);
                     depth_residual_sum += depth_residual;
                     ++depth_samples;
                     if (settings.depth_rejection_threshold > 0.0f && depth_residual > settings.depth_rejection_threshold) {
@@ -164,7 +221,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 motion_weight_sum += history_weight;
             }
 
-            output[display_index] = BlendColor(current_display[display_index], previous_history[history_index], history_weight);
+            output[display_index] = BlendColor(current_display[display_index], history_sample, history_weight);
             weight_sum += history_weight;
             weight_min = std::min(weight_min, static_cast<double>(history_weight));
             weight_max = std::max(weight_max, static_cast<double>(history_weight));

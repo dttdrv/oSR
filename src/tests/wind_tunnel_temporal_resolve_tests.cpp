@@ -69,6 +69,18 @@ int main() {
         return Fail("reprojection stats should count reprojected pixels");
     }
 
+    custom.motion_vectors.assign(16, {});
+    custom.reactive_mask.assign(16, 0.0f);
+    repro_current.assign(16, 0xff000000u);
+    repro_history.assign(16, 0xff000000u);
+    repro_history[static_cast<size_t>(1) * 4 + 2] = 0xffffffffu;
+    custom.motion_vectors[static_cast<size_t>(1) * 4 + 1] = {0.5f, 0.0f};
+    const auto subpixel = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current, repro_history, custom, custom.context.display_size, settings, &stats);
+    const uint32_t subpixel_red = (subpixel[static_cast<size_t>(1) * 4 + 1] >> 16) & 0xffu;
+    if (subpixel_red < 126u || subpixel_red > 129u) {
+        return Fail("subpixel reprojection should bilinearly sample previous history");
+    }
+
     custom.context.render_size = {3, 1};
     custom.context.display_size = {6, 2};
     custom.motion_vectors.assign(3, {});
