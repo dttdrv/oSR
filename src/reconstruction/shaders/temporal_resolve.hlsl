@@ -30,6 +30,20 @@ float Luma(float3 c)
     return dot(c, float3(0.2126f, 0.7152f, 0.0722f));
 }
 
+float3 ToYCoCg(float3 c)
+{
+    return float3(c.r * 0.25f + c.g * 0.5f + c.b * 0.25f,
+                  c.r * 0.5f - c.b * 0.5f,
+                  -c.r * 0.25f + c.g * 0.5f - c.b * 0.25f);
+}
+
+float3 FromYCoCg(float3 c)
+{
+    return float3(c.x + c.y - c.z,
+                  c.x + c.z,
+                  c.x - c.y - c.z);
+}
+
 float4 QuantizeRgba8(float4 c)
 {
     return floor(saturate(c) * 255.0f + 0.5f) / 255.0f;
@@ -100,9 +114,16 @@ float4 ClipHistoryToCurrentNeighborhood(float4 history_color, float2 display_px)
     float3 c2 = SampleCurrentDisplay(right_px).rgb;
     float3 c3 = SampleCurrentDisplay(up_px).rgb;
     float3 c4 = SampleCurrentDisplay(down_px).rgb;
-    float3 lo = min(c0, min(c1, min(c2, min(c3, c4))));
-    float3 hi = max(c0, max(c1, max(c2, max(c3, c4))));
-    history_color.rgb = clamp(history_color.rgb, saturate(lo - g_history_clip_margin), saturate(hi + g_history_clip_margin));
+    float3 y0 = ToYCoCg(c0);
+    float3 y1 = ToYCoCg(c1);
+    float3 y2 = ToYCoCg(c2);
+    float3 y3 = ToYCoCg(c3);
+    float3 y4 = ToYCoCg(c4);
+    float3 lo = min(y0, min(y1, min(y2, min(y3, y4))));
+    float3 hi = max(y0, max(y1, max(y2, max(y3, y4))));
+    float3 history_ycocg = ToYCoCg(history_color.rgb);
+    history_ycocg = clamp(history_ycocg, lo - g_history_clip_margin, hi + g_history_clip_margin);
+    history_color.rgb = saturate(FromYCoCg(history_ycocg));
     return QuantizeRgba8(history_color);
 }
 

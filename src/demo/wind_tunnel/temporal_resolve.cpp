@@ -25,6 +25,33 @@ float ChannelFloat(uint32_t color, uint32_t shift) noexcept {
     return static_cast<float>(Channel(color, shift));
 }
 
+struct YCoCg {
+    float y = 0.0f;
+    float co = 0.0f;
+    float cg = 0.0f;
+};
+
+YCoCg ToYCoCg(uint32_t color) noexcept {
+    const float r = ChannelFloat(color, 16) / 255.0f;
+    const float g = ChannelFloat(color, 8) / 255.0f;
+    const float b = ChannelFloat(color, 0) / 255.0f;
+    return {
+        r * 0.25f + g * 0.5f + b * 0.25f,
+        r * 0.5f - b * 0.5f,
+        -r * 0.25f + g * 0.5f - b * 0.25f,
+    };
+}
+
+uint32_t FromYCoCg(YCoCg color) noexcept {
+    const float r = color.y + color.co - color.cg;
+    const float g = color.y + color.cg;
+    const float b = color.y - color.co - color.cg;
+    const auto pack = [](float value) {
+        return static_cast<uint32_t>(std::clamp(std::round(std::clamp(value, 0.0f, 1.0f) * 255.0f), 0.0f, 255.0f));
+    };
+    return 0xff000000u | (pack(r) << 16) | (pack(g) << 8) | pack(b);
+}
+
 uint32_t ApplyDetailRecovery(const std::vector<uint32_t>& current_display,
                              core::Dimensions display_size,
                              uint32_t x,
@@ -130,18 +157,26 @@ uint32_t ClipHistoryToCurrentNeighborhood(const std::vector<uint32_t>& current_d
     const uint32_t yu = y == 0 ? y : y - 1;
     const uint32_t yd = std::min(y + 1, display_size.height - 1);
     const uint32_t samples[5] = {at(x, y), at(xl, y), at(xr, y), at(x, yu), at(x, yd)};
-    const float margin_bytes = std::clamp(margin, 0.0f, 1.0f) * 255.0f;
-    const auto clip_channel = [&](uint32_t shift) {
-        float lo = ChannelFloat(samples[0], shift);
-        float hi = lo;
-        for (uint32_t i = 1; i < 5; ++i) {
-            lo = std::min(lo, ChannelFloat(samples[i], shift));
-            hi = std::max(hi, ChannelFloat(samples[i], shift));
-        }
-        const float value = ChannelFloat(history, shift);
-        return static_cast<uint32_t>(std::clamp(std::round(value), std::max(0.0f, lo - margin_bytes), std::min(255.0f, hi + margin_bytes)));
+    const float safe_margin = std::clamp(margin, 0.0f, 1.0f);
+    YCoCg lo = ToYCoCg(samples[0]);
+    YCoCg hi = lo;
+    for (uint32_t i = 1; i < 5; ++i) {
+        const YCoCg sample = ToYCoCg(samples[i]);
+        lo.y = std::min(lo.y, sample.y);
+        lo.co = std::min(lo.co, sample.co);
+        lo.cg = std::min(lo.cg, sample.cg);
+        hi.y = std::max(hi.y, sample.y);
+        hi.co = std::max(hi.co, sample.co);
+        hi.cg = std::max(hi.cg, sample.cg);
+    }
+    YCoCg clipped = ToYCoCg(history);
+    const auto clamp_component = [safe_margin](float value, float min_value, float max_value) {
+        return std::clamp(value, min_value - safe_margin, max_value + safe_margin);
     };
-    return 0xff000000u | (clip_channel(16) << 16) | (clip_channel(8) << 8) | clip_channel(0);
+    clipped.y = clamp_component(clipped.y, lo.y, hi.y);
+    clipped.co = clamp_component(clipped.co, lo.co, hi.co);
+    clipped.cg = clamp_component(clipped.cg, lo.cg, hi.cg);
+    return FromYCoCg(clipped);
 }
 
 float SampleBilinearFloat(const std::vector<float>& image,

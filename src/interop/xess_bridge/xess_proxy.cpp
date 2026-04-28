@@ -3,6 +3,7 @@
 
 #include "core/logging.h"
 
+#include <atomic>
 #include <filesystem>
 #include <mutex>
 #include <sstream>
@@ -13,12 +14,16 @@ namespace {
 using XessResult = int;
 
 constexpr XessResult kXessProxyError = -1;
+constexpr uint64_t kUnthrottledExecuteLogs = 16;
+constexpr uint64_t kExecuteLogInterval = 120;
 
 struct ProxyState {
     std::once_flag init_once;
     HMODULE real_module = nullptr;
     std::filesystem::path module_dir;
     bool attempted_load = false;
+    std::atomic<uint64_t> d3d12_execute_count {0};
+    std::atomic<uint64_t> vk_execute_count {0};
 };
 
 ProxyState& State() {
@@ -34,6 +39,23 @@ std::string Ptr(const void* value) {
 
 void Log(osr::core::LogLevel level, const std::string& message) {
     osr::core::Logger::Instance().Log(level, 0, "xess_proxy", message);
+}
+
+void LogFrame(osr::core::LogLevel level, uint64_t frame_id, const std::string& message) {
+    osr::core::Logger::Instance().Log(level, frame_id, "xess_proxy", message);
+}
+
+bool ShouldLogExecute(uint64_t count) noexcept {
+    return count <= kUnthrottledExecuteLogs || (count % kExecuteLogInterval) == 0;
+}
+
+std::string ExecuteThrottleSuffix(uint64_t count) {
+    std::ostringstream out;
+    out << " execute_count=" << count;
+    if (count == kUnthrottledExecuteLogs + 1) {
+        out << " throttling=enabled interval=" << kExecuteLogInterval;
+    }
+    return out.str();
 }
 
 std::filesystem::path ThisModulePath() {
@@ -259,7 +281,16 @@ __declspec(dllexport) XessResult xessD3D12Init(void* context, const void* init_p
 }
 
 __declspec(dllexport) XessResult xessD3D12Execute(void* context, void* command_list, const void* execute_params) {
-    Log(osr::core::LogLevel::Info, "xessD3D12Execute context=" + Ptr(context) + " command_list=" + Ptr(command_list) + " execute_params=" + Ptr(execute_params));
+    EnsureInitialized();
+    const uint64_t execute_count = State().d3d12_execute_count.fetch_add(1) + 1;
+    if (ShouldLogExecute(execute_count) || execute_count == kUnthrottledExecuteLogs + 1) {
+        LogFrame(osr::core::LogLevel::Info,
+                 execute_count,
+                 "xessD3D12Execute context=" + Ptr(context) +
+                     " command_list=" + Ptr(command_list) +
+                     " execute_params=" + Ptr(execute_params) +
+                     ExecuteThrottleSuffix(execute_count));
+    }
     using Fn = XessResult (*)(void*, void*, const void*);
     return ForwardResult<Fn>("xessD3D12Execute", context, command_list, execute_params);
 }
@@ -294,7 +325,16 @@ __declspec(dllexport) XessResult xessVKInit(void* context, const void* init_para
 }
 
 __declspec(dllexport) XessResult xessVKExecute(void* context, void* command_buffer, const void* execute_params) {
-    Log(osr::core::LogLevel::Info, "xessVKExecute context=" + Ptr(context) + " command_buffer=" + Ptr(command_buffer) + " execute_params=" + Ptr(execute_params));
+    EnsureInitialized();
+    const uint64_t execute_count = State().vk_execute_count.fetch_add(1) + 1;
+    if (ShouldLogExecute(execute_count) || execute_count == kUnthrottledExecuteLogs + 1) {
+        LogFrame(osr::core::LogLevel::Info,
+                 execute_count,
+                 "xessVKExecute context=" + Ptr(context) +
+                     " command_buffer=" + Ptr(command_buffer) +
+                     " execute_params=" + Ptr(execute_params) +
+                     ExecuteThrottleSuffix(execute_count));
+    }
     using Fn = XessResult (*)(void*, void*, const void*);
     return ForwardResult<Fn>("xessVKExecute", context, command_buffer, execute_params);
 }

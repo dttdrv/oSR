@@ -135,6 +135,27 @@ oSR is not a sharper scaler. oSR is a low-cost temporal evidence system.
 
 If the evidence system is good, spatial upscale and sharpening can be modest. If the evidence system is bad, no sharpening policy saves it.
 
+## April 2026 Research Update: The Real Target Has Moved
+
+The landscape is moving even harder toward ML, but the hardware split matters for oSR.
+
+AMD's current FSR SDK page lists FSR Upscaling 4.1.0 and Ray Regeneration 1.1.0 under the FSR "Redstone" SDK, with FSR Upscaling 4 requiring Radeon RX 9000-class hardware and automatically falling back to FSR 3.1.5 on other hardware. That means our Radeon 760M target remains in the analytical/low-cost class even inside AMD's own stack: <https://gpuopen.com/amd-fsr-sdk/>
+
+The implication is blunt: oSR cannot beat the newest transformer/ML paths by pretending to be one of them on weak hardware. The credible target is to beat ordinary spatial upscaling and naive temporal accumulation by using the renderer data better than generic post-process scalers:
+
+- Validate the game-provided motion vectors instead of trusting them blindly.
+- Treat depth disagreement, disocclusion, reactive/transparency masks, exposure mismatch, and reset flags as first-class evidence.
+- Spend extra samples only on risk tiles.
+- Make every confidence decision visible in captures and logs.
+
+That is the practical breakthrough target: not "bigger model," but "better evidence accounting per millisecond."
+
+## Proxy/Replacement Research Notes
+
+OptiScaler validates the replacement-layer strategy but remains GPL research input only. Its public README describes the same middleware shape oSR is using: game upscaler input calls are intercepted and redirected to another backend, with DLSS/XeSS/FSR inputs normalized into an internal path. It also calls out that FSR 3.1 is the first forward-looking standardized FSR API, while some older FSR2/FSR3 integrations are more game-specific: <https://github.com/optiscaler/OptiScaler>
+
+For No Man's Sky, local executable inspection found a simpler path: `NMS.exe` imports `libxess.dll` and references the Vulkan XeSS entrypoints `xessVKCreateContext`, `xessVKInit`, `xessVKExecute`, plus `xessGetProperties` and `xessGetInputResolution`. The current oSR proxy is therefore intentionally diagnostic and pass-through. It proves the loading and call boundary before we attempt resource decoding or replacement.
+
 ## Source-Backed Constraints
 
 - The TAA survey frames temporal upscaling as sample accumulation plus history validation. This makes history validation the central bottleneck, not edge interpolation: <https://research.nvidia.com/labs/rtr/publication/yang2020survey/>
@@ -165,6 +186,23 @@ The breakthrough threshold is not "beats DLSS everywhere." The real target is:
 ```text
 FSR-class or better temporal stability on unsupported/low-end hardware,
 with explainable debug views and a lower cost than neural SR.
+```
+
+## Trust Field v2 Research Target
+
+The current trust field is a good first scaffold, but it is still closer to strong TAAU than to the kind of context selection that makes modern SR convincing. The next research target is Trust Field v2:
+
+1. Compute a per-pixel confidence vector from motion validity, depth consistency, luma/color residual, reactive suppression, exposure validity, disocclusion risk, MV divergence, and previous trust.
+2. Add feature locks for stable thin edges and readable text. Locks should preserve detail only while evidence stays stable, then decay over the jitter sequence and unlock immediately on luma instability, reactive pixels, disocclusion, reset, or large residuals.
+3. Replace RGB-only neighborhood clipping with YCoCg/luma variance clipping. This should reduce hue shifts and over-rejection on high-frequency readable patterns.
+4. Port bounded residual search to HLSL, but only for MotionRisk/ShimmerRisk tiles. Stable tiles must stay cheap.
+5. Add a small super-history metadata path for static high-frequency tiles: confidence/age/lock data first, not an expensive extra full-color history by default.
+6. Move sharpening toward confidence-gated CAS/RCAS-style behavior so stale history, reactive particles, and new disocclusions are not sharpened into visible trails.
+
+The testable claim we are aiming for is narrow and serious:
+
+```text
+On deterministic wind-tunnel scenes, Trust Field v2 should preserve static thin/text detail and reduce motion/disocclusion history misuse versus the current trust field at similar or bounded additional cost.
 ```
 
 ## Theory Experiments To Implement Next

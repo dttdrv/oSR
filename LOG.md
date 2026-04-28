@@ -690,3 +690,28 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Microsoft DLL search order: <https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order>
 - NVIDIA Streamline programming model: <https://github.com/NVIDIA-RTX/Streamline/blob/main/docs/ProgrammingGuide.md>
 - Microsoft DirectSR input model: <https://microsoft.github.io/DirectX-Specs/DirectSR/DirectSR.html>
+
+### No Man's Sky Real Install Proof
+
+- Ran the real No Man's Sky installer path after the fake-layout install/restore tests passed.
+- Result: `tools/install_xess_proxy_nms.bat` installed oSR's diagnostic `libxess.dll` into `C:/Program Files (x86)/Steam/steamapps/common/No Man's Sky/Binaries`.
+- Result: the original Intel XeSS runtime is preserved beside it as `libxess_real.dll` with observed size `77,795,704` bytes; the installed proxy `libxess.dll` has observed size `169,052` bytes.
+- Next proof is a real launch with XeSS enabled, then inspect `Binaries/osr_logs/osr_xess_proxy.log` for `oSR XeSS proxy loaded`, `loaded real XeSS runtime`, `xessVKCreateContext`, `xessVKInit`, and `xessVKExecute`.
+- Real launch proof passed: No Man's Sky loaded `Binaries/libxess.dll`, the proxy loaded `Binaries/libxess_real.dll`, and the log recorded `xessGetInputResolution`, `xessGetProperties`, `xessVKInit`, and repeated `xessVKExecute` calls.
+- After proof, stopped the test process and reinstalled an updated proxy build with execute-log throttling; the installed proxy size is now `172,086` bytes.
+
+### April 2026 SR Research Refresh
+
+- Rechecked current SR landscape and folded the findings into `RESEARCH.md`.
+- AMD's current FSR SDK 2.2/Redstone page documents FSR Upscaling 4.1.0, automatic upgrade eligibility for FSR 3.1+ DX12 integrations, and fallback to FSR 3.1.5 on hardware that cannot run FSR Upscaling 4. Source: <https://gpuopen.com/amd-fsr-sdk/>
+- DirectSR, XeSS-SR, and FSR docs continue to validate oSR's normalized input contract: color, depth, motion vectors, MV scale, jitter, exposure/pre-exposure, reset/ignore-history, reactive/responsive masks, and sharpness.
+- Research decision: the credible breakthrough for Radeon 760M is Trust Field v2, not a large neural model. The next high-leverage technical targets are confidence-vector history selection, feature locks, YCoCg/luma-variance clipping, risk-tile residual search, small static-detail metadata, and confidence-gated CAS/RCAS-style sharpening.
+
+### Trust Field v2: YCoCg History Clip
+
+- Replaced independent RGB neighborhood history clipping in the CPU temporal resolve oracle with YCoCg-space clipping.
+- Updated the DX12 temporal resolve HLSL path to match the CPU oracle's YCoCg clipping.
+- Added a regression test for a red/green current neighborhood with yellow history; this catches the old RGB-channel failure where a luma-impossible yellow could pass the clamp.
+- Added XeSS proxy execute-log throttling: log the first 16 execute calls, announce throttling at call 17, then log every 120th execute with the execute count as the frame correlation ID.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name ycocg_clip_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed.

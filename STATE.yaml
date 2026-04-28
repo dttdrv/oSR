@@ -3,7 +3,7 @@ build_status:
   configured: true
   compiled: partial
   tests_passed: true
-  last_checked: 2026-04-28
+  last_checked: 2026-04-29
   last_preset: direct-mingw-manual
   notes:
     - Previous full Ninja build passed at commit e91acfd.
@@ -81,6 +81,10 @@ build_status:
     - tools/run_xess_proxy_smoke.bat builds an opt-in diagnostic libxess.dll proxy, verifies it loads, and verifies safe missing-libxess_real.dll logging.
     - Installed Steam No Man's Sky imports libxess.dll and references xessGetInputResolution, xessVKCreateContext, xessVKInit, xessVKExecute, and xessGetProperties; current settings select XESS Balanced.
     - tools/install_xess_proxy_nms.bat and tools/restore_xess_proxy_nms.bat provide controlled install/restore for the No Man's Sky XeSS proxy proof.
+    - The real Steam No Man's Sky Binaries folder now has oSR's diagnostic libxess.dll installed and the original Intel runtime preserved as libxess_real.dll.
+    - Real No Man's Sky launch proof reached the XeSS Vulkan dispatch boundary: proxy log contains real runtime load, input-resolution/property queries, xessVKInit, and repeated xessVKExecute calls.
+    - The installed No Man's Sky proxy build now throttles execute logging after the first 16 dispatches and logs every 120th dispatch afterward.
+    - CPU oracle and DX12 temporal shader now use matching YCoCg history clipping instead of independent RGB channel clipping.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -97,8 +101,9 @@ known_working_assumptions:
   - oSR's research differentiator is trust-field temporal reconstruction with explainable confidence-driven history selection.
   - Manual quality control uses DLSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
 unknowns:
-  - Final exported DLL names for the first wrapper packaging mode.
-  - Motion-vector convention and exposure behavior for first real-game target.
+  - Final exported DLL names for bridge packaging beyond the XeSS diagnostic proxy.
+  - Exact XeSS SDK header/ABI version and execute-parameter struct layout used by the installed No Man's Sky build.
+  - Motion-vector convention, exposure behavior, and responsive-mask availability for the first real-game target.
 target_games_for_initial_testing:
   samples:
     - AMD FidelityFX SDK FSR3 upscaler sample
@@ -136,5 +141,4 @@ next_actions:
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
-  - Copy the installed game's XeSS runtime to libxess_real.dll beside the proxy and run the first No Man's Sky launch/log proof.
-  - Add XeSS execute-parameter struct decoding once the exact SDK header version used by the target game is identified.
+  - Add throttled XeSS execute-parameter metadata decoding for No Man's Sky once the exact SDK header version is identified, without dereferencing unknown resources unsafely.

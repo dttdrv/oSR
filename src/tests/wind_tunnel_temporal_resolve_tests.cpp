@@ -216,5 +216,27 @@ int main() {
         return Fail("neighborhood history clipping should clamp implausible history before blending");
     }
 
+    repro_current.assign(9, 0xff000000u);
+    repro_current[1] = 0xff00ff00u;
+    repro_current[3] = 0xff00ff00u;
+    repro_current[4] = 0xffff0000u;
+    repro_current[5] = 0xff00ff00u;
+    repro_current[7] = 0xff00ff00u;
+    repro_history.assign(9, 0xff000000u);
+    repro_history[4] = 0xffffff00u;
+    settings.max_history_weight = 1.0f;
+    settings.history_clip_margin = 0.001f;
+    const auto ycocg_clipped = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current,
+                                                                               repro_history,
+                                                                               custom,
+                                                                               custom.context.display_size,
+                                                                               settings,
+                                                                               &stats);
+    const uint32_t ycocg_red = (ycocg_clipped[4] >> 16) & 0xffu;
+    const uint32_t ycocg_green = (ycocg_clipped[4] >> 8) & 0xffu;
+    if (ycocg_red >= 220u || ycocg_green >= 220u) {
+        return Fail("YCoCg history clipping should reject luma-impossible yellow from red/green neighborhood");
+    }
+
     return 0;
 }

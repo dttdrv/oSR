@@ -40,13 +40,24 @@ int main(int argc, char** argv) {
         FreeLibrary(module);
         return Fail("xessGetVersion export missing");
     }
+    using ExecuteFn = int (*)(void*, void*, const void*);
+    auto* vk_execute = reinterpret_cast<ExecuteFn>(GetProcAddress(module, "xessVKExecute"));
+    if (!vk_execute) {
+        FreeLibrary(module);
+        return Fail("xessVKExecute export missing");
+    }
     const int result = get_version(nullptr);
+    for (int i = 0; i < 18; ++i) {
+        (void)vk_execute(nullptr, nullptr, nullptr);
+    }
     FreeLibrary(module);
     if (result == 0) {
         return Fail("xessGetVersion should fail without libxess_real.dll in smoke test");
     }
     if (!Contains(log_path, "oSR XeSS proxy loaded") ||
         !Contains(log_path, "xessGetVersion") ||
+        !Contains(log_path, "xessVKExecute") ||
+        !Contains(log_path, "throttling=enabled") ||
         !Contains(log_path, "libxess_real.dll")) {
         return Fail("proxy smoke log missing expected entries");
     }
