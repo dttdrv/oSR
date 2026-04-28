@@ -218,6 +218,17 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --render-scale 1.0 --display-size 640x400 --metric-gate` exited `0`, wrote `debug_dispatch_result: recorded_and_executed`, and logged `mode=dx12_copy_recorded`.
 - Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
 
+### DX12 Compute Spatial Debug Upscale
+
+- Added a runtime-compiled DX12 compute path for `spatial_debug_upscale.hlsl`, with a root signature, compute PSO, SRV/UAV descriptor heap, root constants, output UAV transition, dispatch, UAV barrier, and transition back to shader-read for presentation/readback.
+- The compute shader is embedded in the backend for the prototype and kept in sync with `src/reconstruction/shaders/spatial_debug_upscale.hlsl`. Later packaging should replace runtime compilation with embedded bytecode.
+- Added readback-after-dispatch validation for `color_output_after_dispatch`, comparing the GPU-produced display output against the CPU nearest reference.
+- Fixed the launcher and error path so output hash mismatches fail the DX12 wind tunnel.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct --metric-gate` exited `0`, logged `mode=dx12_compute_upscale_recorded`, and reported `Reconstruct output hash: matched`.
+- Verification: metadata recorded `color_output_after_dispatch ... matched=true`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --present-frames 3 --mv-mode correct` exited `0` after opening the DX12 presentation window and presenting three frames.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

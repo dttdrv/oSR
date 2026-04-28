@@ -15,8 +15,6 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
         return;
     }
 
-    float2 uv = (float2(dispatch_thread_id.xy) + 0.5f) / float2(g_output_size);
-    uint2 src = min(uint2(uv * float2(g_input_size)), g_input_size - 1);
+    uint2 src = min((dispatch_thread_id.xy * g_input_size) / g_output_size, g_input_size - 1);
     g_output_color[dispatch_thread_id.xy] = g_input_color.Load(int3(src, 0));
 }
-

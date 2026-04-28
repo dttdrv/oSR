@@ -3,6 +3,8 @@
 #include "backends/dx12/descriptor_helpers.h"
 #include "core/logging.h"
 
+#include <d3dcompiler.h>
+
 #include <sstream>
 
 namespace osr::backends::dx12 {
@@ -20,6 +22,29 @@ void SafeRelease(T*& value) noexcept {
 bool Failed(HRESULT hr) noexcept {
     return FAILED(hr);
 }
+
+constexpr const char* kSpatialDebugUpscaleHlsl = R"(
+Texture2D<float4> g_input_color : register(t0);
+RWTexture2D<float4> g_output_color : register(u0);
+
+cbuffer UpscaleConstants : register(b0)
+{
+    uint2 g_input_size;
+    uint2 g_output_size;
+};
+
+[numthreads(8, 8, 1)]
+void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
+{
+    if (dispatch_thread_id.x >= g_output_size.x || dispatch_thread_id.y >= g_output_size.y)
+    {
+        return;
+    }
+
+    uint2 src = min((dispatch_thread_id.xy * g_input_size) / g_output_size, g_input_size - 1);
+    g_output_color[dispatch_thread_id.xy] = g_input_color.Load(int3(src, 0));
+}
+)";
 
 } // namespace
 
@@ -49,9 +74,11 @@ DebugUpscalePass::~DebugUpscalePass() {
 }
 
 void DebugUpscalePass::Shutdown() noexcept {
-    SafeRelease(heartbeat_texture_);
-    SafeRelease(heartbeat_uav_heap_);
+    SafeRelease(descriptor_heap_);
+    SafeRelease(pipeline_state_);
+    SafeRelease(root_signature_);
     SafeRelease(native_device_);
+    descriptor_size_ = 0;
 }
 
 bool DebugUpscalePass::Initialize(void* native_device) {
@@ -63,46 +90,95 @@ bool DebugUpscalePass::Initialize(void* native_device) {
     }
     native_device_->AddRef();
 
+    D3D12_DESCRIPTOR_RANGE ranges[2] {};
+    ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    ranges[0].NumDescriptors = 1;
+    ranges[0].BaseShaderRegister = 0;
+    ranges[0].RegisterSpace = 0;
+    ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    ranges[1].NumDescriptors = 1;
+    ranges[1].BaseShaderRegister = 0;
+    ranges[1].RegisterSpace = 0;
+    ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    D3D12_ROOT_PARAMETER root_params[2] {};
+    root_params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    root_params[0].DescriptorTable.NumDescriptorRanges = 2;
+    root_params[0].DescriptorTable.pDescriptorRanges = ranges;
+    root_params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    root_params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    root_params[1].Constants.ShaderRegister = 0;
+    root_params[1].Constants.RegisterSpace = 0;
+    root_params[1].Constants.Num32BitValues = 4;
+    root_params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+    D3D12_ROOT_SIGNATURE_DESC root_desc {};
+    root_desc.NumParameters = 2;
+    root_desc.pParameters = root_params;
+    root_desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+    ID3DBlob* root_blob = nullptr;
+    ID3DBlob* error_blob = nullptr;
+    if (Failed(D3D12SerializeRootSignature(&root_desc, D3D_ROOT_SIGNATURE_VERSION_1, &root_blob, &error_blob))) {
+        std::string error = error_blob ? static_cast<const char*>(error_blob->GetBufferPointer()) : "unknown";
+        core::Logger::Instance().Log(core::LogLevel::Error, 0, "dx12.debug_upscale", "Failed to serialize root signature: " + error);
+        SafeRelease(error_blob);
+        return false;
+    }
+    SafeRelease(error_blob);
+
+    if (Failed(native_device_->CreateRootSignature(0,
+                                                   root_blob->GetBufferPointer(),
+                                                   root_blob->GetBufferSize(),
+                                                   IID_PPV_ARGS(&root_signature_)))) {
+        SafeRelease(root_blob);
+        core::Logger::Instance().Log(core::LogLevel::Error, 0, "dx12.debug_upscale", "Failed to create root signature.");
+        return false;
+    }
+    SafeRelease(root_blob);
+
+    ID3DBlob* shader_blob = nullptr;
+    if (Failed(D3DCompile(kSpatialDebugUpscaleHlsl,
+                          std::char_traits<char>::length(kSpatialDebugUpscaleHlsl),
+                          "osr_spatial_debug_upscale",
+                          nullptr,
+                          nullptr,
+                          "main",
+                          "cs_5_0",
+                          D3DCOMPILE_OPTIMIZATION_LEVEL3,
+                          0,
+                          &shader_blob,
+                          &error_blob))) {
+        std::string error = error_blob ? static_cast<const char*>(error_blob->GetBufferPointer()) : "unknown";
+        core::Logger::Instance().Log(core::LogLevel::Error, 0, "dx12.debug_upscale", "Failed to compile spatial debug shader: " + error);
+        SafeRelease(error_blob);
+        return false;
+    }
+    SafeRelease(error_blob);
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc {};
+    pso_desc.pRootSignature = root_signature_;
+    pso_desc.CS.pShaderBytecode = shader_blob->GetBufferPointer();
+    pso_desc.CS.BytecodeLength = shader_blob->GetBufferSize();
+    if (Failed(native_device_->CreateComputePipelineState(&pso_desc, IID_PPV_ARGS(&pipeline_state_)))) {
+        SafeRelease(shader_blob);
+        core::Logger::Instance().Log(core::LogLevel::Error, 0, "dx12.debug_upscale", "Failed to create spatial debug compute PSO.");
+        return false;
+    }
+    SafeRelease(shader_blob);
+
     D3D12_DESCRIPTOR_HEAP_DESC heap_desc {};
     heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    heap_desc.NumDescriptors = 1;
+    heap_desc.NumDescriptors = 2;
     heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    if (Failed(native_device_->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&heartbeat_uav_heap_)))) {
-        core::Logger::Instance().Log(core::LogLevel::Error, 0, "dx12.debug_upscale", "Failed to create debug heartbeat UAV heap.");
+    if (Failed(native_device_->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&descriptor_heap_)))) {
+        core::Logger::Instance().Log(core::LogLevel::Error, 0, "dx12.debug_upscale", "Failed to create debug upscale descriptor heap.");
         return false;
     }
+    descriptor_size_ = native_device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-    D3D12_HEAP_PROPERTIES heap {};
-    heap.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-    D3D12_RESOURCE_DESC desc {};
-    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    desc.Width = 1;
-    desc.Height = 1;
-    desc.DepthOrArraySize = 1;
-    desc.MipLevels = 1;
-    desc.Format = DXGI_FORMAT_R32_UINT;
-    desc.SampleDesc.Count = 1;
-    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-    if (Failed(native_device_->CreateCommittedResource(&heap,
-                                                       D3D12_HEAP_FLAG_NONE,
-                                                       &desc,
-                                                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                                       nullptr,
-                                                       IID_PPV_ARGS(&heartbeat_texture_)))) {
-        core::Logger::Instance().Log(core::LogLevel::Error, 0, "dx12.debug_upscale", "Failed to create debug heartbeat texture.");
-        return false;
-    }
-    heartbeat_texture_->SetName(L"oSR debug upscale heartbeat");
-
-    D3D12_UNORDERED_ACCESS_VIEW_DESC uav {};
-    uav.Format = DXGI_FORMAT_R32_UINT;
-    uav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-    native_device_->CreateUnorderedAccessView(heartbeat_texture_, nullptr, &uav, heartbeat_uav_heap_->GetCPUDescriptorHandleForHeapStart());
-
-    core::Logger::Instance().Log(core::LogLevel::Info, 0, "dx12.debug_upscale", "Initialized debug upscale pass with command-list heartbeat UAV.");
+    core::Logger::Instance().Log(core::LogLevel::Info, 0, "dx12.debug_upscale", "Initialized debug upscale pass with runtime-compiled compute shader.");
     return true;
 }
 
@@ -116,7 +192,7 @@ bool DebugUpscalePass::Dispatch(void* native_command_list, const core::FrameCont
             << " groups=(" << dispatch.groups_x << "," << dispatch.groups_y << ") "
             << DescribeDescriptorRange(descriptors);
 
-    if (native_device_ == nullptr || native_command_list == nullptr || heartbeat_uav_heap_ == nullptr || heartbeat_texture_ == nullptr) {
+    if (native_device_ == nullptr || native_command_list == nullptr || descriptor_heap_ == nullptr) {
         message << " mode=metadata_only";
         core::Logger::Instance().Log(core::LogLevel::Warning, frame.frame_id, "dx12.debug_upscale", message.str());
         return false;
@@ -156,23 +232,53 @@ bool DebugUpscalePass::Dispatch(void* native_command_list, const core::FrameCont
         return true;
     }
 
-    ID3D12DescriptorHeap* heaps[] = {heartbeat_uav_heap_};
-    command_list->SetDescriptorHeaps(1, heaps);
-    const uint32_t values[4] = {
-        static_cast<uint32_t>(frame.frame_id & 0xffffffffu),
-        frame.display_size.width,
-        frame.display_size.height,
-        (dispatch.groups_x & 0xffffu) | ((dispatch.groups_y & 0xffffu) << 16)
-    };
-    D3D12_RECT rect {0, 0, 1, 1};
-    command_list->ClearUnorderedAccessViewUint(heartbeat_uav_heap_->GetGPUDescriptorHandleForHeapStart(),
-                                               heartbeat_uav_heap_->GetCPUDescriptorHandleForHeapStart(),
-                                               heartbeat_texture_,
-                                               values,
-                                               1,
-                                               &rect);
+    D3D12_CPU_DESCRIPTOR_HANDLE srv_handle = descriptor_heap_->GetCPUDescriptorHandleForHeapStart();
+    D3D12_CPU_DESCRIPTOR_HANDLE uav_handle = srv_handle;
+    uav_handle.ptr += descriptor_size_;
 
-    message << " mode=dx12_command_recorded_heartbeat_clear upscale_pending";
+    D3D12_SHADER_RESOURCE_VIEW_DESC srv {};
+    srv.Format = static_cast<DXGI_FORMAT>(frame.color_input.api_format);
+    srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srv.Texture2D.MipLevels = 1;
+    native_device_->CreateShaderResourceView(input, &srv, srv_handle);
+
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uav {};
+    uav.Format = static_cast<DXGI_FORMAT>(frame.color_output.api_format);
+    uav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+    native_device_->CreateUnorderedAccessView(output, nullptr, &uav, uav_handle);
+
+    D3D12_RESOURCE_BARRIER to_uav {};
+    to_uav.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    to_uav.Transition.pResource = output;
+    to_uav.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    to_uav.Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    to_uav.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    command_list->ResourceBarrier(1, &to_uav);
+
+    ID3D12DescriptorHeap* heaps[] = {descriptor_heap_};
+    command_list->SetDescriptorHeaps(1, heaps);
+    command_list->SetComputeRootSignature(root_signature_);
+    command_list->SetPipelineState(pipeline_state_);
+    command_list->SetComputeRootDescriptorTable(0, descriptor_heap_->GetGPUDescriptorHandleForHeapStart());
+    const uint32_t constants[4] = {
+        frame.render_size.width,
+        frame.render_size.height,
+        frame.display_size.width,
+        frame.display_size.height
+    };
+    command_list->SetComputeRoot32BitConstants(1, 4, constants, 0);
+    command_list->Dispatch(dispatch.groups_x, dispatch.groups_y, 1);
+
+    D3D12_RESOURCE_BARRIER barriers[2] {};
+    barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barriers[0].UAV.pResource = output;
+    barriers[1] = to_uav;
+    barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    command_list->ResourceBarrier(2, barriers);
+
+    message << " mode=dx12_compute_upscale_recorded";
     core::Logger::Instance().Log(core::LogLevel::Info, frame.frame_id, "dx12.debug_upscale", message.str());
     return true;
 }

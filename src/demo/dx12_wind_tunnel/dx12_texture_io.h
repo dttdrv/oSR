@@ -48,6 +48,19 @@ bool UploadReadbackTexture2D(ID3D12Device* device,
                              const std::string& name,
                              TextureTransferResult& result);
 
+bool ReadbackTexture2D(ID3D12Device* device,
+                       ID3D12CommandQueue* queue,
+                       ID3D12CommandAllocator* allocator,
+                       ID3D12GraphicsCommandList* command_list,
+                       Dx12Sync& sync,
+                       ID3D12Resource* texture,
+                       DXGI_FORMAT format,
+                       core::Dimensions extent,
+                       const void* expected,
+                       uint64_t expected_row_bytes,
+                       const std::string& name,
+                       TextureTransferResult& result);
+
 [[nodiscard]] bool AllTransfersMatched(const std::vector<TextureTransferResult>& results) noexcept;
 
 } // namespace osr::demo::dx12_wind_tunnel

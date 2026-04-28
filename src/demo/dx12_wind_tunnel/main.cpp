@@ -379,6 +379,25 @@ int main(int argc, char** argv) {
                           osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);
     }
     synthetic.context.notes.push_back(dispatch_result ? "D3D12 debug upscale command list executed." : "D3D12 debug upscale command list did not execute.");
+    osr::demo::dx12_wind_tunnel::TextureTransferResult reconstructed_output;
+    const bool reconstructed_output_readback = dispatch_result &&
+        osr::demo::dx12_wind_tunnel::ReadbackTexture2D(dx.device,
+                                                       dx.queue,
+                                                       dx.allocator,
+                                                       dx.command_list,
+                                                       dx.sync,
+                                                       dx.color_output,
+                                                       DXGI_FORMAT_R8G8B8A8_UNORM,
+                                                       display_size,
+                                                       display_output.data(),
+                                                       static_cast<uint64_t>(display_size.width) * sizeof(uint32_t),
+                                                       "color_output_after_dispatch",
+                                                       reconstructed_output);
+    const bool reconstructed_output_match = reconstructed_output_readback && reconstructed_output.matched;
+    if (!reconstructed_output.name.empty()) {
+        transfers.push_back(reconstructed_output);
+    }
+    synthetic.context.notes.push_back(reconstructed_output_match ? "D3D12 debug upscale output matched CPU nearest reference." : "D3D12 debug upscale output did not match CPU nearest reference.");
 
     osr::debug::CapturePackConfig capture_config;
     capture_config.root = "build/manual/captures";
@@ -477,6 +496,7 @@ int main(int argc, char** argv) {
     std::cout << "Metadata: build/manual/osr_dx12_wind_tunnel_metadata.txt\n";
     std::cout << "Capture: " << capture.SessionPath().string() << "\n";
     std::cout << "Transfer hashes: " << (transfer_ok ? "matched" : "FAILED") << "\n";
+    std::cout << "Reconstruct output hash: " << (reconstructed_output_match ? "matched" : "FAILED") << "\n";
     std::cout << "Log: build/manual/osr_dx12_wind_tunnel.log\n";
 
     osr::demo::dx12_wind_tunnel::PresentState present;
@@ -502,7 +522,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    const bool has_errors = report.HasErrors() || !transfer_ok || !capture_started || !present_ok;
+    const bool has_errors = report.HasErrors() || !transfer_ok || !reconstructed_output_match || !capture_started || !present_ok;
     osr::demo::dx12_wind_tunnel::ReleasePresentState(present);
     Release(dx);
     if (!has_errors && temporal_verdict.metric_gate_failed) {

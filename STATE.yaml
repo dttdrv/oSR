@@ -21,7 +21,8 @@ build_status:
     - DX12 wind tunnel supports --metric-gate / --fail-on-diagnostics and returns exit code 3 for severe temporal diagnostic verdicts.
     - tools/run_dx12_mv_sweep.bat runs all current MV truth-table modes headlessly and fail-fast.
     - DX12 debug upscale backend records and executes a real GPU copy path for native-size color input/output resources.
-    - Scaled DX12 debug output still uses a command-list heartbeat clear until compute shader bytecode is embedded.
+    - Scaled DX12 debug output now records and executes a compute spatial debug upscale path, then readbacks and hashes color_output_after_dispatch against the CPU nearest reference.
+    - The current DX12 compute shader is runtime-compiled from embedded HLSL for prototype speed; production packaging should embed bytecode.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -57,7 +58,8 @@ next_actions:
   - Wire FFX-style sample dispatch into FrameContext logging.
   - Run first sample proof of life and append results to LOG.md.
   - Replace metadata-only DX12 debug pass with command-list recording.
-  - Replace scaled-output heartbeat clear with embedded-bytecode compute spatial upscale.
+  - Replace runtime HLSL compilation with embedded shader bytecode.
+  - Add GPU timestamp queries for upload, reconstruct, readback, and present.
   - Port trust-field CPU policy to command-list-recorded HLSL passes.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.

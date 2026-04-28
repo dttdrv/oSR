@@ -41,7 +41,7 @@ add_library(osr_dx12 STATIC
 target_include_directories(osr_dx12 PUBLIC src)
 target_link_libraries(osr_dx12 PUBLIC osr_core osr_reconstruction)
 if(WIN32)
-    target_link_libraries(osr_dx12 PUBLIC d3d12 dxgi dxguid)
+    target_link_libraries(osr_dx12 PUBLIC d3d12 dxgi dxguid d3dcompiler)
 endif()
 
 add_library(osr_fsr_bridge STATIC
@@ -107,7 +107,7 @@ add_executable(osr_dx12_wind_tunnel
 )
 target_link_libraries(osr_dx12_wind_tunnel PRIVATE osr_core osr_debug osr_wind_tunnel osr_dx12)
 if(WIN32)
-    target_link_libraries(osr_dx12_wind_tunnel PRIVATE d3d12 dxgi dxguid user32)
+    target_link_libraries(osr_dx12_wind_tunnel PRIVATE d3d12 dxgi dxguid d3dcompiler user32)
 endif()
 
 if(OSR_BUILD_TESTS)

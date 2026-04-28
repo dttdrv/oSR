@@ -39,8 +39,10 @@ private:
     void Shutdown() noexcept;
 
     ID3D12Device* native_device_ = nullptr;
-    ID3D12DescriptorHeap* heartbeat_uav_heap_ = nullptr;
-    ID3D12Resource* heartbeat_texture_ = nullptr;
+    ID3D12RootSignature* root_signature_ = nullptr;
+    ID3D12PipelineState* pipeline_state_ = nullptr;
+    ID3D12DescriptorHeap* descriptor_heap_ = nullptr;
+    uint32_t descriptor_size_ = 0;
 };
 
 } // namespace osr::backends::dx12
