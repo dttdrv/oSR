@@ -515,6 +515,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 32 --metric-gate --history-weight 0.98 --motion-rejection 2 --sharpening 0.28` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate --history-weight 0.98 --motion-rejection 2 --sharpening 0.28` exited `0`; latest selected capture was `build/manual/captures/2026-04-28T20-19-12Z_dx12_temporal_sequence_temporal_gpu_sequence_correct`.
 
+### Motion-Vector Sweep Gate
+
+- Fixed the single-frame spatial GPU readback reference after jitter-aware temporal sampling: spatial debug output remains non-jittered, while temporal CPU/GPU references use jitter-aware color reconstruction.
+- `tools/run_dx12_wind_tunnel.bat` now supports `OSR_SKIP_BUILD=1` so sweep scripts can build once and reuse the executable.
+- Reworked `tools/run_dx12_mv_sweep.bat` so `correct` must pass `--metric-gate`, while `zero`, `flip-x`, `flip-y`, `half-scale`, `double-scale`, and `jitter-contaminated` must fail it.
+- Verification: `tools/run_dx12_mv_sweep.bat` exited `0`; every corrupted MV mode produced the expected metric-gate failure.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

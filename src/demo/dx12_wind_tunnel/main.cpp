@@ -988,6 +988,9 @@ int main(int argc, char** argv) {
         return transfer_ok && result.matched;
     };
 
+    const auto spatial_debug_output = osr::demo::dx12_wind_tunnel::UpscaleBilinear(synthetic.color,
+                                                                                   render_size,
+                                                                                   display_size);
     const auto spatial_output = osr::demo::dx12_wind_tunnel::UpscaleBilinearJittered(synthetic.color,
                                                                                     render_size,
                                                                                     display_size,
@@ -998,7 +1001,7 @@ int main(int argc, char** argv) {
                                                                                              previous_synthetic.context.jitter_offset);
     osr::demo::wind_tunnel::TemporalResolveStats temporal_resolve_stats;
     osr::demo::wind_tunnel::TemporalResolveDebugMaps temporal_debug_maps;
-    std::vector<uint32_t> resolved_output = spatial_output;
+    std::vector<uint32_t> resolved_output = reconstruction_mode == ReconstructionMode::SpatialGpu ? spatial_debug_output : spatial_output;
     const bool temporal_mode = reconstruction_mode == ReconstructionMode::TemporalCpu || reconstruction_mode == ReconstructionMode::TemporalGpu;
     if (temporal_mode) {
         resolved_output = osr::demo::wind_tunnel::ResolveTemporalDisplay(spatial_output,

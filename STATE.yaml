@@ -61,6 +61,7 @@ build_status:
     - Capture packs now include signed motion-vector X/Y PGM views plus raw R32F temporal debug maps for history weight, color residual, and depth residual.
     - tools/run_capture_analyzer.bat builds an offline capture analyzer that summarizes raw temporal maps and motion vectors without rerunning DX12.
     - DX12 wind tunnel temporal CPU/GPU paths expose CLI tuning flags for history weight, reactive penalty, motion/color/depth rejection, and confidence-gated sharpening.
+    - tools/run_dx12_mv_sweep.bat now asserts that correct motion vectors pass metric gates and corrupted MV modes fail them.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
