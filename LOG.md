@@ -629,6 +629,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name default_after_sweep --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed.
 - Verification: `tools/run_capture_compare.bat build/manual/captures/default_after_sweep build/manual/captures/sweep_conservative` exited `0`; both captures scored `79.7175` with identical exported ROI metrics.
 
+### Default Temporal Frame Sweep
+
+- Added `tools/run_temporal_frame_sweep.bat` to capture and compare default temporal-GPU behavior across selected frame IDs.
+- Current passing sweep captures frames `10`, `12`, and `14` with deterministic capture names.
+- Verification: `tools/run_temporal_frame_sweep.bat` exited `0`; ranking was `default_frame_10` score `82.5936`, `default_frame_14` score `81.7476`, `default_frame_12` score `79.7175`.
+- Failure recorded: attempted selected captures at frames `16` and `18` exited `1` with `Temporal-gpu sequence gate failed` after the selected debug-map parity check, while still writing capture directories. Treat this as the next focused parity target rather than loosening the gate.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
