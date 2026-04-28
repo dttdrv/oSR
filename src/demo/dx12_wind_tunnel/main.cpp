@@ -743,6 +743,7 @@ int main(int argc, char** argv) {
                         osr::debug::CapturePackWriter sequence_capture;
                         sequence_ok = sequence_capture.BeginSession(capture_config) &&
                                       sequence_capture.WriteSessionManifest(frame.context, GetCommandLineA());
+                        bool selected_debug_parity_ok = true;
                         if (sequence_ok) {
                             uint32_t validation_errors = 0;
                             uint32_t validation_warnings = 0;
@@ -769,6 +770,8 @@ int main(int argc, char** argv) {
                             const auto history_diff = CompareFloatMaps(cpu_debug_maps.history_weight, gpu_debug_maps.history_weight);
                             const auto color_diff = CompareFloatMaps(cpu_debug_maps.color_residual, gpu_debug_maps.color_residual);
                             const auto depth_diff = CompareFloatMaps(cpu_debug_maps.depth_residual, gpu_debug_maps.depth_residual);
+                            const auto selected_debug_diff = MaxFloatDiff(MaxFloatDiff(history_diff, color_diff), depth_diff);
+                            selected_debug_parity_ok = selected_debug_diff.max_abs <= 0.35 && selected_debug_diff.mean_abs <= 0.002;
                             metrics.debug_history_weight_max_abs = history_diff.max_abs;
                             metrics.debug_history_weight_mean_abs = history_diff.mean_abs;
                             metrics.debug_color_residual_max_abs = color_diff.max_abs;
@@ -794,8 +797,8 @@ int main(int argc, char** argv) {
                                                                                          0,
                                                                                          &gpu_debug_maps);
                         }
-                        sequence_capture_written = sequence_ok && dump.AllRequired();
-                        sequence_ok = sequence_ok && sequence_capture_written;
+                        sequence_capture_written = dump.AllRequired();
+                        sequence_ok = sequence_ok && sequence_capture_written && selected_debug_parity_ok;
                     }
                 }
             }
