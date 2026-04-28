@@ -1,4 +1,5 @@
 #include "debug/capture_analysis.h"
+#include "demo/wind_tunnel/synthetic_roi.h"
 
 #include <filesystem>
 #include <fstream>
@@ -109,11 +110,22 @@ int main() {
         std::ofstream context(roi_dir / "frame_context.json", std::ios::trunc);
         context << "{\n  \"frame_id\": 12\n}\n";
     }
-    WriteRaw(roi_dir / "history_weight.r32f.raw", std::vector<float>(10000, 0.8f));
+    std::vector<float> roi_history(10000, 0.8f);
+    for (uint32_t y = 0; y < 100; ++y) {
+        for (uint32_t x = 0; x < 100; ++x) {
+            const float u = (static_cast<float>(x) + 0.5f) / 100.0f;
+            const float v = (static_cast<float>(y) + 0.5f) / 100.0f;
+            const auto material = osr::demo::wind_tunnel::EvaluateSyntheticMaterialCoverage(u, v, 12, true);
+            if (material.specular || material.transparent) {
+                roi_history[static_cast<size_t>(y) * 100 + x] = 0.0f;
+            }
+        }
+    }
+    WriteRaw(roi_dir / "history_weight.r32f.raw", roi_history);
     WriteRaw(roi_dir / "color_residual.r32f.raw", std::vector<float>(10000, 0.05f));
     WriteRaw(roi_dir / "depth_residual.r32f.raw", std::vector<float>(10000, 0.01f));
     WriteRaw(roi_dir / "motion_vectors.rg32f.raw", std::vector<Float2>(2500, {0.0f, 0.0f}));
-    WriteRaw(roi_dir / "reactive_mask.r32f.raw", std::vector<float>(2500, 1.0f));
+    WriteRaw(roi_dir / "reactive_mask.r32f.raw", std::vector<float>(2500, 0.0f));
     const auto roi_analysis = osr::debug::AnalyzeCaptureFrame(roi_dir);
     if (!roi_analysis.ok) {
         return Fail("ROI capture analysis should parse synthetic artifacts");
@@ -121,14 +133,24 @@ int main() {
     if (roi_analysis.text_region.samples == 0 ||
         roi_analysis.specular_region.samples == 0 ||
         roi_analysis.transparent_region.samples == 0 ||
-        roi_analysis.reactive_region.samples != 10000) {
+        roi_analysis.reactive_region.samples != 0) {
         return Fail("expected nonzero synthetic ROI samples");
     }
     if (roi_analysis.text_region.history_trusted_pct != 100.0 ||
-        roi_analysis.specular_region.history_trusted_pct != 100.0 ||
-        roi_analysis.transparent_region.history_trusted_pct != 100.0 ||
-        roi_analysis.reactive_region.history_trusted_pct != 100.0) {
+        roi_analysis.specular_region.history_trusted_pct != 0.0 ||
+        roi_analysis.transparent_region.history_trusted_pct != 0.0 ||
+        roi_analysis.reactive_region.history_trusted_pct != 0.0) {
         return Fail("synthetic ROI trusted history percentages mismatch");
+    }
+    const auto passing_gate = osr::debug::EvaluateCaptureAnalysisGate(roi_analysis);
+    if (!passing_gate.passed) {
+        return Fail("ROI capture analysis gate should pass the controlled synthetic fixture");
+    }
+    auto failing_analysis = roi_analysis;
+    failing_analysis.reactive_region.samples = 10;
+    failing_analysis.reactive_region.history_trusted_pct = 25.0;
+    if (osr::debug::EvaluateCaptureAnalysisGate(failing_analysis).passed) {
+        return Fail("ROI capture analysis gate should fail reactive history leaks");
     }
 
     const auto missing = osr::debug::AnalyzeCaptureFrame(dir / "missing");

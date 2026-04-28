@@ -403,6 +403,43 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
     return analysis;
 }
 
+CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis) {
+    CaptureAnalysisGateResult gate;
+    if (!analysis.ok) {
+        gate.reason = analysis.error;
+        return gate;
+    }
+    auto fail = [&](const std::string& reason) {
+        gate.reason = reason;
+        gate.passed = false;
+        return gate;
+    };
+    if (analysis.motion_region_history_trusted_pct > 1.0) {
+        return fail("motion region trusted history above 1%");
+    }
+    if (analysis.static_region_history_trusted_pct < 90.0) {
+        return fail("static region trusted history below 90%");
+    }
+    if (analysis.text_region.samples > 0 && analysis.text_region.history_trusted_pct < 35.0) {
+        return fail("text ROI trusted history below 35%");
+    }
+    if (analysis.specular_region.samples > 0 && analysis.specular_region.history_trusted_pct > 2.0) {
+        return fail("specular ROI trusted history above 2%");
+    }
+    if (analysis.transparent_region.samples > 0 && analysis.transparent_region.history_trusted_pct > 8.0) {
+        return fail("transparent ROI trusted history above 8%");
+    }
+    if (analysis.reactive_region.samples > 0 && analysis.reactive_region.history_trusted_pct > 1.0) {
+        return fail("reactive ROI trusted history above 1%");
+    }
+    if (analysis.color_residual.over_threshold_pct > 3.0) {
+        return fail("color residual candidate rejection above 3%");
+    }
+    gate.passed = true;
+    gate.reason = "ok";
+    return gate;
+}
+
 std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis) {
     if (!analysis.ok) {
         return "capture_analysis_failed: " + analysis.error;

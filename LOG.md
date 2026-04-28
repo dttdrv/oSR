@@ -550,6 +550,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_capture_analyzer.bat build/manual/captures/2026-04-28T20-51-17Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012` exited `0`; output reported `text_history_trusted_pct=49.8274`, `specular_history_trusted_pct=0.309598`, `transparent_history_trusted_pct=3.33333`, and `reactive_history_trusted_pct=0`.
 - Attempted `cmake -S . -B build/cmake-manual -DOSR_BUILD_TESTS=ON`; it timed out during MinGW compiler ABI detection after 300 seconds, before project target generation. Existing batch build gates remain the active verification path.
 
+### Capture Analyzer ROI Gate
+
+- Added `--gate` mode to `osr_capture_analyzer`.
+- The gate checks that motion/reactive/specular/transparent regions do not retain excessive history, static regions retain enough history, text regions retain enough history, and color residual candidate rejection stays bounded.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_capture_analyzer.bat build/manual/captures/2026-04-28T20-52-51Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012 --gate` exited `0`; output ended with `capture_analysis_gate=ok reason=ok`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

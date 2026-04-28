@@ -44,7 +44,13 @@ struct CaptureFrameAnalysis {
     CaptureRegionStats reactive_region;
 };
 
+struct CaptureAnalysisGateResult {
+    bool passed = false;
+    std::string reason;
+};
+
 [[nodiscard]] CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir);
+[[nodiscard]] CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis);
 [[nodiscard]] std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis);
 
 } // namespace osr::debug
