@@ -209,6 +209,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct --metric-gate` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode flip-x --metric-gate` exited `3` and wrote `MVTruthModeActive` / `MVResidualHigh` findings to `warnings.jsonl`.
 
+### DX12 Debug Upscale Command Recording
+
+- Replaced the backend's metadata-only pending path with actual command-list recording.
+- Added a real GPU copy path for native-size debug dispatches where input and output dimensions/formats match.
+- Kept a temporary heartbeat UAV clear for scaled output until embedded compute shader bytecode is added for the real spatial upscale path.
+- Added DX12 wind-tunnel CLI controls `--display-size WIDTHxHEIGHT` and `--render-scale VALUE`, allowing native-size copy tests and scaled-output stress tests without code changes.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --render-scale 1.0 --display-size 640x400 --metric-gate` exited `0`, wrote `debug_dispatch_result: recorded_and_executed`, and logged `mode=dx12_copy_recorded`.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

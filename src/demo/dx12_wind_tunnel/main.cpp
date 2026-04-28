@@ -155,7 +155,7 @@ void ExportMetadata(const osr::core::FrameContext& frame,
     out << "reset_history: " << (frame.flags.reset_history ? "true" : "false") << "\n";
     out << "reactive_mask: " << (frame.reactive_mask.has_value() ? "present" : "absent") << "\n";
     out << "validation: " << osr::debug::SummarizeValidation(report) << "\n";
-    out << "debug_dispatch_result: " << (dispatch_result ? "recorded_or_ready" : "metadata_only_or_pending") << "\n";
+    out << "debug_dispatch_result: " << (dispatch_result ? "recorded_and_executed" : "metadata_only_or_pending") << "\n";
     out << "capture_pack: " << capture_path.string() << "\n";
     out << "transfer_match: " << (osr::demo::dx12_wind_tunnel::AllTransfersMatched(transfers) ? "true" : "false") << "\n";
     out << "temporal_diagnostics:\n";
@@ -241,12 +241,28 @@ bool ParseMotionVectorMode(const std::string& value, osr::demo::wind_tunnel::Mot
     return true;
 }
 
+bool ParseDimensions(const std::string& value, osr::core::Dimensions& dimensions) {
+    const auto x = value.find('x');
+    if (x == std::string::npos || x == 0 || x + 1 >= value.size()) {
+        return false;
+    }
+    const int width = std::atoi(value.substr(0, x).c_str());
+    const int height = std::atoi(value.substr(x + 1).c_str());
+    if (width <= 0 || height <= 0) {
+        return false;
+    }
+    dimensions = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
     bool headless = false;
     int present_frames = -1;
     bool metric_gate = false;
+    osr::core::Dimensions requested_display_size {1280, 800};
+    float requested_render_scale = 2.0f / 3.0f;
     auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--headless") {
@@ -255,6 +271,13 @@ int main(int argc, char** argv) {
             metric_gate = true;
         } else if (std::string(argv[i]) == "--present-frames" && i + 1 < argc) {
             present_frames = std::max(0, std::atoi(argv[++i]));
+        } else if (std::string(argv[i]) == "--display-size" && i + 1 < argc) {
+            if (!ParseDimensions(argv[++i], requested_display_size)) {
+                std::cerr << "Unknown --display-size. Use WIDTHxHEIGHT, for example 1280x800.\n";
+                return 2;
+            }
+        } else if (std::string(argv[i]) == "--render-scale" && i + 1 < argc) {
+            requested_render_scale = static_cast<float>(std::atof(argv[++i]));
         } else if (std::string(argv[i]) == "--mv-mode" && i + 1 < argc) {
             if (!ParseMotionVectorMode(argv[++i], mv_mode)) {
                 std::cerr << "Unknown --mv-mode. Use correct, zero, flip-x, flip-y, half-scale, double-scale, or jitter-contaminated.\n";
@@ -274,12 +297,13 @@ int main(int argc, char** argv) {
     }
 
     osr::demo::wind_tunnel::SyntheticFrameSettings settings;
-    settings.display_size = {1280, 800};
-    settings.render_scale = 2.0f / 3.0f;
+    settings.display_size = requested_display_size;
+    settings.render_scale = requested_render_scale;
     settings.frame_id = 1;
     settings.reset_history = true;
     settings.motion_vector_mode = mv_mode;
     auto synthetic = osr::demo::wind_tunnel::BuildSyntheticFrame(settings);
+    synthetic.context.notes.push_back("DX12 debug upscale uses heartbeat command recording for scaled output until compute shader bytecode is embedded.");
     auto previous_settings = settings;
     previous_settings.frame_id = settings.frame_id > 0 ? settings.frame_id - 1 : 0;
     previous_settings.reset_history = false;
@@ -346,8 +370,15 @@ int main(int argc, char** argv) {
 
     const auto report = osr::core::ValidateFrameContext(synthetic.context);
     osr::backends::dx12::Dx12Backend backend;
-    backend.Initialize(dx.device);
-    const bool dispatch_result = backend.DispatchDebugUpscale(dx.command_list, synthetic.context);
+    const bool backend_initialized = backend.Initialize(dx.device);
+    bool dispatch_result = false;
+    if (backend_initialized &&
+        SUCCEEDED(dx.allocator->Reset()) &&
+        SUCCEEDED(dx.command_list->Reset(dx.allocator, nullptr))) {
+        dispatch_result = backend.DispatchDebugUpscale(dx.command_list, synthetic.context) &&
+                          osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);
+    }
+    synthetic.context.notes.push_back(dispatch_result ? "D3D12 debug upscale command list executed." : "D3D12 debug upscale command list did not execute.");
 
     osr::debug::CapturePackConfig capture_config;
     capture_config.root = "build/manual/captures";

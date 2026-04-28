@@ -2,6 +2,7 @@
 
 #include "core/frame_context.h"
 
+#include <d3d12.h>
 #include <string>
 
 namespace osr::backends::dx12 {
@@ -29,11 +30,17 @@ struct DebugUpscaleDispatch {
 
 class DebugUpscalePass {
 public:
+    ~DebugUpscalePass();
+
     bool Initialize(void* native_device);
     bool Dispatch(void* native_command_list, const core::FrameContext& frame);
 
 private:
-    void* native_device_ = nullptr;
+    void Shutdown() noexcept;
+
+    ID3D12Device* native_device_ = nullptr;
+    ID3D12DescriptorHeap* heartbeat_uav_heap_ = nullptr;
+    ID3D12Resource* heartbeat_texture_ = nullptr;
 };
 
 } // namespace osr::backends::dx12
