@@ -14,6 +14,8 @@ struct DebugDumpResult {
     bool color_input_ppm = false;
     bool depth_pgm = false;
     bool motion_vectors_pgm = false;
+    bool motion_vectors_x_pgm = false;
+    bool motion_vectors_y_pgm = false;
     bool reactive_mask_pgm = false;
     bool color_input_raw = false;
     bool depth_raw = false;
@@ -24,6 +26,9 @@ struct DebugDumpResult {
     bool history_weight_pgm = false;
     bool color_residual_pgm = false;
     bool depth_residual_pgm = false;
+    bool history_weight_raw = false;
+    bool color_residual_raw = false;
+    bool depth_residual_raw = false;
     bool artifacts_json = false;
 
     [[nodiscard]] bool AllRequired() const noexcept;

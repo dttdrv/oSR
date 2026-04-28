@@ -491,6 +491,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate` exited `0`; latest selected capture wrote to `build/manual/captures/2026-04-28T20-06-13Z_dx12_temporal_sequence_temporal_gpu_sequence_correct`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `58` and max mean byte diff `0.00876636`.
 
+### Raw Temporal Debug Artifacts
+
+- Capture packs now write signed motion-vector component views: `motion_vectors_x.pgm` and `motion_vectors_y.pgm`, in addition to magnitude.
+- Temporal debug maps now write raw R32F artifacts: `history_weight.r32f.raw`, `color_residual.r32f.raw`, and `depth_residual.r32f.raw`.
+- `artifacts.json` now references the MV component views and raw temporal maps so captures can be reanalyzed numerically without rerunning the harness.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate` exited `0`; capture `build/manual/captures/2026-04-28T20-10-23Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012` contains the raw temporal maps and MV X/Y views.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
