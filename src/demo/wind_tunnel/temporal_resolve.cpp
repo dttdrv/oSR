@@ -110,6 +110,40 @@ uint32_t SampleBilinearRgba8(const std::vector<uint32_t>& image,
     return 0xff000000u | (sample_channel(16) << 16) | (sample_channel(8) << 8) | sample_channel(0);
 }
 
+uint32_t ClipHistoryToCurrentNeighborhood(const std::vector<uint32_t>& current_display,
+                                          core::Dimensions display_size,
+                                          uint32_t x,
+                                          uint32_t y,
+                                          uint32_t history,
+                                          float margin) noexcept {
+    if (margin <= 0.0f ||
+        current_display.size() != static_cast<size_t>(display_size.width) * display_size.height ||
+        !display_size.IsValid()) {
+        return history;
+    }
+
+    const auto at = [&](uint32_t sx, uint32_t sy) {
+        return current_display[static_cast<size_t>(sy) * display_size.width + sx];
+    };
+    const uint32_t xl = x == 0 ? x : x - 1;
+    const uint32_t xr = std::min(x + 1, display_size.width - 1);
+    const uint32_t yu = y == 0 ? y : y - 1;
+    const uint32_t yd = std::min(y + 1, display_size.height - 1);
+    const uint32_t samples[5] = {at(x, y), at(xl, y), at(xr, y), at(x, yu), at(x, yd)};
+    const float margin_bytes = std::clamp(margin, 0.0f, 1.0f) * 255.0f;
+    const auto clip_channel = [&](uint32_t shift) {
+        float lo = ChannelFloat(samples[0], shift);
+        float hi = lo;
+        for (uint32_t i = 1; i < 5; ++i) {
+            lo = std::min(lo, ChannelFloat(samples[i], shift));
+            hi = std::max(hi, ChannelFloat(samples[i], shift));
+        }
+        const float value = ChannelFloat(history, shift);
+        return static_cast<uint32_t>(std::clamp(std::round(value), std::max(0.0f, lo - margin_bytes), std::min(255.0f, hi + margin_bytes)));
+    };
+    return 0xff000000u | (clip_channel(16) << 16) | (clip_channel(8) << 8) | clip_channel(0);
+}
+
 float SampleBilinearFloat(const std::vector<float>& image,
                           core::Dimensions size,
                           float x,
@@ -261,6 +295,12 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 previous_depth_sample = previous_frame->depth[render_index];
             }
 
+            history_sample = ClipHistoryToCurrentNeighborhood(current_display,
+                                                              display_size,
+                                                              x,
+                                                              y,
+                                                              history_sample,
+                                                              settings.history_clip_margin);
             const float color_residual = std::abs(Luma(current_display[display_index]) - Luma(history_sample));
             color_residual_sum += color_residual;
             if (settings.color_rejection_threshold > 0.0f && color_residual > settings.color_rejection_threshold) {

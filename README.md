@@ -109,7 +109,7 @@ tools\run_dx12_wind_tunnel.bat --present-frames 3
 Temporal experiments can be run without recompiling:
 
 ```text
-tools\run_dx12_wind_tunnel.bat --headless --frames 32 --metric-gate --history-weight 0.98 --motion-rejection 2 --color-rejection 0.16 --depth-rejection 0.035 --sharpening 0.28
+tools\run_dx12_wind_tunnel.bat --headless --frames 32 --metric-gate --history-weight 0.98 --motion-rejection 2 --color-rejection 0.16 --depth-rejection 0.035 --history-clip-margin 0.04 --sharpening 0.28
 ```
 
 To build and run the current manual test suite:

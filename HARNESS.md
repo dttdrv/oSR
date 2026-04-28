@@ -239,6 +239,7 @@ Current temporal tuning flags:
 --motion-rejection 2
 --color-rejection 0.16
 --depth-rejection 0.035
+--history-clip-margin 0.04
 --sharpening 0.28
 --sharpening-low-trust-scale 0.20
 --sharpening-reactive-scale 0.25

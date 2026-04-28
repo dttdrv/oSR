@@ -335,6 +335,7 @@ void ApplyTemporalSettings(osr::backends::dx12::TemporalResolveConstants& consta
     constants.sharpening_amount = settings.sharpening_amount;
     constants.sharpening_low_trust_scale = settings.sharpening_low_trust_scale;
     constants.sharpening_reactive_scale = settings.sharpening_reactive_scale;
+    constants.history_clip_margin = settings.history_clip_margin;
 }
 
 bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult& result,
@@ -576,6 +577,8 @@ int main(int argc, char** argv) {
             temporal_settings.sharpening_low_trust_scale = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
         } else if (std::string(argv[i]) == "--sharpening-reactive-scale" && i + 1 < argc) {
             temporal_settings.sharpening_reactive_scale = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--history-clip-margin" && i + 1 < argc) {
+            temporal_settings.history_clip_margin = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
         }
     }
 

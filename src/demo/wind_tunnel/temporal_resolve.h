@@ -17,6 +17,7 @@ struct TemporalResolveSettings {
     float sharpening_amount = 0.28f;
     float sharpening_low_trust_scale = 0.20f;
     float sharpening_reactive_scale = 0.25f;
+    float history_clip_margin = 0.04f;
 };
 
 struct TemporalResolveStats {

@@ -48,6 +48,7 @@ cbuffer TemporalConstants : register(b0)
     float g_sharpening_amount;
     float g_sharpening_low_trust_scale;
     float g_sharpening_reactive_scale;
+    float g_history_clip_margin;
     float2 g_jitter_offset;
 };
 
@@ -108,6 +109,28 @@ float4 SampleDisplay(Texture2D<float4> texture_source, float2 p)
     float4 c01 = texture_source.Load(int3(p0.x, p1.y, 0));
     float4 c11 = texture_source.Load(int3(p1, 0));
     return lerp(lerp(c00, c10, t.x), lerp(c01, c11, t.x), t.y);
+}
+
+float4 ClipHistoryToCurrentNeighborhood(float4 history_color, float2 display_px)
+{
+    if (g_history_clip_margin <= 0.0f)
+    {
+        return history_color;
+    }
+
+    float2 left_px = float2(max(display_px.x - 1.0f, 0.0f), display_px.y);
+    float2 right_px = float2(min(display_px.x + 1.0f, float(g_display_size.x - 1)), display_px.y);
+    float2 up_px = float2(display_px.x, max(display_px.y - 1.0f, 0.0f));
+    float2 down_px = float2(display_px.x, min(display_px.y + 1.0f, float(g_display_size.y - 1)));
+    float3 c0 = SampleCurrentDisplay(display_px).rgb;
+    float3 c1 = SampleCurrentDisplay(left_px).rgb;
+    float3 c2 = SampleCurrentDisplay(right_px).rgb;
+    float3 c3 = SampleCurrentDisplay(up_px).rgb;
+    float3 c4 = SampleCurrentDisplay(down_px).rgb;
+    float3 lo = min(c0, min(c1, min(c2, min(c3, c4))));
+    float3 hi = max(c0, max(c1, max(c2, max(c3, c4))));
+    history_color.rgb = clamp(history_color.rgb, saturate(lo - g_history_clip_margin), saturate(hi + g_history_clip_margin));
+    return QuantizeRgba8(history_color);
 }
 
 float4 SampleRenderColor(Texture2D<float4> texture_source, float2 p)
@@ -193,7 +216,7 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
         history_weight *= saturate(1.0f - motion_len / g_motion_rejection_pixels);
     }
 
-    float4 history_color = QuantizeRgba8(SampleDisplay(g_previous_history, history_px));
+    float4 history_color = ClipHistoryToCurrentNeighborhood(QuantizeRgba8(SampleDisplay(g_previous_history, history_px)), display_px);
     float color_residual = abs(Luma(current_color.rgb) - Luma(history_color.rgb));
     if (g_color_rejection_threshold > 0.0f && color_residual > g_color_rejection_threshold)
     {
@@ -265,7 +288,7 @@ bool TemporalResolvePass::Initialize(void* native_device) {
     root_params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     root_params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     root_params[1].Constants.ShaderRegister = 0;
-    root_params[1].Constants.Num32BitValues = 14;
+    root_params[1].Constants.Num32BitValues = 15;
     root_params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
     D3D12_ROOT_SIGNATURE_DESC root_desc {};
@@ -422,6 +445,7 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         float sharpening_amount;
         float sharpening_low_trust_scale;
         float sharpening_reactive_scale;
+        float history_clip_margin;
         float jitter_x;
         float jitter_y;
     };
@@ -438,10 +462,11 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         constants.sharpening_amount,
         constants.sharpening_low_trust_scale,
         constants.sharpening_reactive_scale,
+        constants.history_clip_margin,
         constants.jitter_offset.x,
         constants.jitter_offset.y
     };
-    command_list->SetComputeRoot32BitConstants(1, 14, &c, 0);
+    command_list->SetComputeRoot32BitConstants(1, 15, &c, 0);
     command_list->Dispatch((constants.display_size.width + 7u) / 8u,
                            (constants.display_size.height + 7u) / 8u,
                            1);

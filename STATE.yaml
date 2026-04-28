@@ -62,6 +62,7 @@ build_status:
     - tools/run_capture_analyzer.bat builds an offline capture analyzer that summarizes raw temporal maps and motion vectors without rerunning DX12.
     - DX12 wind tunnel temporal CPU/GPU paths expose CLI tuning flags for history weight, reactive penalty, motion/color/depth rejection, and confidence-gated sharpening.
     - tools/run_dx12_mv_sweep.bat now asserts that correct motion vectors pass metric gates and corrupted MV modes fail them.
+    - CPU and DX12 temporal resolve paths clamp reprojected history color to a current-frame cross-neighborhood before residual testing and blending.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK

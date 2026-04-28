@@ -523,6 +523,16 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_mv_sweep.bat` exited `0`; every corrupted MV mode produced the expected metric-gate failure.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 
+### Neighborhood History Clipping
+
+- Added `history_clip_margin` to the CPU temporal resolve settings and DX12 temporal constants.
+- CPU and HLSL temporal resolves now clamp reprojected history color to the current-frame 5-tap cross-neighborhood before color-residual rejection and blending.
+- Added `--history-clip-margin` to the DX12 wind-tunnel temporal tuning CLI.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 32 --metric-gate --history-clip-margin 0.04` exited `0`; latest run reported temporal/spatial ratio `0.798205`, color rejected `0.733902%`, and color residual mean `0.00511647`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`; latest run reported temporal debug map parity `max_abs=0.244383`, `mean_abs=0.000611632`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `58` and max mean byte diff `0.00891309`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

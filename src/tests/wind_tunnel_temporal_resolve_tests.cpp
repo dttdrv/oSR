@@ -24,6 +24,7 @@ int main() {
     osr::demo::wind_tunnel::TemporalResolveSettings settings;
     settings.max_history_weight = 0.5f;
     settings.color_rejection_threshold = 0.0f;
+    settings.history_clip_margin = 0.0f;
     osr::demo::wind_tunnel::TemporalResolveStats stats;
     osr::demo::wind_tunnel::TemporalResolveDebugMaps debug_maps;
     const auto blended = osr::demo::wind_tunnel::ResolveTemporalDisplay(current, history, frame, frame_settings.display_size, settings, &stats, nullptr, &debug_maps);
@@ -191,6 +192,28 @@ int main() {
     const uint32_t center_red = (sharpened[4] >> 16) & 0xffu;
     if (center_red <= 0xa0u) {
         return Fail("confidence-gated detail recovery should boost trusted local contrast");
+    }
+
+    custom.context.render_size = {3, 3};
+    custom.context.display_size = {3, 3};
+    custom.motion_vectors.assign(9, {});
+    custom.reactive_mask.assign(9, 0.0f);
+    repro_current.assign(9, 0xff202020u);
+    repro_history.assign(9, 0xffffffffu);
+    settings.max_history_weight = 1.0f;
+    settings.sharpening_amount = 0.0f;
+    settings.color_rejection_threshold = 0.0f;
+    settings.depth_rejection_threshold = 0.0f;
+    settings.history_clip_margin = 0.04f;
+    const auto clipped = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current,
+                                                                         repro_history,
+                                                                         custom,
+                                                                         custom.context.display_size,
+                                                                         settings,
+                                                                         &stats);
+    const uint32_t clipped_red = (clipped[4] >> 16) & 0xffu;
+    if (clipped_red < 41u || clipped_red > 43u) {
+        return Fail("neighborhood history clipping should clamp implausible history before blending");
     }
 
     return 0;
