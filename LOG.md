@@ -88,6 +88,17 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: direct MinGW compile/run passed for `osr_quality_mode_tests.exe`.
 - Verification: direct MinGW compile/run passed for `osr_quality_mode_demo.exe`; demo printed preset and slider render sizes.
 
+### Persistent Manual Launchers
+
+- Added `src/demo/manual_console.cpp`, an interactive console menu that stays open and lets a tester inspect quality modes, enter custom render-scale values, change display resolution, and run trust/tile scenarios.
+- Added double-clickable launchers:
+  - `tools/run_manual_console.bat`
+  - `tools/run_quality_mode_demo.bat`
+  - `tools/run_manual_tests.bat`
+- Updated `README.md` with Explorer-friendly manual testing instructions.
+- Verification: direct MinGW compile passed for `osr_manual_console.exe`.
+- Verification: scripted console run exercised custom scale, trust oracle, and tile risk scenarios. PowerShell object piping can feed leading blank/unknown options, but the interactive menu remains persistent for normal keyboard use.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

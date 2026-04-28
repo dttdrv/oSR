@@ -47,3 +47,4 @@ next_actions:
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
+  - Use tools/run_manual_console.bat for double-click manual testing until the DX12 harness exists.

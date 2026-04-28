@@ -23,6 +23,32 @@ cmake --build --preset vs2022-debug
 
 Current sandbox note: if CMake/Ninja stalls, the same tests can be compiled directly with the MinGW compiler used in this workspace.
 
+For double-click testing in Explorer, use:
+
+```text
+tools\run_manual_console.bat
+```
+
+That launcher builds `build\manual\osr_manual_console.exe`, opens an interactive menu, and pauses before closing. The menu lets you:
+
+- list DLSS-style quality modes
+- enter a custom render-scale slider value
+- change display resolution
+- run trust oracle scenarios
+- run tile risk scenarios
+
+For a quick non-interactive quality-mode printout:
+
+```text
+tools\run_quality_mode_demo.bat
+```
+
+To build and run the current manual test suite:
+
+```text
+tools\run_manual_tests.bat
+```
+
 ```powershell
 & 'C:\Users\deyan\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\c++.exe' -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/demo/quality_mode_demo.cpp src/core/quality_mode.cpp -o build/manual/osr_quality_mode_demo.exe
 build\manual\osr_quality_mode_demo.exe
