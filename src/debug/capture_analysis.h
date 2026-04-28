@@ -1,0 +1,34 @@
+#pragma once
+
+#include "core/frame_context.h"
+
+#include <cstdint>
+#include <filesystem>
+#include <string>
+
+namespace osr::debug {
+
+struct CaptureValueStats {
+    uint64_t samples = 0;
+    double min = 0.0;
+    double max = 0.0;
+    double mean = 0.0;
+    double threshold = 0.0;
+    double over_threshold_pct = 0.0;
+};
+
+struct CaptureFrameAnalysis {
+    bool ok = false;
+    std::string error;
+    core::Dimensions display_size {};
+    core::Dimensions render_size {};
+    CaptureValueStats history_weight;
+    CaptureValueStats color_residual;
+    CaptureValueStats depth_residual;
+    CaptureValueStats motion_magnitude;
+};
+
+[[nodiscard]] CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir);
+[[nodiscard]] std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis);
+
+} // namespace osr::debug

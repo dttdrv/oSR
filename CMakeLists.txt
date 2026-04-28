@@ -66,6 +66,7 @@ target_include_directories(osr_profiles PUBLIC src)
 target_link_libraries(osr_profiles PUBLIC osr_core)
 
 add_library(osr_debug STATIC
+    src/debug/capture_analysis.cpp
     src/debug/capture_dump.cpp
     src/debug/capture_pack.cpp
     src/debug/overlay.cpp
@@ -118,6 +119,11 @@ add_executable(osr_sequence_lab
     src/demo/sequence_lab.cpp
 )
 target_link_libraries(osr_sequence_lab PRIVATE osr_core osr_wind_tunnel)
+
+add_executable(osr_capture_analyzer
+    src/tools/capture_analyzer.cpp
+)
+target_link_libraries(osr_capture_analyzer PRIVATE osr_debug)
 
 if(OSR_BUILD_TESTS)
     enable_testing()
@@ -204,4 +210,10 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_capture_pack_tests PRIVATE osr_core osr_debug)
     add_test(NAME capture_pack COMMAND osr_capture_pack_tests)
+
+    add_executable(osr_capture_analysis_tests
+        src/tests/capture_analysis_tests.cpp
+    )
+    target_link_libraries(osr_capture_analysis_tests PRIVATE osr_core osr_debug)
+    add_test(NAME capture_analysis COMMAND osr_capture_analysis_tests)
 endif()

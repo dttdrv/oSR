@@ -40,6 +40,9 @@ if errorlevel 1 goto fail
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/capture_pack_tests.cpp src/debug/capture_pack.cpp src/core/frame_context.cpp -o build\manual\osr_capture_pack_tests.exe && build\manual\osr_capture_pack_tests.exe
 if errorlevel 1 goto fail
 
+"%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/capture_analysis_tests.cpp src/debug/capture_analysis.cpp src/core/frame_context.cpp -o build\manual\osr_capture_analysis_tests.exe && build\manual\osr_capture_analysis_tests.exe
+if errorlevel 1 goto fail
+
 echo.
 echo All manual tests passed.
 if not "%OSR_NO_PAUSE%"=="1" pause

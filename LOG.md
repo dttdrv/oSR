@@ -499,6 +499,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate` exited `0`; capture `build/manual/captures/2026-04-28T20-10-23Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012` contains the raw temporal maps and MV X/Y views.
 
+### Offline Capture Analyzer
+
+- Added `osr_capture_analyzer` plus `tools/run_capture_analyzer.bat`.
+- The analyzer reads `artifacts.json`, raw R32F temporal maps, and raw RG32F motion vectors from a frame capture directory.
+- Current output reports display/render size, history trust percentage, color/depth residual candidate rejection percentages, and motion activity percentage.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_capture_analyzer.bat build/manual/captures/2026-04-28T20-10-23Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012` exited `0`; output reported `history_mean=0.905448`, `history_trusted_pct=93.869`, `color_reject_candidate_pct=0.967187`, `depth_reject_candidate_pct=0.456934`, and `motion_active_pct=5.14925`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

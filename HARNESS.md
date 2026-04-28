@@ -144,14 +144,25 @@ captures/
     bookmarks.jsonl
     frame_0096/
       frame_context.json
-      color_input.dds
-      depth.r32.bin
-      motion_vectors.rg32f.bin
-      reactive.r8.bin
-      output.dds
-      debug_history_trust.dds
-      debug_disocclusion.dds
-      debug_mv.png
+      color_input.ppm
+      color_input.rgba8.raw
+      depth.pgm
+      depth.r32f.raw
+      motion_vectors_magnitude.pgm
+      motion_vectors_x.pgm
+      motion_vectors_y.pgm
+      motion_vectors.rg32f.raw
+      reactive_mask.pgm
+      reactive_mask.r32f.raw
+      color_output.ppm
+      color_output.rgba8.raw
+      history_weight.pgm
+      history_weight.r32f.raw
+      color_residual.pgm
+      color_residual.r32f.raw
+      depth_residual.pgm
+      depth_residual.r32f.raw
+      artifacts.json
 ```
 
 `session.json` should contain:
@@ -211,6 +222,14 @@ Supported bookmark tags:
 - HDRWeird
 
 The note system is the bridge between subjective testing and reproducible engineering work. A tester should be able to press one key, mark the artifact, optionally drag a rectangle, and continue moving.
+
+Current offline capture analysis:
+
+```text
+tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012
+```
+
+The analyzer reads `artifacts.json` plus raw R32F/RG32F artifacts and reports history trust, color/depth residual candidate rejection, and motion activity percentages without launching the harness.
 
 ## Metrics
 

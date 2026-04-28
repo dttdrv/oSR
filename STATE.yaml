@@ -59,6 +59,7 @@ build_status:
     - CPU sequence metrics and DX12 temporal shader sampling now compensate current-frame jitter before reconstructing display-space color.
     - Temporal-gpu sequence parity uses read-back GPU output as the next CPU oracle history seed so the gate measures per-dispatch shader drift instead of compounding CPU/GPU R8 feedback differences.
     - Capture packs now include signed motion-vector X/Y PGM views plus raw R32F temporal debug maps for history weight, color residual, and depth residual.
+    - tools/run_capture_analyzer.bat builds an offline capture analyzer that summarizes raw temporal maps and motion vectors without rerunning DX12.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -105,7 +106,7 @@ next_actions:
   - Add confidence-gated edge/text ROI metrics so readability and thin-geometry stability become first-class gates.
   - Replace manual harness history-weight/rejection-risk proxy views with real temporal resolve debug maps once the harness owns frame history.
   - Add location-aware reporting for the worst temporal-gpu sequence parity pixel so jittered edge outliers can be classified by ROI.
-  - Add lightweight analysis tooling that reads raw capture artifacts and prints ROI summaries without rerunning the harness.
+  - Extend the offline capture analyzer with ROI-aware summaries for text, specular, transparent, reactive, and motion-risk regions.
   - Add temporal shader debug UAVs for history_weight, color_residual, and depth_residual.
   - Add ROI-labeled per-region capture rows for text, specular glints, transparent panes, reactive particles, and corrupted-MV stress regions.
   - Add automated gates for selected sequence debug-map parity metrics after thresholds are calibrated across more frame IDs.

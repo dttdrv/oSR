@@ -88,8 +88,15 @@ under `build\manual\captures\...` with `session.json`, `frames.csv`,
 `metrics.csv`, `warnings.jsonl`, `bookmarks.jsonl`, and
 `frame_000001\frame_context.json`. Frame folders also include no-dependency
 debug artifacts such as `color_input.ppm`, `color_output.ppm`, `depth.pgm`,
-`motion_vectors_magnitude.pgm`, `reactive_mask.pgm`, exact `.raw` buffers, and
-`artifacts.json`.
+`motion_vectors_magnitude.pgm`, signed `motion_vectors_x.pgm` /
+`motion_vectors_y.pgm`, `reactive_mask.pgm`, exact `.raw` buffers, and
+`artifacts.json`. Temporal captures also include raw R32F history/residual maps.
+
+To summarize a captured frame without rerunning DX12:
+
+```text
+tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012
+```
 
 By default it opens a DX12 window and presents the current display-sized color
 debug output. For deterministic lab runs:
