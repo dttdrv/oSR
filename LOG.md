@@ -389,6 +389,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `28` and max mean byte diff `0.0549443`.
 
+### Thin-Feature Contrast Gate
+
+- Added `thin_feature_contrast`, a sequence metric that tracks the top spatial edge-energy samples and compares temporal contrast on those same pixels.
+- The metric gate now fails if thin-feature contrast drops below `0.82` or rises above `1.45`, preventing both excessive blur and easy over-sharpening wins.
+- Sequence CSV/console output and DX12 sequence output now include `thin_feature_contrast`.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported thin-feature contrast `0.977663`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported thin-feature contrast `0.979736`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

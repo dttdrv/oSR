@@ -5,6 +5,8 @@
 #include "demo/wind_tunnel/temporal_resolve.h"
 
 #include <cmath>
+#include <algorithm>
+#include <numeric>
 
 namespace osr::demo::wind_tunnel {
 
@@ -46,6 +48,47 @@ double MeanEdgeEnergy(const std::vector<uint32_t>& image, core::Dimensions size)
     return samples == 0 ? 0.0 : sum / static_cast<double>(samples);
 }
 
+std::vector<double> EdgeEnergyMap(const std::vector<uint32_t>& image, core::Dimensions size) {
+    const size_t expected = static_cast<size_t>(size.width) * size.height;
+    std::vector<double> edges(expected, 0.0);
+    if (image.size() != expected || size.width < 2 || size.height < 2) {
+        return edges;
+    }
+    for (uint32_t y = 0; y + 1 < size.height; ++y) {
+        for (uint32_t x = 0; x + 1 < size.width; ++x) {
+            const size_t idx = static_cast<size_t>(y) * size.width + x;
+            const float center = LumaFromRgba8(image[idx]);
+            edges[idx] = std::abs(center - LumaFromRgba8(image[idx + 1])) +
+                         std::abs(center - LumaFromRgba8(image[idx + size.width]));
+        }
+    }
+    return edges;
+}
+
+double ThinFeatureContrastRatio(const std::vector<uint32_t>& spatial,
+                                const std::vector<uint32_t>& temporal,
+                                core::Dimensions size) {
+    if (spatial.size() != temporal.size() || spatial.empty() || size.width < 2 || size.height < 2) {
+        return 0.0;
+    }
+    const auto spatial_edges = EdgeEnergyMap(spatial, size);
+    const auto temporal_edges = EdgeEnergyMap(temporal, size);
+    std::vector<size_t> indices(spatial_edges.size());
+    std::iota(indices.begin(), indices.end(), size_t {0});
+    std::sort(indices.begin(), indices.end(), [&](size_t lhs, size_t rhs) {
+        return spatial_edges[lhs] > spatial_edges[rhs];
+    });
+    const size_t roi_count = std::min(std::max(indices.size() / 20, size_t {64}), indices.size());
+    double spatial_sum = 0.0;
+    double temporal_sum = 0.0;
+    for (size_t i = 0; i < roi_count; ++i) {
+        const size_t idx = indices[i];
+        spatial_sum += spatial_edges[idx];
+        temporal_sum += temporal_edges[idx];
+    }
+    return spatial_sum <= 0.0 ? 0.0 : temporal_sum / spatial_sum;
+}
+
 SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings) {
     SequenceMetricsResult result;
     if (!settings.display_size.IsValid() || settings.frame_count < 2) {
@@ -70,6 +113,7 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     double sharpening_amount_sum = 0.0;
     double spatial_edge_sum = 0.0;
     double temporal_edge_sum = 0.0;
+    double thin_feature_contrast_sum = 0.0;
     uint32_t delta_count = 0;
     SyntheticFrame previous_frame;
     bool has_previous_frame = false;
@@ -106,6 +150,7 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
             sharpening_amount_sum += stats.sharpening_amount_mean;
             spatial_edge_sum += MeanEdgeEnergy(spatial, frame.context.display_size);
             temporal_edge_sum += MeanEdgeEnergy(temporal, frame.context.display_size);
+            thin_feature_contrast_sum += ThinFeatureContrastRatio(spatial, temporal, frame.context.display_size);
             ++delta_count;
         }
 
@@ -125,6 +170,7 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     result.ghost_score = delta_count == 0 ? 0.0 : motion_history_weight_sum / static_cast<double>(delta_count);
     result.reactive_trail_score = delta_count == 0 ? 0.0 : reactive_history_weight_sum / static_cast<double>(delta_count);
     result.edge_preservation = spatial_edge_sum <= 0.0 ? 0.0 : temporal_edge_sum / spatial_edge_sum;
+    result.thin_feature_contrast = delta_count == 0 ? 0.0 : thin_feature_contrast_sum / static_cast<double>(delta_count);
     result.reprojected_history_pct = delta_count == 0 ? 0.0 : reprojected_sum / static_cast<double>(delta_count);
     result.reproject_out_of_bounds_pct = delta_count == 0 ? 0.0 : reproject_oob_sum / static_cast<double>(delta_count);
     result.color_rejected_pct = delta_count == 0 ? 0.0 : color_rejected_sum / static_cast<double>(delta_count);

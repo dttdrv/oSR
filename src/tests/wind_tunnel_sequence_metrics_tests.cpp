@@ -38,6 +38,9 @@ int main() {
     if (result.edge_preservation < 0.72) {
         return Fail("temporal resolve should preserve enough edge energy");
     }
+    if (result.thin_feature_contrast < 0.82 || result.thin_feature_contrast > 1.45) {
+        return Fail("temporal resolve should preserve thin-feature contrast without excessive ringing");
+    }
     if (result.reprojected_history_pct <= 0.0) {
         return Fail("temporal resolve should reproject some moving history");
     }
