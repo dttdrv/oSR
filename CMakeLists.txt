@@ -74,6 +74,7 @@ target_include_directories(osr_debug PUBLIC src)
 target_link_libraries(osr_debug PUBLIC osr_core)
 
 add_library(osr_wind_tunnel STATIC
+    src/demo/wind_tunnel/debug_dumps.cpp
     src/demo/wind_tunnel/synthetic_frame.cpp
 )
 target_include_directories(osr_wind_tunnel PUBLIC src)
@@ -157,6 +158,12 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_wind_tunnel_synthetic_frame_tests PRIVATE osr_core osr_wind_tunnel)
     add_test(NAME wind_tunnel_synthetic_frame COMMAND osr_wind_tunnel_synthetic_frame_tests)
+
+    add_executable(osr_wind_tunnel_debug_dumps_tests
+        src/tests/wind_tunnel_debug_dumps_tests.cpp
+    )
+    target_link_libraries(osr_wind_tunnel_debug_dumps_tests PRIVATE osr_core osr_wind_tunnel)
+    add_test(NAME wind_tunnel_debug_dumps COMMAND osr_wind_tunnel_debug_dumps_tests)
 
     add_executable(osr_capture_pack_tests
         src/tests/capture_pack_tests.cpp

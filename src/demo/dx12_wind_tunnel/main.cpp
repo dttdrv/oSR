@@ -11,6 +11,7 @@
 #include "demo/dx12_wind_tunnel/display_upscale.h"
 #include "demo/dx12_wind_tunnel/dx12_texture_io.h"
 #include "demo/dx12_wind_tunnel/presenter.h"
+#include "demo/wind_tunnel/debug_dumps.h"
 #include "demo/wind_tunnel/synthetic_frame.h"
 
 #include <filesystem>
@@ -267,9 +268,11 @@ int main(int argc, char** argv) {
         return transfer_ok && result.matched;
     };
 
+    const auto display_output = osr::demo::dx12_wind_tunnel::UpscaleNearest(synthetic.color, render_size, display_size);
+
     const bool transfer_ok =
         upload(dx.color_input, DXGI_FORMAT_R8G8B8A8_UNORM, render_size, synthetic.color.data(), static_cast<uint64_t>(render_size.width) * sizeof(uint32_t), "color_input") &&
-        upload(dx.color_output, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, osr::demo::dx12_wind_tunnel::UpscaleNearest(synthetic.color, render_size, display_size).data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "color_output") &&
+        upload(dx.color_output, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, display_output.data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "color_output") &&
         upload(dx.depth, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "depth") &&
         upload(dx.motion_vectors, DXGI_FORMAT_R32G32_FLOAT, render_size, synthetic.motion_vectors.data(), static_cast<uint64_t>(render_size.width) * sizeof(osr::demo::wind_tunnel::Float2Buffer), "motion_vectors") &&
         upload(dx.reactive_mask, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.reactive_mask.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "reactive_mask");
@@ -309,6 +312,37 @@ int main(int argc, char** argv) {
         capture.WriteMetricRow(metrics);
         capture.WriteValidationWarnings(synthetic.context.frame_id, report);
         capture.WriteFrameContextJson(synthetic.context);
+        std::ostringstream frame_dir_name;
+        frame_dir_name << "frame_" << std::setw(6) << std::setfill('0') << synthetic.context.frame_id;
+        uint64_t color_input_hash = 0;
+        uint64_t color_output_hash = 0;
+        uint64_t depth_hash = 0;
+        uint64_t motion_vectors_hash = 0;
+        uint64_t reactive_mask_hash = 0;
+        for (const auto& transfer : transfers) {
+            if (transfer.name == "color_input") color_input_hash = transfer.gpu_hash;
+            if (transfer.name == "color_output") color_output_hash = transfer.gpu_hash;
+            if (transfer.name == "depth") depth_hash = transfer.gpu_hash;
+            if (transfer.name == "motion_vectors") motion_vectors_hash = transfer.gpu_hash;
+            if (transfer.name == "reactive_mask") reactive_mask_hash = transfer.gpu_hash;
+        }
+        const auto dump_result = osr::demo::wind_tunnel::WriteSyntheticFrameDebugDumps(capture.SessionPath() / frame_dir_name.str(),
+                                                                                       synthetic,
+                                                                                       display_output,
+                                                                                       color_input_hash,
+                                                                                       color_output_hash,
+                                                                                       depth_hash,
+                                                                                       motion_vectors_hash,
+                                                                                       reactive_mask_hash);
+        if (!dump_result.AllRequired()) {
+            osr::core::ValidationReport dump_report;
+            dump_report.messages.push_back({
+                osr::core::ValidationSeverity::Warning,
+                "debug_dump_write_failed",
+                "One or more raw/debug image files were not written."
+            });
+            capture.WriteValidationWarnings(synthetic.context.frame_id, dump_report);
+        }
     }
 
     ExportMetadata(synthetic.context, report, dispatch_result, transfers, capture.SessionPath(), "build/manual/osr_dx12_wind_tunnel_metadata.txt");

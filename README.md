@@ -86,7 +86,10 @@ the current DX12 debug-upscale path, and writes readable metadata to
 `build\manual\osr_dx12_wind_tunnel_metadata.txt`. It also writes a capture pack
 under `build\manual\captures\...` with `session.json`, `frames.csv`,
 `metrics.csv`, `warnings.jsonl`, `bookmarks.jsonl`, and
-`frame_000001\frame_context.json`.
+`frame_000001\frame_context.json`. Frame folders also include no-dependency
+debug artifacts such as `color_input.ppm`, `color_output.ppm`, `depth.pgm`,
+`motion_vectors_magnitude.pgm`, `reactive_mask.pgm`, exact `.raw` buffers, and
+`artifacts.json`.
 
 By default it opens a DX12 window and presents the current display-sized color
 debug output. For deterministic lab runs:

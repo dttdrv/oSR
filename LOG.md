@@ -177,6 +177,16 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `osr_dx12_wind_tunnel.exe --present-frames 3` opened the DX12 window, presented the display-sized color output, and exited cleanly.
 - Current limitation: H2 still uses CPU nearest upscale into `color_output`. The next step is a command-list-recorded GPU debug upscale/copy shader.
 
+### Capture Pack Debug Artifacts
+
+- Added `src/demo/wind_tunnel/debug_dumps.*` to write no-dependency debug artifacts into capture-pack frame folders.
+- Frame artifacts now include `color_input.ppm`, `color_output.ppm`, `depth.pgm`, `motion_vectors_magnitude.pgm`, `reactive_mask.pgm`, exact `.raw` buffers, and `artifacts.json`.
+- Added `src/tests/wind_tunnel_debug_dumps_tests.cpp` covering PPM/PGM headers, raw motion-vector buffer size, and artifact manifest creation.
+- Updated the DX12 wind tunnel to write debug artifacts after H1 upload/readback/hash validation.
+- Verification: direct MinGW compile/run passed for `osr_wind_tunnel_debug_dumps_tests.exe`.
+- Verification: `osr_dx12_wind_tunnel.exe --headless` wrote frame artifacts; latest checked capture included all expected PPM/PGM/raw files and an `artifacts.json` manifest with hashes.
+- Verification: `tools/run_manual_tests.bat` passed after adding the debug dump test.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
