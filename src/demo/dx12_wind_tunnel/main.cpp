@@ -389,6 +389,69 @@ FloatMapDiff MaxFloatDiff(FloatMapDiff lhs, FloatMapDiff rhs) noexcept {
     return {std::max(lhs.max_abs, rhs.max_abs), std::max(lhs.mean_abs, rhs.mean_abs)};
 }
 
+bool ReadTemporalDebugMaps(Dx12Objects& dx,
+                           osr::core::Dimensions display_size,
+                           osr::demo::wind_tunnel::TemporalResolveDebugMaps& maps,
+                           std::vector<osr::demo::dx12_wind_tunnel::TextureTransferResult>* transfers) {
+    std::vector<uint8_t> history_bytes;
+    std::vector<uint8_t> color_residual_bytes;
+    std::vector<uint8_t> depth_residual_bytes;
+    osr::demo::dx12_wind_tunnel::TextureTransferResult history_readback;
+    osr::demo::dx12_wind_tunnel::TextureTransferResult color_residual_readback;
+    osr::demo::dx12_wind_tunnel::TextureTransferResult depth_residual_readback;
+    const uint64_t debug_row_bytes = static_cast<uint64_t>(display_size.width) * sizeof(float);
+    const bool ok =
+        osr::demo::dx12_wind_tunnel::ReadbackTexture2DBytes(dx.device,
+                                                            dx.queue,
+                                                            dx.allocator,
+                                                            dx.command_list,
+                                                            dx.sync,
+                                                            dx.debug_history_weight,
+                                                            DXGI_FORMAT_R32_FLOAT,
+                                                            display_size,
+                                                            debug_row_bytes,
+                                                            "debug_history_weight_after_dispatch",
+                                                            history_bytes,
+                                                            history_readback) &&
+        osr::demo::dx12_wind_tunnel::ReadbackTexture2DBytes(dx.device,
+                                                            dx.queue,
+                                                            dx.allocator,
+                                                            dx.command_list,
+                                                            dx.sync,
+                                                            dx.debug_color_residual,
+                                                            DXGI_FORMAT_R32_FLOAT,
+                                                            display_size,
+                                                            debug_row_bytes,
+                                                            "debug_color_residual_after_dispatch",
+                                                            color_residual_bytes,
+                                                            color_residual_readback) &&
+        osr::demo::dx12_wind_tunnel::ReadbackTexture2DBytes(dx.device,
+                                                            dx.queue,
+                                                            dx.allocator,
+                                                            dx.command_list,
+                                                            dx.sync,
+                                                            dx.debug_depth_residual,
+                                                            DXGI_FORMAT_R32_FLOAT,
+                                                            display_size,
+                                                            debug_row_bytes,
+                                                            "debug_depth_residual_after_dispatch",
+                                                            depth_residual_bytes,
+                                                            depth_residual_readback);
+    if (!ok) {
+        return false;
+    }
+    maps.display_size = display_size;
+    maps.history_weight = FloatBytesToVector(history_bytes, display_size);
+    maps.color_residual = FloatBytesToVector(color_residual_bytes, display_size);
+    maps.depth_residual = FloatBytesToVector(depth_residual_bytes, display_size);
+    if (transfers) {
+        transfers->push_back(history_readback);
+        transfers->push_back(color_residual_readback);
+        transfers->push_back(depth_residual_readback);
+    }
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -399,6 +462,7 @@ int main(int argc, char** argv) {
     float requested_render_scale = 2.0f / 3.0f;
     uint64_t requested_frame_id = 8;
     uint32_t requested_frames = 1;
+    int64_t requested_capture_frame_id = -1;
     bool requested_reset_history = false;
     ReconstructionMode reconstruction_mode = ReconstructionMode::SpatialGpu;
     auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
@@ -420,6 +484,8 @@ int main(int argc, char** argv) {
             requested_frame_id = static_cast<uint64_t>(std::max(0, std::atoi(argv[++i])));
         } else if (std::string(argv[i]) == "--frames" && i + 1 < argc) {
             requested_frames = static_cast<uint32_t>(std::max(1, std::atoi(argv[++i])));
+        } else if ((std::string(argv[i]) == "--capture-frame" || std::string(argv[i]) == "--capture-frame-id") && i + 1 < argc) {
+            requested_capture_frame_id = static_cast<int64_t>(std::max(0, std::atoi(argv[++i])));
         } else if (std::string(argv[i]) == "--reset-history") {
             requested_reset_history = true;
         } else if ((std::string(argv[i]) == "--reconstruction" || std::string(argv[i]) == "--mode") && i + 1 < argc) {
@@ -576,6 +642,8 @@ int main(int argc, char** argv) {
         uint32_t max_abs_diff = 0;
         uint32_t frames_checked = 0;
         bool sequence_ok = true;
+        bool sequence_capture_written = false;
+        std::filesystem::path sequence_capture_path;
         const std::vector<float> zero_debug(static_cast<size_t>(display_size.width) * display_size.height, 0.0f);
 
         for (uint32_t frame_index = 0; frame_index < requested_frames && sequence_ok; ++frame_index) {
@@ -596,6 +664,7 @@ int main(int argc, char** argv) {
             const auto spatial = osr::demo::dx12_wind_tunnel::UpscaleBilinear(frame.color, render_size, display_size);
             std::vector<uint32_t> cpu_temporal = spatial;
             osr::demo::wind_tunnel::TemporalResolveStats stats;
+            osr::demo::wind_tunnel::TemporalResolveDebugMaps cpu_debug_maps;
             if (!previous_cpu_temporal.empty()) {
                 cpu_temporal = osr::demo::wind_tunnel::ResolveTemporalDisplay(spatial,
                                                                                previous_cpu_temporal,
@@ -603,7 +672,8 @@ int main(int argc, char** argv) {
                                                                                display_size,
                                                                                {},
                                                                                &stats,
-                                                                               &previous_frame);
+                                                                               &previous_frame,
+                                                                               &cpu_debug_maps);
             }
 
             sequence_ok = sequence_ok &&
@@ -660,6 +730,26 @@ int main(int argc, char** argv) {
                 max_abs_diff = std::max(max_abs_diff, readback.max_abs_diff);
                 max_mean_abs_diff = std::max(max_mean_abs_diff, readback.mean_abs_diff);
                 ++frames_checked;
+                if (requested_capture_frame_id >= 0 &&
+                    static_cast<uint64_t>(requested_capture_frame_id) == frame.context.frame_id) {
+                    osr::demo::wind_tunnel::TemporalResolveDebugMaps gpu_debug_maps;
+                    sequence_ok = ReadTemporalDebugMaps(dx, display_size, gpu_debug_maps, nullptr);
+                    if (sequence_ok) {
+                        sequence_capture_path = std::filesystem::path("build/manual/temporal_gpu_sequence_capture") /
+                                                ("frame_" + std::to_string(frame.context.frame_id));
+                        const auto dump = osr::demo::wind_tunnel::WriteSyntheticFrameDebugDumps(sequence_capture_path,
+                                                                                                frame,
+                                                                                                cpu_temporal,
+                                                                                                0,
+                                                                                                0,
+                                                                                                0,
+                                                                                                0,
+                                                                                                0,
+                                                                                                &gpu_debug_maps);
+                        sequence_capture_written = dump.AllRequired();
+                        sequence_ok = sequence_ok && sequence_capture_written;
+                    }
+                }
             }
 
             sequence_ok = sequence_ok &&
@@ -675,8 +765,15 @@ int main(int argc, char** argv) {
         std::cout << "Max byte diff: " << max_abs_diff << "\n";
         std::cout << "Max mean byte diff: " << max_mean_abs_diff << "\n";
         std::cout << "Persistent history: GPU output copied forward each frame\n";
+        if (requested_capture_frame_id >= 0) {
+            std::cout << "Capture frame: " << requested_capture_frame_id
+                      << (sequence_capture_written ? " written to " : " not written ")
+                      << sequence_capture_path.string() << "\n";
+        }
         Release(dx);
-        if (!sequence_ok || (metric_gate && (max_abs_diff > 32 || max_mean_abs_diff > 0.06))) {
+        if (!sequence_ok ||
+            (requested_capture_frame_id >= 0 && !sequence_capture_written) ||
+            (metric_gate && (max_abs_diff > 32 || max_mean_abs_diff > 0.06))) {
             std::cerr << "Temporal-gpu sequence gate failed.\n";
             return 3;
         }

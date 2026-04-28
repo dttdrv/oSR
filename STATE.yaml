@@ -51,6 +51,7 @@ build_status:
     - Temporal-gpu shader writes history_weight, color_residual, and depth_residual R32F debug UAVs.
     - Single-frame temporal-gpu capture packs dump shader-produced temporal debug maps as PGM artifacts.
     - Single-frame temporal-gpu runs compare shader debug maps against CPU oracle maps and fail on broad drift.
+    - Temporal-gpu sequence runs support --capture-frame / --capture-frame-id to dump one selected frame's GPU debug maps.
     - Temporal diagnostics use a 0.90 reactive trust penalty to align with the resolve path's reactive-history suppression policy.
     - Temporal resolve now uses a 0.84 clean-history ceiling while retaining residual/depth/reactive rejection.
     - DX12 temporal shader now quantizes the temporal blend before detail recovery to match the CPU oracle ordering.
@@ -102,7 +103,7 @@ next_actions:
   - Tighten temporal-gpu parity by reducing max_abs_diff below the current 30-byte worst persistent-history edge-pixel delta.
   - Add temporal shader debug UAVs for history_weight, color_residual, and depth_residual.
   - Add ROI-labeled per-region capture rows for text, specular glints, transparent panes, reactive particles, and corrupted-MV stress regions.
-  - Add temporal-gpu sequence capture mode that writes selected debug maps for one or more frames without dumping every frame by default.
+  - Add capture-pack integration for selected temporal-gpu sequence captures instead of the current standalone debug directory.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.

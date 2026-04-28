@@ -454,6 +454,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`.
 
+### Selected Temporal-GPU Sequence Capture
+
+- Added `--capture-frame` / `--capture-frame-id` for temporal-GPU multi-frame runs.
+- The sequence path can now dump a selected temporal frame to `build/manual/temporal_gpu_sequence_capture/frame_<id>` without capturing every frame.
+- Selected sequence captures include shader-produced `history_weight.pgm`, `color_residual.pgm`, and `depth_residual.pgm` maps.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 9 --metric-gate` exited `0`; capture `build/manual/temporal_gpu_sequence_capture/frame_9` contains all temporal debug PGM maps.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
