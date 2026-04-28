@@ -152,6 +152,11 @@ int main() {
     if (osr::debug::EvaluateCaptureAnalysisGate(failing_analysis).passed) {
         return Fail("ROI capture analysis gate should fail reactive history leaks");
     }
+    osr::debug::CaptureAnalysisGateThresholds relaxed;
+    relaxed.max_reactive_history_trusted_pct = 30.0;
+    if (!osr::debug::EvaluateCaptureAnalysisGate(failing_analysis, relaxed).passed) {
+        return Fail("ROI capture analysis gate should honor custom relaxed thresholds");
+    }
 
     const auto missing = osr::debug::AnalyzeCaptureFrame(dir / "missing");
     if (missing.ok || osr::debug::SummarizeCaptureAnalysis(missing).find("capture_analysis_failed") == std::string::npos) {

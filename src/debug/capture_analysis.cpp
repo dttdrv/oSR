@@ -404,6 +404,11 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
 }
 
 CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis) {
+    return EvaluateCaptureAnalysisGate(analysis, {});
+}
+
+CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis,
+                                                      const CaptureAnalysisGateThresholds& thresholds) {
     CaptureAnalysisGateResult gate;
     if (!analysis.ok) {
         gate.reason = analysis.error;
@@ -414,26 +419,26 @@ CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis
         gate.passed = false;
         return gate;
     };
-    if (analysis.motion_region_history_trusted_pct > 1.0) {
-        return fail("motion region trusted history above 1%");
+    if (analysis.motion_region_history_trusted_pct > thresholds.max_motion_history_trusted_pct) {
+        return fail("motion region trusted history above threshold");
     }
-    if (analysis.static_region_history_trusted_pct < 90.0) {
-        return fail("static region trusted history below 90%");
+    if (analysis.static_region_history_trusted_pct < thresholds.min_static_history_trusted_pct) {
+        return fail("static region trusted history below threshold");
     }
-    if (analysis.text_region.samples > 0 && analysis.text_region.history_trusted_pct < 35.0) {
-        return fail("text ROI trusted history below 35%");
+    if (analysis.text_region.samples > 0 && analysis.text_region.history_trusted_pct < thresholds.min_text_history_trusted_pct) {
+        return fail("text ROI trusted history below threshold");
     }
-    if (analysis.specular_region.samples > 0 && analysis.specular_region.history_trusted_pct > 2.0) {
-        return fail("specular ROI trusted history above 2%");
+    if (analysis.specular_region.samples > 0 && analysis.specular_region.history_trusted_pct > thresholds.max_specular_history_trusted_pct) {
+        return fail("specular ROI trusted history above threshold");
     }
-    if (analysis.transparent_region.samples > 0 && analysis.transparent_region.history_trusted_pct > 8.0) {
-        return fail("transparent ROI trusted history above 8%");
+    if (analysis.transparent_region.samples > 0 && analysis.transparent_region.history_trusted_pct > thresholds.max_transparent_history_trusted_pct) {
+        return fail("transparent ROI trusted history above threshold");
     }
-    if (analysis.reactive_region.samples > 0 && analysis.reactive_region.history_trusted_pct > 1.0) {
-        return fail("reactive ROI trusted history above 1%");
+    if (analysis.reactive_region.samples > 0 && analysis.reactive_region.history_trusted_pct > thresholds.max_reactive_history_trusted_pct) {
+        return fail("reactive ROI trusted history above threshold");
     }
-    if (analysis.color_residual.over_threshold_pct > 3.0) {
-        return fail("color residual candidate rejection above 3%");
+    if (analysis.color_residual.over_threshold_pct > thresholds.max_color_reject_candidate_pct) {
+        return fail("color residual candidate rejection above threshold");
     }
     gate.passed = true;
     gate.reason = "ok";

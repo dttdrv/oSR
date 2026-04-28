@@ -571,6 +571,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run reported worst diff at `frame=14 pixel=(928,345) channel=2 roi=unclassified`.
 
+### Named Capture Gate Thresholds
+
+- Replaced hard-coded capture-analysis ROI gate constants with `CaptureAnalysisGateThresholds`.
+- Added an overload so future profile/config loading can pass per-scenario thresholds without changing gate logic.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_capture_analyzer.bat build/manual/captures/2026-04-28T20-52-51Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012 --gate` exited `0`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

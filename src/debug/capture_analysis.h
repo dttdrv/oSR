@@ -49,8 +49,20 @@ struct CaptureAnalysisGateResult {
     std::string reason;
 };
 
+struct CaptureAnalysisGateThresholds {
+    double max_motion_history_trusted_pct = 1.0;
+    double min_static_history_trusted_pct = 90.0;
+    double min_text_history_trusted_pct = 35.0;
+    double max_specular_history_trusted_pct = 2.0;
+    double max_transparent_history_trusted_pct = 8.0;
+    double max_reactive_history_trusted_pct = 1.0;
+    double max_color_reject_candidate_pct = 3.0;
+};
+
 [[nodiscard]] CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir);
 [[nodiscard]] CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis);
+[[nodiscard]] CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis& analysis,
+                                                                    const CaptureAnalysisGateThresholds& thresholds);
 [[nodiscard]] std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis);
 
 } // namespace osr::debug
