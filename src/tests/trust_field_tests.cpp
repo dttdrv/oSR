@@ -20,6 +20,16 @@ int main() {
         return 1;
     }
 
+    if (!Near(osr::reconstruction::ColorTrust(0.0f, settings), 1.0f)) {
+        std::cerr << "Color trust should be full when color delta is zero.\n";
+        return 1;
+    }
+
+    if (osr::reconstruction::ColorTrust(settings.color_consistency_threshold * 2.0f, settings) != 0.0f) {
+        std::cerr << "Color trust should clamp to zero beyond threshold.\n";
+        return 1;
+    }
+
     if (osr::reconstruction::MotionTrust(999.0f, settings) != 0.0f) {
         std::cerr << "Motion trust should clamp to zero for very large motion.\n";
         return 1;
@@ -29,6 +39,7 @@ int main() {
     factors.previous_trust = 1.0f;
     factors.depth_relative_delta = 0.0f;
     factors.motion_length_pixels = 0.0f;
+    factors.color_delta_luma = 0.0f;
     factors.reactive_value = 0.0f;
     const auto stable = osr::reconstruction::ComputeTrustField(factors, settings);
     if (stable.history_trust <= 0.8f || stable.accumulation_weight <= 0.6f) {
@@ -43,6 +54,14 @@ int main() {
         return 1;
     }
 
+    factors.reset_history = false;
+    factors.color_delta_luma = 1.0f;
+    const auto color_mismatch = osr::reconstruction::ComputeTrustField(factors, settings);
+    if (color_mismatch.history_trust != 0.0f || color_mismatch.accumulation_weight != 0.0f) {
+        std::cerr << "Large color mismatch should fully reject history.\n";
+        return 1;
+    }
+
     osr::reconstruction::ReactiveSynthesisInputs reactive_inputs;
     reactive_inputs.color_delta_luma = 0.3f;
     const auto reactive = osr::reconstruction::SynthesizeReactiveMask(reactive_inputs, {});
@@ -53,4 +72,3 @@ int main() {
 
     return 0;
 }
-

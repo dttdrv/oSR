@@ -7,7 +7,7 @@ build_status:
   last_preset: direct-mingw-manual
   notes:
     - Previous full Ninja build passed at commit e91acfd.
-    - Current Ninja build directory stalls after a timed-out run; changed test sources compile and pass via direct MinGW commands.
+    - Current CMake/Ninja configure/build stalls during compiler ABI/tool execution in this sandbox; changed test sources compile and pass via direct MinGW commands.
     - Visual Studio/MSBuild command-line tools were not available in this sandbox, so the AMD sample solution was not built.
 external_dependencies:
   fidelityfx_sdk:
@@ -41,3 +41,4 @@ next_actions:
   - Run first sample proof of life and append results to LOG.md.
   - Replace metadata-only DX12 debug pass with command-list recording.
   - Port trust-field CPU policy to command-list-recorded HLSL passes.
+  - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.

@@ -32,11 +32,27 @@ The cost problem is severe. Full attention or video SR transformer inference is 
 oSR should implement attention-like selection as deterministic shader logic:
 
 - Reproject previous history with motion vectors.
-- Score history with depth consistency, motion consistency, local color/luma agreement, reactive mask, disocclusion, and previous trust.
+- Score history with depth consistency, motion consistency, local color/luma agreement, reactive mask, disocclusion, reset state, and previous trust.
 - Store a compact trust/age field.
 - Let the trust field drive accumulation weight, reactive synthesis, sharpening strength, and debug visualization.
 
 This is a "trust-field" temporal upscaler: every major temporal decision is observable and tunable. The goal is to win quality-per-millisecond and debugging control on Radeon 760M, not to claim universal superiority over proprietary neural models.
+
+The trust field must not be a one-bit reject mask. Research and engine docs point to a multi-signal, soft policy: stable opaque surfaces should rebuild trust after temporary uncertainty, while disocclusion, reactive particles, exposure/color mismatch, invalid motion vectors, and reset events must immediately reduce or clear history weight.
+
+## Current Oracle
+
+The CPU oracle in `src/reconstruction/temporal_oracle.*` is the correctness reference for the shader implementation. It tests:
+
+- canonical stable-surface trust and history weight
+- reset dominance over all other signals
+- disocclusion current-frame fallback
+- reactive/current-frame fallback
+- monotonic history-weight reduction as motion grows
+- shimmer variance reduction in stable noisy content
+- fuzz invariants for finite, bounded trust/current/history weights
+
+The first robust shimmer test found a real bug: pure previous-trust decay slowly killed stable history even when current evidence was good. The policy now separates evidence trust from memory and allows stable evidence to rebuild trust.
 
 ## Hardware Implication
 
@@ -56,4 +72,3 @@ The research track counts as a breakthrough only if measured captures show at le
 - fewer sharpened trails from confidence-gated sharpening
 - more stable particles/transparencies from synthesized or supplied reactive masks
 - better debugability through trust/weight visualizations
-

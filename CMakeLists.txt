@@ -23,6 +23,7 @@ add_library(osr_reconstruction STATIC
     src/reconstruction/sharpening.cpp
     src/reconstruction/spatial_upscale.cpp
     src/reconstruction/temporal_accumulation.cpp
+    src/reconstruction/temporal_oracle.cpp
     src/reconstruction/trust_field.cpp
 )
 target_include_directories(osr_reconstruction PUBLIC src)
@@ -68,6 +69,11 @@ add_library(osr_debug STATIC
 target_include_directories(osr_debug PUBLIC src)
 target_link_libraries(osr_debug PUBLIC osr_core)
 
+add_executable(osr_trust_field_demo
+    src/demo/trust_field_demo.cpp
+)
+target_link_libraries(osr_trust_field_demo PRIVATE osr_reconstruction)
+
 if(OSR_BUILD_TESTS)
     enable_testing()
     add_executable(osr_frame_context_tests
@@ -81,4 +87,10 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_trust_field_tests PRIVATE osr_core osr_reconstruction)
     add_test(NAME trust_field COMMAND osr_trust_field_tests)
+
+    add_executable(osr_temporal_oracle_tests
+        src/tests/temporal_oracle_tests.cpp
+    )
+    target_link_libraries(osr_temporal_oracle_tests PRIVATE osr_reconstruction)
+    add_test(NAME temporal_oracle COMMAND osr_temporal_oracle_tests)
 endif()

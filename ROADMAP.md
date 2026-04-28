@@ -45,6 +45,7 @@ Pass gate:
 - Static scenes converge without uncontrolled ghost trails.
 - First temporal path target is under 1.5 ms GPU, with warning over 2.5 ms.
 - A trust field is generated or cleared each frame and exposed to debug views.
+- CPU oracle and HLSL trust update agree on canonical scenario outputs before GPU output is trusted.
 
 ## Phase 5: History Rejection And Disocclusion
 
