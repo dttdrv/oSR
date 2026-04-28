@@ -3,12 +3,14 @@ build_status:
   configured: true
   compiled: partial
   tests_passed: true
-  last_checked: 2026-04-27
+  last_checked: 2026-04-28
   last_preset: direct-mingw-manual
   notes:
     - Previous full Ninja build passed at commit e91acfd.
     - Current CMake/Ninja configure/build stalls during compiler ABI/tool execution in this sandbox; changed test sources compile and pass via direct MinGW commands.
     - Visual Studio/MSBuild command-line tools were not available in this sandbox, so the AMD sample solution was not built.
+    - Standalone WebGL 3D wind tunnel script passed a Node syntax check.
+    - Playwright loaded the standalone 3D wind tunnel over temporary localhost and observed the expected page title.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -32,6 +34,7 @@ target_games_for_initial_testing:
   samples:
     - AMD FidelityFX SDK FSR3 upscaler sample
     - Local synthetic DX12 harness
+    - Standalone WebGL 3D wind tunnel for visual edge/jitter/render-scale inspection
   later_offline_games:
     - The Outer Worlds: Spacer's Choice Edition
     - RoboCop: Rogue City
@@ -48,3 +51,5 @@ next_actions:
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
   - Use tools/run_manual_console.bat for double-click manual testing until the DX12 harness exists.
+  - Use tools/run_3d_scene.bat for visual manual testing of render scale, jitter, thin-geometry aliasing, and debug view controls.
+  - Promote the 3D wind tunnel concepts into the DX12 harness: depth output, motion-vector output, responsive mask output, history-reset triggers, and frame captures.

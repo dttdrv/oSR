@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>oSR Manual 3D Scene</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111318;
+      --panel: #171a20;
+      --line: #2b3038;
+      --text: #d7dde7;
+      --muted: #8e98a8;
+      --accent: #61b38b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      letter-spacing: 0;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      min-height: 100dvh;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100dvh;
+      display: block;
+      background: #0f1116;
+    }
+
+    aside {
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 650;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    section {
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    select,
+    input[type="range"],
+    button {
+      width: 100%;
+    }
+
+    select,
+    button {
+      min-height: 34px;
+      background: #20242c;
+      color: var(--text);
+      border: 1px solid #353b46;
+      border-radius: 6px;
+      padding: 0 10px;
+      font: inherit;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .value {
+      color: var(--text);
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .metrics {
+      display: grid;
+      gap: 7px;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 12px;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 7px;
+    }
+
+    .check {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 65dvh;
+      }
+
+      aside {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <canvas id="view"></canvas>
+    <aside>
+      <div>
+        <h1>oSR 3D Wind Tunnel</h1>
+        <p>Low-resolution 3D rendering upscaled to the display canvas. Use it to inspect edges, thin geometry, particles, jitter, and resolution-scale behavior.</p>
+      </div>
+
+      <section>
+        <label>
+          Quality preset
+          <select id="preset">
+            <option value="1">Native</option>
+            <option value="0.77">Ultra Quality</option>
+            <option value="0.6666667" selected>Quality</option>
+            <option value="0.58">Balanced</option>
+            <option value="0.5">Performance</option>
+            <option value="0.3333333">Ultra Performance</option>
+            <option value="custom">Custom slider</option>
+          </select>
+        </label>
+        <label>
+          Custom render scale
+          <input id="scale" type="range" min="33" max="100" value="67">
+        </label>
+        <div class="row"><span>Render scale</span><span class="value" id="scaleValue">66.7%</span></div>
+      </section>
+
+      <section>
+        <label>
+          View mode
+          <select id="viewMode">
+            <option value="0" selected>Upscaled color</option>
+            <option value="1">Edge energy</option>
+            <option value="2">Luma only</option>
+          </select>
+        </label>
+        <label>
+          Jitter sequence length
+          <input id="jitterLength" type="range" min="8" max="96" value="16" step="1">
+        </label>
+        <div class="row"><span>Jitter samples</span><span class="value" id="jitterLengthValue">16</span></div>
+      </section>
+
+      <section>
+        <label class="check"><span>Animate scene</span><input id="animate" type="checkbox" checked></label>
+        <label class="check"><span>Subpixel jitter</span><input id="jitter" type="checkbox" checked></label>
+        <label class="check"><span>Freeze frame</span><input id="freeze" type="checkbox"></label>
+        <label class="check"><span>Thin rails</span><input id="rails" type="checkbox" checked></label>
+        <label class="check"><span>Particles</span><input id="particles" type="checkbox" checked></label>
+        <label class="check"><span>Linear upsample</span><input id="linear" type="checkbox" checked></label>
+        <button id="reset">Camera cut / reset</button>
+      </section>
+
+      <section class="metrics">
+        <div class="metric"><span>Display</span><span id="displayMetric">0x0</span></div>
+        <div class="metric"><span>Internal</span><span id="internalMetric">0x0</span></div>
+        <div class="metric"><span>Frame</span><span id="frameMetric">0</span></div>
+        <div class="metric"><span>Jitter</span><span id="jitterMetric">0,0</span></div>
+        <div class="metric"><span>View</span><span id="viewMetric">color</span></div>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("view");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+    if (!gl) {
+      document.body.innerHTML = "<pre>WebGL is not available.</pre>";
+      throw new Error("WebGL unavailable");
+    }
+
+    const ui = {
+      preset: document.getElementById("preset"),
+      scale: document.getElementById("scale"),
+      scaleValue: document.getElementById("scaleValue"),
+      viewMode: document.getElementById("viewMode"),
+      jitterLength: document.getElementById("jitterLength"),
+      jitterLengthValue: document.getElementById("jitterLengthValue"),
+      animate: document.getElementById("animate"),
+      jitter: document.getElementById("jitter"),
+      freeze: document.getElementById("freeze"),
+      rails: document.getElementById("rails"),
+      particles: document.getElementById("particles"),
+      linear: document.getElementById("linear"),
+      reset: document.getElementById("reset"),
+      displayMetric: document.getElementById("displayMetric"),
+      internalMetric: document.getElementById("internalMetric"),
+      frameMetric: document.getElementById("frameMetric"),
+      jitterMetric: document.getElementById("jitterMetric"),
+      viewMetric: document.getElementById("viewMetric")
+    };
+
+    const vs = `
+      attribute vec3 a_pos;
+      attribute vec3 a_color;
+      uniform mat4 u_mvp;
+      varying vec3 v_color;
+      void main() {
+        v_color = a_color;
+        gl_Position = u_mvp * vec4(a_pos, 1.0);
+        gl_PointSize = 5.0;
+      }
+    `;
+
+    const fs = `
+      precision mediump float;
+      varying vec3 v_color;
+      void main() {
+        gl_FragColor = vec4(v_color, 1.0);
+      }
+    `;
+
+    const quadVs = `
+      attribute vec2 a_pos;
+      varying vec2 v_uv;
+      void main() {
+        v_uv = a_pos * 0.5 + 0.5;
+        gl_Position = vec4(a_pos, 0.0, 1.0);
+      }
+    `;
+
+    const quadFs = `
+      precision mediump float;
+      uniform sampler2D u_tex;
+      uniform int u_view_mode;
+      uniform vec2 u_texel;
+      varying vec2 v_uv;
+      float luma(vec3 c) {
+        return dot(c, vec3(0.2126, 0.7152, 0.0722));
+      }
+      void main() {
+        vec3 c = texture2D(u_tex, v_uv).rgb;
+        if (u_view_mode == 1) {
+          float center = luma(c);
+          float right = luma(texture2D(u_tex, v_uv + vec2(u_texel.x, 0.0)).rgb);
+          float up = luma(texture2D(u_tex, v_uv + vec2(0.0, u_texel.y)).rgb);
+          float edge = clamp((abs(center - right) + abs(center - up)) * 5.0, 0.0, 1.0);
+          gl_FragColor = vec4(edge, edge * 0.82, edge * 0.42, 1.0);
+        } else if (u_view_mode == 2) {
+          float y = luma(c);
+          gl_FragColor = vec4(y, y, y, 1.0);
+        } else {
+          gl_FragColor = vec4(c, 1.0);
+        }
+      }
+    `;
+
+    function shader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    }
+
+    function program(vertex, fragment) {
+      const p = gl.createProgram();
+      gl.attachShader(p, shader(gl.VERTEX_SHADER, vertex));
+      gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fragment));
+      gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+      return p;
+    }
+
+    const sceneProgram = program(vs, fs);
+    const quadProgram = program(quadVs, quadFs);
+
+    function mat4() { return new Float32Array(16); }
+    function identity() {
+      const m = mat4();
+      m[0] = m[5] = m[10] = m[15] = 1;
+      return m;
+    }
+    function multiply(a, b) {
+      const out = mat4();
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          out[c * 4 + r] =
+            a[0 * 4 + r] * b[c * 4 + 0] +
+            a[1 * 4 + r] * b[c * 4 + 1] +
+            a[2 * 4 + r] * b[c * 4 + 2] +
+            a[3 * 4 + r] * b[c * 4 + 3];
+        }
+      }
+      return out;
+    }
+    function translate(x, y, z) {
+      const m = identity();
+      m[12] = x; m[13] = y; m[14] = z;
+      return m;
+    }
+    function rotateY(a) {
+      const m = identity();
+      const c = Math.cos(a), s = Math.sin(a);
+      m[0] = c; m[2] = -s; m[8] = s; m[10] = c;
+      return m;
+    }
+    function scale(x, y, z) {
+      const m = identity();
+      m[0] = x; m[5] = y; m[10] = z;
+      return m;
+    }
+    function perspective(fovy, aspect, near, far, jitterX, jitterY, width, height) {
+      const f = 1 / Math.tan(fovy / 2);
+      const m = mat4();
+      m[0] = f / aspect;
+      m[5] = f;
+      m[8] = jitterX * 2 / Math.max(1, width);
+      m[9] = -jitterY * 2 / Math.max(1, height);
+      m[10] = (far + near) / (near - far);
+      m[11] = -1;
+      m[14] = (2 * far * near) / (near - far);
+      return m;
+    }
+    function lookAt(eye, center, up) {
+      const zx = eye[0] - center[0], zy = eye[1] - center[1], zz = eye[2] - center[2];
+      let zl = Math.hypot(zx, zy, zz);
+      const z = [zx / zl, zy / zl, zz / zl];
+      let x = [up[1] * z[2] - up[2] * z[1], up[2] * z[0] - up[0] * z[2], up[0] * z[1] - up[1] * z[0]];
+      let xl = Math.hypot(x[0], x[1], x[2]);
+      x = [x[0] / xl, x[1] / xl, x[2] / xl];
+      const y = [z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0]];
+      const m = identity();
+      m[0] = x[0]; m[4] = x[1]; m[8] = x[2];
+      m[1] = y[0]; m[5] = y[1]; m[9] = y[2];
+      m[2] = z[0]; m[6] = z[1]; m[10] = z[2];
+      m[12] = -(x[0] * eye[0] + x[1] * eye[1] + x[2] * eye[2]);
+      m[13] = -(y[0] * eye[0] + y[1] * eye[1] + y[2] * eye[2]);
+      m[14] = -(z[0] * eye[0] + z[1] * eye[1] + z[2] * eye[2]);
+      return m;
+    }
+
+    function cubeVertices(color) {
+      const p = [
+        -1,-1,-1, 1,-1,-1, 1,1,-1, -1,1,-1,
+        -1,-1, 1, 1,-1, 1, 1,1, 1, -1,1, 1
+      ];
+      const idx = [0,1,2, 0,2,3, 1,5,6, 1,6,2, 5,4,7, 5,7,6, 4,0,3, 4,3,7, 3,2,6, 3,6,7, 4,5,1, 4,1,0];
+      const out = [];
+      for (const i of idx) out.push(p[i*3], p[i*3+1], p[i*3+2], color[0], color[1], color[2]);
+      return out;
+    }
+
+    function lineVertices() {
+      const out = [];
+      for (let i = -10; i <= 10; i++) {
+        const c = i === 0 ? [0.45,0.62,0.75] : [0.24,0.27,0.32];
+        out.push(-10, 0, i, ...c, 10, 0, i, ...c, i, 0, -10, ...c, i, 0, 10, ...c);
+      }
+      return out;
+    }
+
+    function makeBuffer(data) {
+      const b = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, b);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+      return { buffer: b, count: data.length / 6 };
+    }
+
+    const cube = makeBuffer(cubeVertices([0.75, 0.82, 0.73]));
+    const rail = makeBuffer(cubeVertices([0.91, 0.86, 0.65]));
+    const grid = makeBuffer(lineVertices());
+    const particleBuffer = makeBuffer([
+      -1,1.0,-1, 0.95,0.45,0.32, 0,1.2,-1.5, 0.95,0.45,0.32, 1,0.85,-0.8, 0.95,0.45,0.32,
+      1.4,1.4,0.1, 0.95,0.45,0.32, -1.4,0.7,0.4, 0.95,0.45,0.32
+    ]);
+
+    const quad = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+
+    let frame = 0;
+    let target = null;
+
+    function currentScale() {
+      if (ui.preset.value === "custom") return Number(ui.scale.value) / 100;
+      return Number(ui.preset.value);
+    }
+
+    function ensureTarget(width, height) {
+      if (target && target.width === width && target.height === height) return target;
+      if (target) {
+        gl.deleteFramebuffer(target.fbo);
+        gl.deleteTexture(target.tex);
+        gl.deleteRenderbuffer(target.depth);
+      }
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      const filter = ui.linear.checked ? gl.LINEAR : gl.NEAREST;
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      const depth = gl.createRenderbuffer();
+      gl.bindRenderbuffer(gl.RENDERBUFFER, depth);
+      gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+      const fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth);
+      target = { width, height, tex, depth, fbo };
+      return target;
+    }
+
+    function bindScene(buffer) {
+      const stride = 24;
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buffer);
+      const pos = gl.getAttribLocation(sceneProgram, "a_pos");
+      const col = gl.getAttribLocation(sceneProgram, "a_color");
+      gl.enableVertexAttribArray(pos);
+      gl.enableVertexAttribArray(col);
+      gl.vertexAttribPointer(pos, 3, gl.FLOAT, false, stride, 0);
+      gl.vertexAttribPointer(col, 3, gl.FLOAT, false, stride, 12);
+    }
+
+    function drawMesh(buffer, mode, mvp) {
+      gl.uniformMatrix4fv(gl.getUniformLocation(sceneProgram, "u_mvp"), false, mvp);
+      bindScene(buffer);
+      gl.drawArrays(mode, 0, buffer.count);
+    }
+
+    function halton(index, base) {
+      let f = 1, r = 0, i = index;
+      while (i > 0) {
+        f /= base;
+        r += f * (i % base);
+        i = Math.floor(i / base);
+      }
+      return r;
+    }
+
+    function render() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const displayW = Math.max(1, Math.floor(canvas.clientWidth * dpr));
+      const displayH = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+      if (canvas.width !== displayW || canvas.height !== displayH) {
+        canvas.width = displayW;
+        canvas.height = displayH;
+      }
+
+      const scaleValue = currentScale();
+      const renderW = Math.max(1, Math.round(displayW * scaleValue));
+      const renderH = Math.max(1, Math.round(displayH * scaleValue));
+      const rt = ensureTarget(renderW, renderH);
+      const sequenceLength = Math.max(8, Number(ui.jitterLength.value) || 16);
+      const jitterIndex = (frame % sequenceLength) + 1;
+      const jitterX = ui.jitter.checked ? halton(jitterIndex, 2) - 0.5 : 0;
+      const jitterY = ui.jitter.checked ? halton(jitterIndex, 3) - 0.5 : 0;
+      const t = ui.animate.checked ? frame * 0.016 : 0.0;
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, rt.fbo);
+      gl.viewport(0, 0, renderW, renderH);
+      gl.enable(gl.DEPTH_TEST);
+      gl.disable(gl.BLEND);
+      gl.clearColor(0.07, 0.08, 0.10, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      gl.useProgram(sceneProgram);
+      const proj = perspective(Math.PI / 3, renderW / renderH, 0.1, 100, jitterX, jitterY, renderW, renderH);
+      const view = lookAt([Math.sin(t * 0.25) * 5.8, 3.2, Math.cos(t * 0.25) * 5.8], [0, 0.7, 0], [0, 1, 0]);
+      const pv = multiply(proj, view);
+
+      drawMesh(grid, gl.LINES, pv);
+      drawMesh(cube, gl.TRIANGLES, multiply(pv, multiply(translate(-1.3, 1, 0), multiply(rotateY(t), scale(0.72, 1.0, 0.72)))));
+      drawMesh(cube, gl.TRIANGLES, multiply(pv, multiply(translate(1.4, 0.55, Math.sin(t) * 0.7), multiply(rotateY(-t * 1.3), scale(0.42, 0.55, 0.42)))));
+
+      if (ui.rails.checked) {
+        for (let i = -3; i <= 3; i++) {
+          drawMesh(rail, gl.TRIANGLES, multiply(pv, multiply(translate(i * 0.45, 0.82, -2.1), scale(0.025, 0.82, 0.025))));
+        }
+        drawMesh(rail, gl.TRIANGLES, multiply(pv, multiply(translate(0, 1.45, -2.1), scale(1.7, 0.025, 0.025))));
+      }
+
+      if (ui.particles.checked) {
+        gl.disable(gl.DEPTH_TEST);
+        drawMesh(particleBuffer, gl.POINTS, multiply(pv, translate(Math.sin(t * 2) * 0.3, 0, Math.cos(t) * 0.2)));
+        gl.enable(gl.DEPTH_TEST);
+      }
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, displayW, displayH);
+      gl.disable(gl.DEPTH_TEST);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(quadProgram);
+      gl.bindTexture(gl.TEXTURE_2D, rt.tex);
+      gl.uniform1i(gl.getUniformLocation(quadProgram, "u_tex"), 0);
+      gl.uniform1i(gl.getUniformLocation(quadProgram, "u_view_mode"), Number(ui.viewMode.value));
+      gl.uniform2f(gl.getUniformLocation(quadProgram, "u_texel"), 1 / renderW, 1 / renderH);
+      const filter = ui.linear.checked ? gl.LINEAR : gl.NEAREST;
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+      gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+      const qp = gl.getAttribLocation(quadProgram, "a_pos");
+      gl.enableVertexAttribArray(qp);
+      gl.vertexAttribPointer(qp, 2, gl.FLOAT, false, 0, 0);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      ui.scaleValue.textContent = `${(scaleValue * 100).toFixed(1)}%`;
+      ui.jitterLengthValue.textContent = String(sequenceLength);
+      ui.displayMetric.textContent = `${displayW}x${displayH}`;
+      ui.internalMetric.textContent = `${renderW}x${renderH}`;
+      ui.frameMetric.textContent = String(frame);
+      ui.jitterMetric.textContent = `${jitterX.toFixed(3)},${jitterY.toFixed(3)}`;
+      ui.viewMetric.textContent = ui.viewMode.options[ui.viewMode.selectedIndex].textContent;
+
+      if (!ui.freeze.checked) frame++;
+      requestAnimationFrame(render);
+    }
+
+    ui.preset.addEventListener("change", () => {
+      if (ui.preset.value !== "custom") ui.scale.value = String(Math.round(Number(ui.preset.value) * 100));
+    });
+    ui.scale.addEventListener("input", () => {
+      ui.preset.value = "custom";
+    });
+    ui.reset.addEventListener("click", () => {
+      frame = 0;
+    });
+
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>

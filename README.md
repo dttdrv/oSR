@@ -43,6 +43,18 @@ For a quick non-interactive quality-mode printout:
 tools\run_quality_mode_demo.bat
 ```
 
+For a visual 3D edge and render-scale check:
+
+```text
+tools\run_3d_scene.bat
+```
+
+This opens a standalone WebGL "wind tunnel" with hard-edged cubes, thin rails,
+particles, subpixel jitter, DLSS/XeSS-style quality presets, a custom render-scale
+slider, freeze-frame, and edge/luma debug views. It is not the final DX12 runtime,
+but it is useful for manual inspection of aliasing, shimmer, and upscale behavior
+while the FFX bridge and DX12 harness are being wired.
+
 To build and run the current manual test suite:
 
 ```text

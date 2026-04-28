@@ -26,6 +26,7 @@ Pass gate:
 - Color, depth, motion vectors, output, sizes, jitter, exposure, masks, and reset state are logged.
 - Missing or suspicious motion-vector scale is reported.
 - Capture is disabled by default.
+- Manual harnesses expose the same diagnostic concepts before game interception is trusted: render scale, jitter, freeze/reset, edge views, and later depth/MV/mask views.
 
 ## Phase 3: Deterministic Spatial Upscaler
 
@@ -35,6 +36,7 @@ Pass gate:
 - Debug output is produced through a compute pass.
 - GPU cost target at 1920x1200 is under 0.6 ms on Radeon 760M-class hardware.
 - Spatial baseline includes timing for the trust/debug resources disabled.
+- The 3D wind tunnel can reproduce visible differences between nearest, bilinear, and the first deterministic spatial pass on thin geometry and hard silhouettes.
 
 ## Phase 4: Temporal Accumulation
 
