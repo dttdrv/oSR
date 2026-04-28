@@ -22,15 +22,15 @@ struct TemporalResolveResources {
 struct TemporalResolveConstants {
     core::Dimensions render_size {};
     core::Dimensions display_size {};
-    float max_history_weight = 0.98f;
-    float reactive_penalty = 0.90f;
-    float motion_rejection_pixels = 2.0f;
-    float color_rejection_threshold = 0.16f;
-    float depth_rejection_threshold = 0.035f;
+    float max_history_weight = 0.92f;
+    float reactive_penalty = 0.95f;
+    float motion_rejection_pixels = 1.25f;
+    float color_rejection_threshold = 0.12f;
+    float depth_rejection_threshold = 0.025f;
     float sharpening_amount = 0.28f;
     float sharpening_low_trust_scale = 0.20f;
     float sharpening_reactive_scale = 0.25f;
-    float history_clip_margin = 0.04f;
+    float history_clip_margin = 0.02f;
     core::Float2 jitter_offset {};
 };
 

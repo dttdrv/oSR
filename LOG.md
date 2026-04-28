@@ -621,6 +621,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_temporal_tuning_sweep.bat` exited `0`; all three profiles passed capture analysis, and the current ranking was `sweep_conservative` score `79.7175`, `sweep_detail` score `79.6559`, `sweep_balanced` score `79.6025`.
 - Decision: treat `sweep_conservative` as the current evidence-backed tuning baseline until broader scenes or frame IDs overturn it.
 
+### Conservative Temporal Defaults
+
+- Promoted the current sweep winner into the default CPU and DX12 temporal resolve settings.
+- New defaults: history weight `0.92`, reactive penalty `0.95`, motion rejection `1.25`, color rejection `0.12`, depth rejection `0.025`, history clip margin `0.02`.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name default_after_sweep --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed.
+- Verification: `tools/run_capture_compare.bat build/manual/captures/default_after_sweep build/manual/captures/sweep_conservative` exited `0`; both captures scored `79.7175` with identical exported ROI metrics.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
