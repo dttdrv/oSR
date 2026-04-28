@@ -107,4 +107,10 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_residual_search_tests PRIVATE osr_reconstruction)
     add_test(NAME residual_search COMMAND osr_residual_search_tests)
+
+    add_executable(osr_sharpening_tests
+        src/tests/sharpening_tests.cpp
+    )
+    target_link_libraries(osr_sharpening_tests PRIVATE osr_reconstruction)
+    add_test(NAME sharpening COMMAND osr_sharpening_tests)
 endif()

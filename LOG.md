@@ -71,6 +71,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: direct MinGW compile/run passed for `osr_residual_search_tests.exe`.
 - Verification: direct MinGW run passed for `osr_tile_classifier_tests.exe`, `osr_temporal_oracle_tests.exe`, `osr_trust_field_tests.exe`, and `osr_trust_field_demo.exe`.
 
+### Confidence-Gated Sharpening
+
+- Extended `src/reconstruction/sharpening.*` with `ConfidenceGatedSharpness`.
+- Policy: disabled sharpening returns zero; disocclusions suppress sharpening; reactive pixels reduce sharpening; low-trust pixels strongly reduce sharpening; high-trust opaque pixels preserve base sharpness.
+- Added `src/tests/sharpening_tests.cpp` covering clamp behavior, disabled behavior, trust scaling, reactive damping, disocclusion suppression, and monotonic trust response.
+- Verification: direct MinGW compile/run passed for `osr_sharpening_tests.exe`.
+- Verification: direct MinGW run passed for `osr_residual_search_tests.exe`, `osr_tile_classifier_tests.exe`, `osr_temporal_oracle_tests.exe`, `osr_trust_field_tests.exe`, and `osr_trust_field_demo.exe`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

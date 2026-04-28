@@ -86,6 +86,12 @@ This is deliberately gated by tile risk:
 
 The prototype is CPU-only for now so shader behavior can be tested against exact candidate choices before GPU implementation.
 
+## Confidence-Gated Sharpening
+
+The first sharpening policy is in `src/reconstruction/sharpening.*`. It suppresses sharpening in disocclusions, damps sharpening in reactive regions, and scales sharpening upward with history trust.
+
+This directly targets the "sharp ghost" failure mode: sharpening should not amplify stale reprojected history, particles, or newly revealed geometry.
+
 ## Hardware Implication
 
 Radeon 760M is a small RDNA 3 integrated GPU with shared system memory. It has enough compute for lightweight compute passes but limited bandwidth and thermal headroom. The default path should target:
