@@ -557,6 +557,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_capture_analyzer.bat build/manual/captures/2026-04-28T20-52-51Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012 --gate` exited `0`; output ended with `capture_analysis_gate=ok reason=ok`.
 
+### In-Process Selected Capture ROI Gate
+
+- DX12 temporal-GPU selected-frame capture now runs `AnalyzeCaptureFrame` and `EvaluateCaptureAnalysisGate` in-process when `--metric-gate` is enabled.
+- The sequence run prints the capture analysis summary before the normal temporal sequence summary and fails if the saved frame violates ROI trust gates.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate` exited `0`; output included `Capture analysis gate: ok reason=ok`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
