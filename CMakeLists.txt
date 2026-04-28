@@ -37,6 +37,7 @@ add_library(osr_dx12 STATIC
     src/backends/dx12/debug_upscale_pass.cpp
     src/backends/dx12/descriptor_helpers.cpp
     src/backends/dx12/dx12_backend.cpp
+    src/backends/dx12/temporal_resolve_pass.cpp
 )
 target_include_directories(osr_dx12 PUBLIC src)
 target_link_libraries(osr_dx12 PUBLIC osr_core osr_reconstruction)

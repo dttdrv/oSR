@@ -353,6 +353,17 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.65822`, stability improvement `34.178%`, ghost score `0.25372`, edge preservation `1.0012`.
 - Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
 
+### DX12 Temporal Resolve Proof Of Life
+
+- Added a DX12 temporal resolve compute pass with SRVs for current color, previous display history, current depth, previous depth, motion vectors, and reactive mask, plus a UAV for output color.
+- Added `--reconstruction temporal-gpu` to the DX12 wind tunnel.
+- The harness uploads previous display history and previous depth, computes the CPU temporal resolve as the oracle, dispatches the GPU temporal pass, and readbacks output against the CPU oracle.
+- The temporal shader mirrors the current CPU prototype: bilinear current color, current-to-previous motion reprojection, reactive suppression, motion falloff, luma residual rejection, and previous-depth residual rejection.
+- Readback validation now records exact CPU/GPU hashes plus max/mean byte deltas; shader output passes only when max byte delta is at most `16` and mean byte delta is at most `0.01`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`; latest readback reported `max_abs_diff=13`, `mean_abs_diff=0.00544678`, and `matched=true`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

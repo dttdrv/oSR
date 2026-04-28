@@ -4,6 +4,7 @@
 #include <dxgi1_6.h>
 
 #include "backends/dx12/dx12_backend.h"
+#include "backends/dx12/temporal_resolve_pass.h"
 #include "core/frame_context.h"
 #include "core/logging.h"
 #include "debug/capture_pack.h"
@@ -44,20 +45,25 @@ struct Dx12Objects {
     osr::demo::dx12_wind_tunnel::Dx12Sync sync;
     ID3D12Resource* color_input = nullptr;
     ID3D12Resource* color_output = nullptr;
+    ID3D12Resource* previous_history = nullptr;
     ID3D12Resource* depth = nullptr;
+    ID3D12Resource* previous_depth = nullptr;
     ID3D12Resource* motion_vectors = nullptr;
     ID3D12Resource* reactive_mask = nullptr;
 };
 
 enum class ReconstructionMode {
     SpatialGpu,
-    TemporalCpu
+    TemporalCpu,
+    TemporalGpu
 };
 
 void Release(Dx12Objects& dx) {
     SafeRelease(dx.reactive_mask);
     SafeRelease(dx.motion_vectors);
+    SafeRelease(dx.previous_depth);
     SafeRelease(dx.depth);
+    SafeRelease(dx.previous_history);
     SafeRelease(dx.color_output);
     SafeRelease(dx.color_input);
     SafeRelease(dx.command_list);
@@ -281,6 +287,8 @@ const char* ToString(ReconstructionMode mode) noexcept {
         return "spatial-gpu";
     case ReconstructionMode::TemporalCpu:
         return "temporal-cpu";
+    case ReconstructionMode::TemporalGpu:
+        return "temporal-gpu";
     }
     return "unknown";
 }
@@ -290,6 +298,8 @@ bool ParseReconstructionMode(const std::string& value, ReconstructionMode& mode)
         mode = ReconstructionMode::SpatialGpu;
     } else if (value == "temporal-cpu" || value == "temporal") {
         mode = ReconstructionMode::TemporalCpu;
+    } else if (value == "temporal-gpu" || value == "gpu-temporal") {
+        mode = ReconstructionMode::TemporalGpu;
     } else {
         return false;
     }
@@ -363,7 +373,7 @@ int main(int argc, char** argv) {
             requested_reset_history = true;
         } else if ((std::string(argv[i]) == "--reconstruction" || std::string(argv[i]) == "--mode") && i + 1 < argc) {
             if (!ParseReconstructionMode(argv[++i], reconstruction_mode)) {
-                std::cerr << "Unknown --reconstruction. Use spatial-gpu or temporal-cpu.\n";
+                std::cerr << "Unknown --reconstruction. Use spatial-gpu, temporal-cpu, or temporal-gpu.\n";
                 return 2;
             }
         } else if (std::string(argv[i]) == "--mv-mode" && i + 1 < argc) {
@@ -441,7 +451,9 @@ int main(int argc, char** argv) {
     bool ok = true;
     ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.color_input, L"oSR synthetic color input");
     ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.color_output, L"oSR synthetic color output");
+    ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_NONE, &dx.previous_history, L"oSR previous display history");
     ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.depth, L"oSR synthetic depth");
+    ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_NONE, &dx.previous_depth, L"oSR previous depth");
     ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32G32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.motion_vectors, L"oSR synthetic motion vectors");
     ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.reactive_mask, L"oSR synthetic reactive mask");
     if (!ok) {
@@ -487,7 +499,8 @@ int main(int argc, char** argv) {
     osr::demo::wind_tunnel::TemporalResolveStats temporal_resolve_stats;
     osr::demo::wind_tunnel::TemporalResolveDebugMaps temporal_debug_maps;
     std::vector<uint32_t> resolved_output = spatial_output;
-    if (reconstruction_mode == ReconstructionMode::TemporalCpu) {
+    const bool temporal_mode = reconstruction_mode == ReconstructionMode::TemporalCpu || reconstruction_mode == ReconstructionMode::TemporalGpu;
+    if (temporal_mode) {
         osr::demo::wind_tunnel::TemporalResolveSettings resolve_settings;
         resolved_output = osr::demo::wind_tunnel::ResolveTemporalDisplay(spatial_output,
                                                                           previous_display_output,
@@ -497,13 +510,17 @@ int main(int argc, char** argv) {
                                                                           &temporal_resolve_stats,
                                                                           &previous_synthetic,
                                                                           &temporal_debug_maps);
-        synthetic.context.notes.push_back("CPU temporal resolve blended display-space history before DX12 presentation.");
+        synthetic.context.notes.push_back(reconstruction_mode == ReconstructionMode::TemporalCpu
+            ? "CPU temporal resolve blended display-space history before DX12 presentation."
+            : "CPU temporal resolve produced the parity reference for the GPU temporal pass.");
     }
 
     const bool transfer_ok =
         upload(dx.color_input, DXGI_FORMAT_R8G8B8A8_UNORM, render_size, synthetic.color.data(), static_cast<uint64_t>(render_size.width) * sizeof(uint32_t), "color_input") &&
         upload(dx.color_output, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, resolved_output.data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "color_output") &&
+        upload(dx.previous_history, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, previous_display_output.data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "previous_history") &&
         upload(dx.depth, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "depth") &&
+        upload(dx.previous_depth, DXGI_FORMAT_R32_FLOAT, render_size, previous_synthetic.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "previous_depth") &&
         upload(dx.motion_vectors, DXGI_FORMAT_R32G32_FLOAT, render_size, synthetic.motion_vectors.data(), static_cast<uint64_t>(render_size.width) * sizeof(osr::demo::wind_tunnel::Float2Buffer), "motion_vectors") &&
         upload(dx.reactive_mask, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.reactive_mask.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "reactive_mask");
     synthetic.context.notes.push_back(transfer_ok ? "D3D12 upload/readback hashes matched CPU buffers." : "D3D12 upload/readback hash mismatch detected.");
@@ -517,6 +534,24 @@ int main(int argc, char** argv) {
         SUCCEEDED(dx.allocator->Reset()) &&
         SUCCEEDED(dx.command_list->Reset(dx.allocator, nullptr))) {
         dispatch_result = backend.DispatchDebugUpscale(dx.command_list, synthetic.context) &&
+                          osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);
+    } else if (reconstruction_mode == ReconstructionMode::TemporalGpu &&
+               SUCCEEDED(dx.allocator->Reset()) &&
+               SUCCEEDED(dx.command_list->Reset(dx.allocator, nullptr))) {
+        osr::backends::dx12::TemporalResolvePass temporal_pass;
+        osr::backends::dx12::TemporalResolveResources temporal_resources;
+        temporal_resources.current_color = dx.color_input;
+        temporal_resources.previous_history = dx.previous_history;
+        temporal_resources.current_depth = dx.depth;
+        temporal_resources.previous_depth = dx.previous_depth;
+        temporal_resources.motion_vectors = dx.motion_vectors;
+        temporal_resources.reactive_mask = dx.reactive_mask;
+        temporal_resources.output_color = dx.color_output;
+        osr::backends::dx12::TemporalResolveConstants temporal_constants;
+        temporal_constants.render_size = render_size;
+        temporal_constants.display_size = display_size;
+        dispatch_result = temporal_pass.Initialize(dx.device) &&
+                          temporal_pass.Dispatch(dx.command_list, synthetic.context, temporal_resources, temporal_constants) &&
                           osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);
     } else if (reconstruction_mode == ReconstructionMode::TemporalCpu) {
         dispatch_result = transfer_ok;
@@ -613,7 +648,7 @@ int main(int argc, char** argv) {
                                                                                        depth_hash,
                                                                                        motion_vectors_hash,
                                                                                        reactive_mask_hash,
-                                                                                       reconstruction_mode == ReconstructionMode::TemporalCpu ? &temporal_debug_maps : nullptr);
+                                                                                       temporal_mode ? &temporal_debug_maps : nullptr);
         if (!dump_result.AllRequired()) {
             osr::core::ValidationReport dump_report;
             dump_report.messages.push_back({
@@ -626,7 +661,9 @@ int main(int argc, char** argv) {
     }
 
     const std::string reconstruction_result = dispatch_result
-        ? (reconstruction_mode == ReconstructionMode::SpatialGpu ? "dx12_compute_spatial_recorded_and_executed" : "cpu_temporal_resolve_uploaded")
+        ? (reconstruction_mode == ReconstructionMode::SpatialGpu ? "dx12_compute_spatial_recorded_and_executed" :
+           reconstruction_mode == ReconstructionMode::TemporalGpu ? "dx12_compute_temporal_resolve_recorded_and_executed" :
+           "cpu_temporal_resolve_uploaded")
         : "reconstruction_failed";
     ExportMetadata(synthetic.context, report, reconstruction_result, temporal_resolve_stats, temporal_diagnostics, temporal_verdict, transfers, capture.SessionPath(), "build/manual/osr_dx12_wind_tunnel_metadata.txt");
 
@@ -646,7 +683,7 @@ int main(int argc, char** argv) {
     std::cout << "Capture: " << capture.SessionPath().string() << "\n";
     std::cout << "Transfer hashes: " << (transfer_ok ? "matched" : "FAILED") << "\n";
     std::cout << "Reconstruct output hash: " << (reconstructed_output_match ? "matched" : "FAILED") << "\n";
-    if (reconstruction_mode == ReconstructionMode::TemporalCpu) {
+    if (temporal_mode) {
         std::cout << "Temporal resolve: history_mean=" << temporal_resolve_stats.history_weight_mean
                   << " reactive_suppressed=" << temporal_resolve_stats.reactive_suppressed_pct
                   << "% motion_suppressed=" << temporal_resolve_stats.motion_suppressed_pct
