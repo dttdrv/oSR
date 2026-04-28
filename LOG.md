@@ -79,6 +79,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: direct MinGW compile/run passed for `osr_sharpening_tests.exe`.
 - Verification: direct MinGW run passed for `osr_residual_search_tests.exe`, `osr_tile_classifier_tests.exe`, `osr_temporal_oracle_tests.exe`, `osr_trust_field_tests.exe`, and `osr_trust_field_demo.exe`.
 
+### Manual Quality Mode Control
+
+- Added `src/core/quality_mode.*` for DLSS-style resolution presets and custom render-scale slider values.
+- Presets for 1920x1200 output currently resolve to Native 1920x1200, UltraQuality 1478x924, Quality 1280x800, Balanced 1114x696, Performance 960x600, and UltraPerformance 640x400.
+- Added `src/tests/quality_mode_tests.cpp` and `src/demo/quality_mode_demo.cpp`.
+- `RuntimeConfig` now carries `quality_mode` and optional `custom_render_scale`.
+- Verification: direct MinGW compile/run passed for `osr_quality_mode_tests.exe`.
+- Verification: direct MinGW compile/run passed for `osr_quality_mode_demo.exe`; demo printed preset and slider render sizes.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

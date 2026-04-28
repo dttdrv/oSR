@@ -61,6 +61,10 @@ RuntimeConfig LoadConfig(const std::filesystem::path& path) {
             config.trust_field_enabled = ParseBool(value);
         } else if (key == "reactive_synthesis_enabled") {
             config.reactive_synthesis_enabled = ParseBool(value);
+        } else if (key == "quality_mode") {
+            config.quality_mode = ParseQualityMode(value);
+        } else if (key == "custom_render_scale") {
+            config.custom_render_scale = std::stof(value);
         } else if (key == "trust_decay_rate") {
             config.trust_decay_rate = std::stof(value);
         } else if (key == "depth_consistency_threshold") {

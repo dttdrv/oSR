@@ -23,6 +23,7 @@ known_working_assumptions:
   - Reference projects are clean-room references only unless license review changes that.
   - SDK/sample apps are the first validation targets.
   - oSR's research differentiator is trust-field temporal reconstruction with explainable confidence-driven history selection.
+  - Manual quality control uses DLSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
 unknowns:
   - Final exported DLL names for the first wrapper packaging mode.
   - Whether the first sample will call the bridge directly or through a renamed loader DLL.
@@ -45,3 +46,4 @@ next_actions:
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
+  - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.

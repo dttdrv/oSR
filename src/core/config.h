@@ -2,6 +2,7 @@
 
 #include "core/frame_context.h"
 #include "core/logging.h"
+#include "core/quality_mode.h"
 
 #include <filesystem>
 #include <optional>
@@ -16,6 +17,8 @@ struct RuntimeConfig {
     bool debug_overlay_enabled = false;
     bool trust_field_enabled = true;
     bool reactive_synthesis_enabled = true;
+    QualityMode quality_mode = QualityMode::Quality;
+    std::optional<float> custom_render_scale;
     float trust_decay_rate = 0.08f;
     float depth_consistency_threshold = 0.02f;
     float motion_consistency_threshold_pixels = 64.0f;

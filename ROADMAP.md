@@ -63,6 +63,7 @@ Goal: add per-game config overrides and repeatable benchmark/capture workflows.
 
 Pass gate:
 - Profiles can override bridge mode, depth convention, motion-vector hints, logging, and capture toggles.
+- Profiles can override quality mode or custom render scale.
 - Benchmark output includes CPU logging cost and GPU pass timings.
 
 ## Phase 7: Optional Tiny Neural Refinement Pass

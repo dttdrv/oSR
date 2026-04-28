@@ -12,6 +12,7 @@ add_library(osr_core STATIC
     src/core/config.cpp
     src/core/frame_context.cpp
     src/core/logging.cpp
+    src/core/quality_mode.cpp
     src/core/resource_registry.cpp
 )
 target_include_directories(osr_core PUBLIC src)
@@ -76,6 +77,11 @@ add_executable(osr_trust_field_demo
 )
 target_link_libraries(osr_trust_field_demo PRIVATE osr_reconstruction)
 
+add_executable(osr_quality_mode_demo
+    src/demo/quality_mode_demo.cpp
+)
+target_link_libraries(osr_quality_mode_demo PRIVATE osr_core)
+
 if(OSR_BUILD_TESTS)
     enable_testing()
     add_executable(osr_frame_context_tests
@@ -113,4 +119,10 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_sharpening_tests PRIVATE osr_reconstruction)
     add_test(NAME sharpening COMMAND osr_sharpening_tests)
+
+    add_executable(osr_quality_mode_tests
+        src/tests/quality_mode_tests.cpp
+    )
+    target_link_libraries(osr_quality_mode_tests PRIVATE osr_core)
+    add_test(NAME quality_mode COMMAND osr_quality_mode_tests)
 endif()

@@ -19,3 +19,13 @@ cmake --preset vs2022-debug
 cmake --build --preset vs2022-debug
 ```
 
+## Manual Smoke Tests
+
+Current sandbox note: if CMake/Ninja stalls, the same tests can be compiled directly with the MinGW compiler used in this workspace.
+
+```powershell
+& 'C:\Users\deyan\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\c++.exe' -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/demo/quality_mode_demo.cpp src/core/quality_mode.cpp -o build/manual/osr_quality_mode_demo.exe
+build\manual\osr_quality_mode_demo.exe
+```
+
+The quality-mode demo prints DLSS-style render sizes for a 1920x1200 output, including `Quality`, `Balanced`, `Performance`, and a custom slider value.
