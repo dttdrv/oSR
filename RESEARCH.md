@@ -110,3 +110,240 @@ The research track counts as a breakthrough only if measured captures show at le
 - fewer sharpened trails from confidence-gated sharpening
 - more stable particles/transparencies from synthesized or supplied reactive masks
 - better debugability through trust/weight visualizations
+
+## 2026 Research Update: What Actually Pushes Us Forward
+
+The current high-end direction is not merely "AI upscaling." It is context selection.
+
+NVIDIA says DLSS 4 moved Super Resolution/Ray Reconstruction/DLAA from CNNs to transformers because attention over broader spatial-temporal context improves temporal stability, ghosting, detail in motion, and edge quality. NVIDIA's DLSS 4.5 material says the second-generation transformer uses much more compute and has more intelligent use of pixel sampling and motion vectors:
+
+- <https://www.nvidia.com/en-us/geforce/news/gfecnt/20251/dlss4-multi-frame-generation-ai-innovations/>
+- <https://developer.nvidia.com/blog/nvidia-dlss-4-5-delivers-super-resolution-upgrades-and-new-dynamic-multi-frame-generation/>
+
+That is not directly portable to Radeon 760M as the core path. The useful lesson is to replace fixed heuristics with better sample selection, but keep it deterministic and shader-cheap:
+
+```text
+Transformer lesson: compare many possible histories and choose useful context.
+oSR translation: score a tiny set of plausible histories using depth/MV/color/reactive evidence, and only do this where tile risk says it is worth the cost.
+```
+
+The most important theory pivot is therefore:
+
+```text
+oSR is not a sharper scaler. oSR is a low-cost temporal evidence system.
+```
+
+If the evidence system is good, spatial upscale and sharpening can be modest. If the evidence system is bad, no sharpening policy saves it.
+
+## Source-Backed Constraints
+
+- The TAA survey frames temporal upscaling as sample accumulation plus history validation. This makes history validation the central bottleneck, not edge interpolation: <https://research.nvidia.com/labs/rtr/publication/yang2020survey/>
+- XeSS-SR requires jitter, input color, motion vectors, depth for low-res MV mode, exposure, responsive masks, and history reset. It also documents debugging via static scenes, jitter sign/scale checks, MV scale/sign checks, and longer jitter sequences: <https://www.intel.com/content/www/us/en/developer/articles/technical/xess-sr-developer-guide.html>
+- FSR2/FSR temporal docs identify the same core machinery: reactive masks, transparency/composition masks, depth/MV reconstruct-and-dilate, depth clip, locks, reproject-and-accumulate, and RCAS. AMD specifically calls out alpha-blended objects/particles as needing reactive handling: <https://gpuopen.com/manuals/fidelityfx_sdk/techniques/super-resolution-temporal/>
+- DirectSR standardizes the same input contract: target/source color, source depth, motion vectors, MV scale, camera jitter, exposure/pre-exposure, ignore-history mask, reactive mask, and sharpness: <https://microsoft.github.io/DirectX-Specs/DirectSR/DirectSR.html>
+
+## Breakthrough Candidate: Trust-Guided Sparse Temporal Attention
+
+The proposed oSR differentiator is a hybrid between TAAU and attention:
+
+1. Build a per-pixel trust vector, not a scalar only.
+2. Classify each 8x8 or 16x8 tile into stable, shimmer-risk, motion-risk, reactive-risk, disocclusion-risk, or reset.
+3. Stable tiles take a very cheap path.
+4. Risk tiles run bounded residual search around the MV reprojection.
+5. Disocclusion/reactive/reset regions reject history quickly instead of searching stale history.
+6. Sharpening is gated by confidence, never applied blindly.
+
+This gives us the thing transformers are good at, contextual selection, but in a bounded form:
+
+```text
+Full transformer: broad learned attention across pixels/frames.
+oSR v0-v1: deterministic sparse attention over a few local candidates, gated by tile risk and confidence.
+```
+
+The breakthrough threshold is not "beats DLSS everywhere." The real target is:
+
+```text
+FSR-class or better temporal stability on unsupported/low-end hardware,
+with explainable debug views and a lower cost than neural SR.
+```
+
+## Theory Experiments To Implement Next
+
+These are ordered by leverage and testability in the DX12 wind tunnel.
+
+### 1. Motion-Vector Truth Table
+
+Create wind-tunnel modes that deliberately flip or scale motion vectors:
+
+- correct pixel-space current-to-previous MV
+- X sign flipped
+- Y sign flipped
+- half scale
+- double scale
+- jitter-contaminated MV
+- zero MV
+
+Expected output: validation logs, MV debug view, and a numeric "reprojection error" metric. This comes directly from XeSS debugging guidance around MV scale/sign and static-scene tests.
+
+### 1A. Baseline History Validators
+
+The trust field must compete against sane traditional baselines, not a toy fixed-alpha blend.
+
+Implement at least three history validators:
+
+- YCoCg neighborhood clamp.
+- Luma variance clamp.
+- oSR trust-field clamp using color, depth, MV, reactive/disocclusion, and previous trust.
+
+Expected output: side-by-side debug views for current color, reprojected history, accepted history, rejected history, and final output. This is the first place where "better than normal upscalers" becomes measurable rather than rhetorical.
+
+### 2. Depth-Dilated Foreground MV
+
+Implement the FSR/XeSS-style 3x3 foreground dilation experiment:
+
+- Select nearest foreground depth in a neighborhood.
+- Carry that pixel's MV into a dilated MV buffer.
+- Compare disocclusion classification with and without dilation.
+
+Expected output: fewer edge ghosts around rails/cubes, better disocclusion mask stability, and a measurable reduction in invalid history use around silhouettes.
+
+### 3. Reactive-Mask Synthesis
+
+Use the synthetic scene's particles and alpha-like objects to compare:
+
+- supplied reactive mask
+- no reactive mask
+- luminance-delta synthesized reactive mask
+- clamped reactive mask at 0.8/0.9
+
+FSR and XeSS both say reactive/responsive masks are important for particles/transparency. The research question is whether oSR can synthesize a good-enough mask when games do not provide one.
+
+### 4. Trust-Field Heatmap And Numeric Metrics
+
+The trust field must become visible and measurable:
+
+- history trust
+- evidence trust
+- accumulation weight
+- disocclusion
+- reactive value
+- residual-search confidence
+
+Metrics per frame:
+
+- percent stable pixels
+- percent history-rejected pixels
+- percent residual-search pixels
+- max/mean MV magnitude
+- mean depth disagreement at reprojected samples
+- sharpen amount by tile class
+
+This is our observability advantage over black-box SR.
+
+### 4A. Variance-Guided Multi-Scale Trust
+
+SVGF is a denoising paper rather than an SR paper, but its core lesson is directly useful: use temporal accumulation plus luminance variance to distinguish noise/instability from real detail across scales.
+
+Source: <https://research.nvidia.com/labs/rtr/publication/schied2017spatiotemporal/>
+
+Experiment:
+
+- Track first and second luma moments.
+- Build a small variance pyramid.
+- Use variance to control accumulation weight, spatial fallback radius, sharpening amount, and residual-search enablement.
+
+This targets thin-rail shimmer, checkerboard shimmer, and readable texture/detail stability.
+
+### 5. Bounded Residual Search On Risk Tiles
+
+Port CPU `residual_search.*` into an HLSL pass, but only for MotionRisk/ShimmerRisk tiles.
+
+Search pattern:
+
+```text
+center MV candidate
+plus/minus 1 pixel cross
+optional diagonals for quality mode
+score = luma error + depth error + motion-prior distance + reactive penalty
+```
+
+This is the first concrete "attention-like" GPU path.
+
+### 5A. Reservoir-Inspired Candidate Reuse
+
+ReSTIR is not an SR algorithm, but its important transferable idea is selective spatial/temporal reuse of candidates instead of blind post-filtering. Area ReSTIR is especially interesting because it explicitly addresses subpixel/film-space reuse for antialiasing.
+
+Sources:
+
+- <https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/>
+- <https://research.nvidia.com/labs/rtr/publication/zhang2024area/>
+
+oSR should not copy ReSTIR reservoirs literally in v0. The near-term experiment is a deterministic candidate pool:
+
+- current bilinear sample
+- current edge-aware taps
+- reprojected history sample
+- previous-frame neighbor candidates
+- subpixel jitter candidate
+
+Then score by depth, MV, color/luma, trust, reactive, and motion-prior distance. Tile risk decides whether the candidate pool runs.
+
+### 6. Confidence-Gated Sharpening In GPU Path
+
+Move `ConfidenceGatedSharpness` into HLSL after accumulation:
+
+- strong on stable/high-trust opaque detail
+- weak on reactive pixels
+- off on disocclusions/reset
+- reduced on low trust
+
+The goal is to avoid the common failure mode where upscalers look sharp in screenshots but smear or leave sharp trails in motion.
+
+### 7. Tiny Neural Refinement Only After Trust Works
+
+A tiny neural pass is not the breakthrough by itself. It only becomes interesting if it uses trust-field features:
+
+Inputs could be:
+
+- current color
+- accumulated color
+- depth gradient
+- MV magnitude
+- reactive
+- trust/weight
+
+Output should be a small residual, not a full reconstruction. It must be optional and disabled by default until the deterministic path is proven.
+
+## Measurement Philosophy
+
+We need to stop asking "does it look better?" first. The harness should produce repeatable evidence:
+
+- fixed camera path with deterministic jitter
+- fixed particle path
+- ground-truth native render mode where possible
+- low-res input + reconstructed output
+- per-frame metadata and debug views
+- CSV metrics for ghosting/disocclusion/motion clarity
+
+The first "better than normal upscalers" claim we are allowed to make should be narrow:
+
+```text
+On oSR wind-tunnel scenes, trust-guided sparse temporal attention reduces measured history misuse around motion/disocclusion/particles compared with fixed-alpha temporal accumulation at similar cost.
+```
+
+That is a real claim, testable in our harness, and a credible stepping stone.
+
+## Longer-Term Theory: History Resurrection
+
+Unreal TSR exposes a useful non-neural idea: history resurrection. It keeps older persistent frames and can use an older history if it better matches the current frame than the immediate previous frame. Epic's TSR docs also expose debug views for accumulated samples, parallax disocclusion, history rejection, clamping, resurrection, spatial AA, and flickering temporal analysis.
+
+Source: <https://dev.epicgames.com/documentation/unreal-engine/temporal-super-resolution-in-unreal-engine>
+
+oSR version:
+
+- Keep a tiny "graveyard" history, probably 2-4 sparse frames or low-resolution confidence data.
+- Only try resurrection on ShimmerRisk/MotionRisk tiles where the immediate history has low trust.
+- Reject resurrection immediately on reactive/disocclusion/reset.
+- Compare candidates using the same trust score used for residual search.
+
+This is not a Phase 1 feature, but it is a serious future differentiator for recurring occlusion and readable details that disappear/reappear.

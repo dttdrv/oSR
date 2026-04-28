@@ -137,6 +137,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: DX12 log recorded `Dispatch debug upscale shader=spatial_debug_upscale.hlsl view=Final groups=(160,100) srv=4 uav=1 cbv=1 internal_uav=1 mode=dx12_command_recording_pending`.
 - Current limitation: D3D12 textures are allocated and exported, but CPU upload, swapchain presentation, and actual command-list reconstruction passes are next.
 
+### Research Update: Trust-Guided Sparse Temporal Attention
+
+- Updated `RESEARCH.md` with the current breakthrough thesis: oSR should not be treated as a sharper scaler, but as a low-cost temporal evidence system.
+- Source-backed conclusion: modern SR quality is dominated by context/history selection. DLSS transformers buy this with broad learned attention and high compute; oSR should approximate the useful part with deterministic trust fields, tile risk routing, bounded residual search, reactive/disocclusion handling, and confidence-gated sharpening.
+- Added concrete experiments for the DX12 wind tunnel: MV truth table, foreground-depth MV dilation, reactive-mask synthesis, trust heatmaps/metrics, risk-tile residual search, GPU confidence-gated sharpening, and optional tiny residual neural refinement only after deterministic trust works.
+- Folded in research-agent findings: baseline validators must include YCoCg/neighborhood and luma-variance clamps; SVGF motivates variance-guided trust; ReSTIR/Area ReSTIR motivate selective candidate reuse; Unreal TSR motivates history resurrection as a later experiment.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
