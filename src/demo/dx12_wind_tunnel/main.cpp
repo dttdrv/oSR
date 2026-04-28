@@ -29,6 +29,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <vector>
 
 namespace {
@@ -378,6 +379,22 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
     return true;
 }
 
+bool CopyCaptureGateThresholdSnapshot(const std::filesystem::path& source, const std::filesystem::path& session_path) {
+    if (source.empty()) {
+        return true;
+    }
+    std::error_code ec;
+    if (!std::filesystem::exists(source, ec) || ec) {
+        return false;
+    }
+    const auto destination = session_path / "capture_gate_thresholds.cfg";
+    std::filesystem::copy_file(source,
+                               destination,
+                               std::filesystem::copy_options::overwrite_existing,
+                               ec);
+    return !ec;
+}
+
 std::vector<float> FloatBytesToVector(const std::vector<uint8_t>& bytes, osr::core::Dimensions size) {
     std::vector<float> out(static_cast<size_t>(size.width) * size.height, 0.0f);
     const size_t byte_count = std::min(bytes.size(), out.size() * sizeof(float));
@@ -560,6 +577,7 @@ int main(int argc, char** argv) {
     auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
     osr::demo::wind_tunnel::TemporalResolveSettings temporal_settings;
     osr::debug::CaptureAnalysisGateThresholds capture_gate_thresholds;
+    std::filesystem::path capture_gate_thresholds_path;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--headless") {
             headless = true;
@@ -611,7 +629,8 @@ int main(int argc, char** argv) {
         } else if (std::string(argv[i]) == "--history-clip-margin" && i + 1 < argc) {
             temporal_settings.history_clip_margin = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
         } else if (std::string(argv[i]) == "--capture-gate-thresholds" && i + 1 < argc) {
-            capture_gate_thresholds = osr::debug::LoadCaptureAnalysisGateThresholds(argv[++i]);
+            capture_gate_thresholds_path = argv[++i];
+            capture_gate_thresholds = osr::debug::LoadCaptureAnalysisGateThresholds(capture_gate_thresholds_path);
         }
     }
 
@@ -876,9 +895,12 @@ int main(int argc, char** argv) {
                         capture_config.scenario = "dx12_temporal_sequence";
                         capture_config.mode = std::string("temporal_gpu_sequence_") + osr::demo::wind_tunnel::ToString(mv_mode);
                         capture_config.algorithm = ToString(reconstruction_mode);
+                        capture_config.analysis_gate_thresholds_path = capture_gate_thresholds_path.string();
+                        capture_config.analysis_gate_thresholds_snapshot = capture_gate_thresholds_path.empty() ? "" : "capture_gate_thresholds.cfg";
                         osr::debug::CapturePackWriter sequence_capture;
                         sequence_ok = sequence_capture.BeginSession(capture_config) &&
-                                      sequence_capture.WriteSessionManifest(frame.context, GetCommandLineA());
+                                      sequence_capture.WriteSessionManifest(frame.context, GetCommandLineA()) &&
+                                      CopyCaptureGateThresholdSnapshot(capture_gate_thresholds_path, sequence_capture.SessionPath());
                         bool selected_debug_parity_ok = true;
                         if (sequence_ok) {
                             uint32_t validation_errors = 0;

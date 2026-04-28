@@ -197,6 +197,8 @@ bool CapturePackWriter::WriteSessionManifest(const core::FrameContext& first_fra
     out << "  \"color_space\": \"" << core::ToString(first_frame.color_space) << "\",\n";
     out << "  \"motion_vector_space\": \"" << core::ToString(first_frame.motion_vector_space) << "\",\n";
     out << "  \"created_utc\": \"" << TimestampUtc() << "\",\n";
+    out << "  \"analysis_gate_thresholds_path\": \"" << JsonEscape(config_.analysis_gate_thresholds_path) << "\",\n";
+    out << "  \"analysis_gate_thresholds_snapshot\": \"" << JsonEscape(config_.analysis_gate_thresholds_snapshot) << "\",\n";
     out << "  \"command_line\": \"" << JsonEscape(command_line) << "\"\n";
     out << "}\n";
     return WriteText(session_path_ / "session.json", out.str());

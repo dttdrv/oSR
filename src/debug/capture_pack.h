@@ -15,6 +15,8 @@ struct CapturePackConfig {
     std::string scenario = "dx12_wind_tunnel";
     std::string mode = "h1_buffer_truth";
     std::string algorithm = "debug_upscale";
+    std::string analysis_gate_thresholds_path;
+    std::string analysis_gate_thresholds_snapshot;
     bool overwrite_existing = false;
 };
 

@@ -588,6 +588,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; output included `Capture analysis gate: ok reason=ok`.
 
+### Capture Gate Threshold Provenance
+
+- Capture session manifests now include `analysis_gate_thresholds_path` and `analysis_gate_thresholds_snapshot` fields.
+- DX12 temporal-GPU selected-frame captures copy the supplied gate threshold config to `capture_gate_thresholds.cfg` beside `session.json`.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; output included `Capture analysis gate: ok reason=ok`.
+- Verification: `build/manual/captures/2026-04-28T21-35-05Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/session.json` contained both threshold provenance fields and the same capture directory contained `capture_gate_thresholds.cfg`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

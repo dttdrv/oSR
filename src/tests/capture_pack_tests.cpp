@@ -70,6 +70,8 @@ int main() {
     CapturePackConfig config;
     config.root = "build/manual/capture_pack_tests";
     config.run_name = "unit";
+    config.analysis_gate_thresholds_path = "profiles/capture_gate.cfg";
+    config.analysis_gate_thresholds_snapshot = "capture_gate_thresholds.cfg";
     config.overwrite_existing = true;
     std::filesystem::remove_all(config.root);
 
@@ -126,6 +128,9 @@ int main() {
     const auto root = writer.SessionPath();
     if (!Contains(root / "session.json", "\"schema\": \"osr.capture.session.v1\"")) {
         return Fail("session manifest missing schema");
+    }
+    if (!Contains(root / "session.json", "\"analysis_gate_thresholds_snapshot\": \"capture_gate_thresholds.cfg\"")) {
+        return Fail("session manifest missing gate threshold snapshot");
     }
     if (!Contains(root / "frames.csv", "frame_id,scenario_time_ms,render_w")) {
         return Fail("frames.csv missing header");
