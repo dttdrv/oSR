@@ -29,6 +29,12 @@ int main() {
     const auto correct_report = osr::demo::wind_tunnel::ComputeTemporalDiagnostics(previous, current);
     const auto flipped_report = osr::demo::wind_tunnel::ComputeTemporalDiagnostics(previous, flipped);
     const auto zero_report = osr::demo::wind_tunnel::ComputeTemporalDiagnostics(previous, zero);
+    const auto correct_verdict = osr::demo::wind_tunnel::AnalyzeTemporalDiagnostics(correct_report,
+                                                                                    osr::demo::wind_tunnel::MotionVectorMode::Correct,
+                                                                                    true);
+    const auto flipped_verdict = osr::demo::wind_tunnel::AnalyzeTemporalDiagnostics(flipped_report,
+                                                                                    osr::demo::wind_tunnel::MotionVectorMode::FlipX,
+                                                                                    true);
 
     if (correct_report.sample_count == 0) {
         return Fail("temporal diagnostics did not inspect samples");
@@ -44,6 +50,26 @@ int main() {
     }
     if (flipped_report.bad_history_trusted_pct >= 100.0) {
         return Fail("bad history should not be universally trusted");
+    }
+    if (correct_verdict.metric_gate_failed) {
+        return Fail("correct MV diagnostics should pass metric gate");
+    }
+    if (flipped_verdict.findings.empty()) {
+        return Fail("flipped MV diagnostics should emit at least one finding");
+    }
+
+    for (const auto mode : {
+             osr::demo::wind_tunnel::MotionVectorMode::Zero,
+             osr::demo::wind_tunnel::MotionVectorMode::FlipX,
+             osr::demo::wind_tunnel::MotionVectorMode::HalfScale,
+             osr::demo::wind_tunnel::MotionVectorMode::DoubleScale,
+             osr::demo::wind_tunnel::MotionVectorMode::JitterContaminated}) {
+        const auto corrupted = Frame(8, mode);
+        const auto report = osr::demo::wind_tunnel::ComputeTemporalDiagnostics(previous, corrupted);
+        const auto verdict = osr::demo::wind_tunnel::AnalyzeTemporalDiagnostics(report, mode, false);
+        if (verdict.findings.empty()) {
+            return Fail("corrupted MV diagnostic mode should emit a finding");
+        }
     }
 
     return 0;

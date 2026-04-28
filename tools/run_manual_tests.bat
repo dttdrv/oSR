@@ -33,11 +33,11 @@ if errorlevel 1 goto fail
 
 echo.
 echo All manual tests passed.
-pause
+if not "%OSR_NO_PAUSE%"=="1" pause
 exit /b 0
 
 :fail
 echo.
 echo Manual tests failed.
-pause
+if not "%OSR_NO_PAUSE%"=="1" pause
 exit /b 1

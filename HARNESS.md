@@ -328,6 +328,8 @@ Every bookmark and metric spike should write a compact diagnosis block into `war
 {"frame":96,"tag":"ParticleTrail","likely_cause":"reactive_mask_too_weak","evidence":{"reactive_mean":0.03,"history_weight_mean":0.61},"suggested_action":"raise synthesized reactive mask or clamp"}
 ```
 
+The DX12 wind tunnel now supports `--metric-gate`. When enabled, severe temporal diagnostic findings return exit code `3` after the capture pack is written. This keeps exploratory corrupted-input sweeps usable while allowing regression jobs to fail on metric verdicts.
+
 ## Implementation Phases
 
 ### H0: Harness Contract
@@ -360,6 +362,7 @@ Every bookmark and metric spike should write a compact diagnosis block into `war
 
 - Implement ghost, shimmer, disocclusion leak, reactive trail, edge/text scores.
 - Implement CPU temporal diagnostics that reproject a deterministic previous frame through supplied motion vectors and score whether the trust policy accepts good history or rejects bad/reactive/disoccluded history.
+- Emit compact diagnostic verdicts into `warnings.jsonl`, including likely cause, suggested action, severity, and evidence value.
 - Add threshold-based exit codes for headless runs.
 
 ### H5: Replay

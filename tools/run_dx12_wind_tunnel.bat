@@ -12,5 +12,7 @@ if errorlevel 1 (
   exit /b 1
 )
 "%OUT%" %*
+set "OSR_EXIT_CODE=%ERRORLEVEL%"
 echo.
-pause
+if not "%OSR_NO_PAUSE%"=="1" pause
+exit /b %OSR_EXIT_CODE%

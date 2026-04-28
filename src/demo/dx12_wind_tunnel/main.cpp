@@ -138,6 +138,7 @@ void ExportMetadata(const osr::core::FrameContext& frame,
                     const osr::core::ValidationReport& report,
                     bool dispatch_result,
                     const osr::demo::wind_tunnel::TemporalDiagnostics& diagnostics,
+                    const osr::demo::wind_tunnel::TemporalDiagnosticVerdict& verdict,
                     const std::vector<osr::demo::dx12_wind_tunnel::TextureTransferResult>& transfers,
                     const std::filesystem::path& capture_path,
                     const std::filesystem::path& path) {
@@ -170,6 +171,16 @@ void ExportMetadata(const osr::core::FrameContext& frame,
     out << "  trust_evidence_agreement_pct: " << diagnostics.trust_evidence_agreement_pct << "\n";
     out << "  history_trust_mean: " << diagnostics.history_trust_mean << "\n";
     out << "  accumulation_weight_mean: " << diagnostics.accumulation_weight_mean << "\n";
+    out << "diagnostic_verdict:\n";
+    out << "  max_severity: " << verdict.max_severity << "\n";
+    out << "  metric_gate_failed: " << (verdict.metric_gate_failed ? "true" : "false") << "\n";
+    for (const auto& finding : verdict.findings) {
+        out << "  - " << finding.tag
+            << " severity=" << finding.severity
+            << " cause=" << finding.likely_cause
+            << " evidence=" << finding.evidence_value
+            << "\n";
+    }
     out << "resources:\n";
     out << "  color_input: " << frame.color_input.debug_name << " native=" << frame.color_input.native_resource << "\n";
     out << "  color_output: " << frame.color_output.debug_name << " native=" << frame.color_output.native_resource << "\n";
@@ -235,10 +246,13 @@ bool ParseMotionVectorMode(const std::string& value, osr::demo::wind_tunnel::Mot
 int main(int argc, char** argv) {
     bool headless = false;
     int present_frames = -1;
+    bool metric_gate = false;
     auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--headless") {
             headless = true;
+        } else if (std::string(argv[i]) == "--metric-gate" || std::string(argv[i]) == "--fail-on-diagnostics") {
+            metric_gate = true;
         } else if (std::string(argv[i]) == "--present-frames" && i + 1 < argc) {
             present_frames = std::max(0, std::atoi(argv[++i]));
         } else if (std::string(argv[i]) == "--mv-mode" && i + 1 < argc) {
@@ -272,6 +286,7 @@ int main(int argc, char** argv) {
     previous_settings.motion_vector_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
     const auto previous_synthetic = osr::demo::wind_tunnel::BuildSyntheticFrame(previous_settings);
     const auto temporal_diagnostics = osr::demo::wind_tunnel::ComputeTemporalDiagnostics(previous_synthetic, synthetic);
+    const auto temporal_verdict = osr::demo::wind_tunnel::AnalyzeTemporalDiagnostics(temporal_diagnostics, mv_mode, metric_gate);
 
     const auto render_size = synthetic.context.render_size;
     const auto display_size = synthetic.context.display_size;
@@ -373,6 +388,14 @@ int main(int argc, char** argv) {
         metrics.accumulation_weight_mean = temporal_diagnostics.accumulation_weight_mean;
         capture.WriteMetricRow(metrics);
         capture.WriteValidationWarnings(synthetic.context.frame_id, report);
+        for (const auto& finding : temporal_verdict.findings) {
+            capture.WriteDiagnosticWarning(synthetic.context.frame_id,
+                                           finding.tag,
+                                           finding.likely_cause,
+                                           finding.suggested_action,
+                                           finding.severity,
+                                           finding.evidence_value);
+        }
         capture.WriteFrameContextJson(synthetic.context);
         std::ostringstream frame_dir_name;
         frame_dir_name << "frame_" << std::setw(6) << std::setfill('0') << synthetic.context.frame_id;
@@ -407,7 +430,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    ExportMetadata(synthetic.context, report, dispatch_result, temporal_diagnostics, transfers, capture.SessionPath(), "build/manual/osr_dx12_wind_tunnel_metadata.txt");
+    ExportMetadata(synthetic.context, report, dispatch_result, temporal_diagnostics, temporal_verdict, transfers, capture.SessionPath(), "build/manual/osr_dx12_wind_tunnel_metadata.txt");
 
     std::cout << "oSR DX12 wind tunnel proof of life\n";
     std::cout << "Render: " << render_size.width << "x" << render_size.height
@@ -417,6 +440,9 @@ int main(int argc, char** argv) {
     std::cout << "Temporal diagnostics: luma_mean=" << temporal_diagnostics.mv_luma_residual_mean
               << " bad_trusted=" << temporal_diagnostics.bad_history_trusted_pct
               << "% agreement=" << temporal_diagnostics.trust_evidence_agreement_pct << "%\n";
+    std::cout << "Diagnostic verdict: severity=" << temporal_verdict.max_severity
+              << " findings=" << temporal_verdict.findings.size()
+              << (temporal_verdict.metric_gate_failed ? " metric_gate=FAILED" : " metric_gate=ok") << "\n";
     std::cout << "Metadata: build/manual/osr_dx12_wind_tunnel_metadata.txt\n";
     std::cout << "Capture: " << capture.SessionPath().string() << "\n";
     std::cout << "Transfer hashes: " << (transfer_ok ? "matched" : "FAILED") << "\n";
@@ -448,5 +474,8 @@ int main(int argc, char** argv) {
     const bool has_errors = report.HasErrors() || !transfer_ok || !capture_started || !present_ok;
     osr::demo::dx12_wind_tunnel::ReleasePresentState(present);
     Release(dx);
+    if (!has_errors && temporal_verdict.metric_gate_failed) {
+        return 3;
+    }
     return has_errors ? 1 : 0;
 }

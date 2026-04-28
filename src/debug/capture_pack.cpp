@@ -259,6 +259,27 @@ bool CapturePackWriter::WriteValidationWarnings(uint64_t frame_id, const core::V
     return true;
 }
 
+bool CapturePackWriter::WriteDiagnosticWarning(uint64_t frame_id,
+                                               std::string_view tag,
+                                               std::string_view likely_cause,
+                                               std::string_view suggested_action,
+                                               uint32_t severity,
+                                               double evidence_value) {
+    std::ofstream out(warnings_jsonl_, std::ios::app);
+    if (!out) {
+        return false;
+    }
+    out.imbue(std::locale::classic());
+    out << "{\"frame_id\":" << frame_id
+        << ",\"tag\":\"" << JsonEscape(tag)
+        << "\",\"likely_cause\":\"" << JsonEscape(likely_cause)
+        << "\",\"suggested_action\":\"" << JsonEscape(suggested_action)
+        << "\",\"severity\":" << severity
+        << ",\"evidence_value\":" << evidence_value
+        << "}\n";
+    return true;
+}
+
 bool CapturePackWriter::WriteFrameContextJson(const core::FrameContext& frame) {
     std::ostringstream name;
     name.imbue(std::locale::classic());

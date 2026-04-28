@@ -64,6 +64,12 @@ public:
     bool WriteFrameRow(const HarnessFrameRow& row);
     bool WriteMetricRow(const HarnessMetricRow& row);
     bool WriteValidationWarnings(uint64_t frame_id, const core::ValidationReport& report);
+    bool WriteDiagnosticWarning(uint64_t frame_id,
+                                std::string_view tag,
+                                std::string_view likely_cause,
+                                std::string_view suggested_action,
+                                uint32_t severity,
+                                double evidence_value);
     bool WriteFrameContextJson(const core::FrameContext& frame);
 
     [[nodiscard]] const std::filesystem::path& SessionPath() const noexcept;

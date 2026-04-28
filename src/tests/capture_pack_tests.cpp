@@ -106,6 +106,14 @@ int main() {
     if (!writer.WriteValidationWarnings(frame.frame_id, report)) {
         return Fail("WriteValidationWarnings failed");
     }
+    if (!writer.WriteDiagnosticWarning(frame.frame_id,
+                                       "MVResidualHigh",
+                                       "motion_vector_reprojection_error_high",
+                                       "inspect MV sign",
+                                       2,
+                                       0.125)) {
+        return Fail("WriteDiagnosticWarning failed");
+    }
     if (!writer.WriteFrameContextJson(frame)) {
         return Fail("WriteFrameContextJson failed");
     }
@@ -122,6 +130,9 @@ int main() {
     }
     if (!Contains(root / "warnings.jsonl", "\"code\":\"warn_code\"")) {
         return Fail("warnings.jsonl missing warning");
+    }
+    if (!Contains(root / "warnings.jsonl", "\"tag\":\"MVResidualHigh\"")) {
+        return Fail("warnings.jsonl missing diagnostic warning");
     }
     if (!Contains(root / "bookmarks.jsonl", "")) {
         return Fail("bookmarks.jsonl missing");

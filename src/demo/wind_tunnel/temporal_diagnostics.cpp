@@ -148,4 +148,81 @@ TemporalDiagnostics ComputeTemporalDiagnostics(const SyntheticFrame& previous,
     return out;
 }
 
+TemporalDiagnosticVerdict AnalyzeTemporalDiagnostics(const TemporalDiagnostics& diagnostics,
+                                                     MotionVectorMode mode,
+                                                     bool metric_gate_enabled) {
+    TemporalDiagnosticVerdict verdict;
+    auto add = [&](std::string tag,
+                   std::string likely_cause,
+                   std::string suggested_action,
+                   uint32_t severity,
+                   double evidence_value) {
+        verdict.findings.push_back({
+            std::move(tag),
+            std::move(likely_cause),
+            std::move(suggested_action),
+            severity,
+            evidence_value
+        });
+        verdict.max_severity = std::max(verdict.max_severity, severity);
+    };
+
+    if (mode != MotionVectorMode::Correct) {
+        add("MVTruthModeActive",
+            "intentional_motion_vector_convention_corruption",
+            "Use this run for diagnostic sweeps; metric-gated production baselines should use correct MV mode.",
+            2,
+            diagnostics.mv_luma_residual_mean);
+    }
+    if (diagnostics.bad_history_trusted_pct > 1.0) {
+        add("BadHistoryTrusted",
+            "history_trust_too_permissive",
+            "Tighten color/depth/disocclusion evidence before allowing accumulation.",
+            3,
+            diagnostics.bad_history_trusted_pct);
+    }
+    if (diagnostics.reactive_history_trusted_pct > 1.0) {
+        add("ReactiveHistoryTrusted",
+            "reactive_mask_not_suppressing_history",
+            "Increase reactive penalty or clamp history weight in responsive regions.",
+            3,
+            diagnostics.reactive_history_trusted_pct);
+    }
+    if (diagnostics.disocclusion_history_trusted_pct > 1.0) {
+        add("DisocclusionHistoryTrusted",
+            "disocclusion_rejection_too_weak",
+            "Tighten depth consistency or add foreground-depth dilation near silhouettes.",
+            3,
+            diagnostics.disocclusion_history_trusted_pct);
+    }
+    if (diagnostics.good_history_rejected_pct > 8.0) {
+        add("GoodHistoryRejected",
+            "history_trust_too_conservative",
+            "Relax thresholds only where residuals and masks agree, or route stable tiles around rejection.",
+            2,
+            diagnostics.good_history_rejected_pct);
+    }
+
+    const bool corrupted_mv_mode = mode != MotionVectorMode::Correct;
+    const double residual_warning_threshold = corrupted_mv_mode ? 0.0035 : 0.0060;
+    if (diagnostics.mv_luma_residual_mean > residual_warning_threshold) {
+        add("MVResidualHigh",
+            corrupted_mv_mode ? "intentional_motion_vector_convention_corruption" : "motion_vector_reprojection_error_high",
+            corrupted_mv_mode ? "Expected for MV truth-table mode; verify trust rejects bad history." :
+                                "Inspect MV sign, scale, jitter inclusion, and depth reprojection.",
+            corrupted_mv_mode ? 1u : 2u,
+            diagnostics.mv_luma_residual_mean);
+    }
+    if (mode == MotionVectorMode::JitterContaminated) {
+        add("MVJitterContaminated",
+            "motion_vectors_include_jitter",
+            "Keep app motion vectors in current-to-previous pixel units excluding jitter.",
+            2,
+            diagnostics.mv_luma_residual_mean);
+    }
+
+    verdict.metric_gate_failed = metric_gate_enabled && verdict.max_severity >= 2;
+    return verdict;
+}
+
 } // namespace osr::demo::wind_tunnel

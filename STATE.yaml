@@ -18,6 +18,8 @@ build_status:
     - Capture packs now include PPM/PGM debug images, exact raw buffers, and artifacts.json manifests for synthetic frame inputs/output.
     - DX12 wind tunnel supports --mv-mode correct|zero|flip-x|flip-y|half-scale|double-scale|jitter-contaminated for motion-vector truth-table testing.
     - Capture metrics now include CPU temporal diagnostics for MV luma/depth residuals and history-trust confusion rates.
+    - DX12 wind tunnel supports --metric-gate / --fail-on-diagnostics and returns exit code 3 for severe temporal diagnostic verdicts.
+    - tools/run_dx12_mv_sweep.bat runs all current MV truth-table modes headlessly and fail-fast.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -67,6 +69,7 @@ next_actions:
   - Replace metadata-only DX12 debug upscale with command-list-recorded copy/debug passes.
   - Implement the research experiment ladder in RESEARCH.md, starting with motion-vector truth-table modes and trust-field debug metrics.
   - Use --mv-mode sweeps to tune temporal trust thresholds and verify bad history is rejected before adding GPU temporal accumulation.
+  - Promote the temporal diagnostic verdict thresholds from initial coarse gates to scene-specific gates after multi-frame scenarios exist.
   - Implement HARNESS.md H0/H1: run manifest, frame metrics schema, capture pack writer, and DX12 buffer upload/readback/hash verification.
   - Extend capture packs with raw texture dumps and debug-view images after swapchain/debug presentation is available.
   - Replace CPU nearest display upscale with a command-list-recorded debug upscale/copy shader.

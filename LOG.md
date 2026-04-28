@@ -198,6 +198,17 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode flip-x` passed with validation `infos=0 warnings=0 errors=0`, matched transfer hashes, and wrote capture pack `build/manual/captures/2026-04-28T12-13-27Z_dx12_wind_tunnel_h1_buffer_truth_flip-x`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct` passed with validation `infos=0 warnings=0 errors=0`, matched transfer hashes, and wrote capture pack `build/manual/captures/2026-04-28T12-14-02Z_dx12_wind_tunnel_h1_buffer_truth_correct`.
 
+### Temporal Diagnostic Verdicts And MV Sweep
+
+- Added `AnalyzeTemporalDiagnostics`, producing compact findings with tag, likely cause, suggested action, severity, and evidence value.
+- Added capture-pack diagnostic warning serialization to `warnings.jsonl`.
+- Added `--metric-gate` / `--fail-on-diagnostics` to the DX12 wind tunnel. Severe diagnostic findings now return exit code `3` after logs and capture packs are written.
+- Added `tools/run_dx12_mv_sweep.bat`, a deterministic headless sweep over all current MV truth-table modes.
+- Updated batch launchers so automation can set `OSR_NO_PAUSE=1` and receive the child executable exit code.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct --metric-gate` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode flip-x --metric-gate` exited `3` and wrote `MVTruthModeActive` / `MVResidualHigh` findings to `warnings.jsonl`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

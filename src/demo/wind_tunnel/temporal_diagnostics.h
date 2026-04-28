@@ -4,6 +4,8 @@
 #include "reconstruction/trust_field.h"
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace osr::demo::wind_tunnel {
 
@@ -30,8 +32,25 @@ struct TemporalDiagnostics {
     double accumulation_weight_mean = 0.0;
 };
 
+struct TemporalDiagnosticFinding {
+    std::string tag;
+    std::string likely_cause;
+    std::string suggested_action;
+    uint32_t severity = 0;
+    double evidence_value = 0.0;
+};
+
+struct TemporalDiagnosticVerdict {
+    std::vector<TemporalDiagnosticFinding> findings;
+    uint32_t max_severity = 0;
+    bool metric_gate_failed = false;
+};
+
 [[nodiscard]] TemporalDiagnostics ComputeTemporalDiagnostics(const SyntheticFrame& previous,
                                                              const SyntheticFrame& current,
                                                              const TemporalDiagnosticsSettings& settings = {});
+[[nodiscard]] TemporalDiagnosticVerdict AnalyzeTemporalDiagnostics(const TemporalDiagnostics& diagnostics,
+                                                                   MotionVectorMode mode,
+                                                                   bool metric_gate_enabled);
 
 } // namespace osr::demo::wind_tunnel
