@@ -229,7 +229,7 @@ Current offline capture analysis:
 tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012
 ```
 
-The analyzer reads `artifacts.json` plus raw R32F/RG32F artifacts and reports history trust, color/depth residual candidate rejection, and motion activity percentages without launching the harness.
+The analyzer reads `artifacts.json` plus raw R32F/RG32F artifacts and reports history trust, color/depth residual candidate rejection, motion activity, and synthetic ROI splits without launching the harness.
 
 Current temporal tuning flags:
 

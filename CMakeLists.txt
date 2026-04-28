@@ -65,6 +65,11 @@ add_library(osr_profiles STATIC
 target_include_directories(osr_profiles PUBLIC src)
 target_link_libraries(osr_profiles PUBLIC osr_core)
 
+add_library(osr_wind_tunnel_roi STATIC
+    src/demo/wind_tunnel/synthetic_roi.cpp
+)
+target_include_directories(osr_wind_tunnel_roi PUBLIC src)
+
 add_library(osr_debug STATIC
     src/debug/capture_analysis.cpp
     src/debug/capture_dump.cpp
@@ -73,7 +78,7 @@ add_library(osr_debug STATIC
     src/debug/validation.cpp
 )
 target_include_directories(osr_debug PUBLIC src)
-target_link_libraries(osr_debug PUBLIC osr_core)
+target_link_libraries(osr_debug PUBLIC osr_core osr_wind_tunnel_roi)
 
 add_library(osr_wind_tunnel STATIC
     src/demo/wind_tunnel/debug_dumps.cpp
@@ -84,7 +89,7 @@ add_library(osr_wind_tunnel STATIC
     src/demo/dx12_wind_tunnel/display_upscale.cpp
 )
 target_include_directories(osr_wind_tunnel PUBLIC src)
-target_link_libraries(osr_wind_tunnel PUBLIC osr_core osr_reconstruction)
+target_link_libraries(osr_wind_tunnel PUBLIC osr_core osr_reconstruction osr_wind_tunnel_roi)
 
 add_executable(osr_trust_field_demo
     src/demo/trust_field_demo.cpp

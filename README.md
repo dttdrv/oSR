@@ -98,6 +98,9 @@ To summarize a captured frame without rerunning DX12:
 tools\run_capture_analyzer.bat build\manual\captures\<session>\frame_000012
 ```
 
+The analyzer reports global temporal trust plus motion/static and synthetic ROI
+splits for text, specular, transparent, and reactive regions.
+
 By default it opens a DX12 window and presents the current display-sized color
 debug output. For deterministic lab runs:
 

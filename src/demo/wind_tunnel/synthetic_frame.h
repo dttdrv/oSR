@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/frame_context.h"
+#include "demo/wind_tunnel/synthetic_roi.h"
 
 #include <cstdint>
 #include <vector>
@@ -44,29 +45,10 @@ struct SyntheticFrame {
     std::vector<float> reactive_mask;
 };
 
-struct SyntheticTextCoverage {
-    bool panel = false;
-    bool glyph = false;
-    bool moving = false;
-};
-
-struct SyntheticMaterialCoverage {
-    bool specular = false;
-    bool transparent = false;
-};
-
 [[nodiscard]] float Halton(uint32_t index, uint32_t base) noexcept;
 [[nodiscard]] const char* ToString(MotionVectorMode mode) noexcept;
 [[nodiscard]] core::Dimensions BuildRenderSize(core::Dimensions display_size, float render_scale) noexcept;
 [[nodiscard]] core::Float2 BuildJitterOffset(uint64_t frame_id, uint32_t sequence_length, bool enabled) noexcept;
-[[nodiscard]] SyntheticTextCoverage EvaluateSyntheticTextCoverage(float u,
-                                                                  float v,
-                                                                  uint64_t frame_id,
-                                                                  bool enabled) noexcept;
-[[nodiscard]] SyntheticMaterialCoverage EvaluateSyntheticMaterialCoverage(float u,
-                                                                         float v,
-                                                                         uint64_t frame_id,
-                                                                         bool enabled) noexcept;
 [[nodiscard]] SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings);
 
 } // namespace osr::demo::wind_tunnel
