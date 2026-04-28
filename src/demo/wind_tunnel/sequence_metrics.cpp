@@ -133,10 +133,10 @@ double TextReadabilityContrastRatio(const std::vector<uint32_t>& spatial,
     return TextContrast(temporal, size, frame_id) / spatial_contrast;
 }
 
-double MaterialHistoryLeak(const TemporalResolveDebugMaps& debug_maps,
-                           core::Dimensions size,
-                           uint64_t frame_id,
-                           bool specular) noexcept {
+double MeanMaterialHistoryLeak(const TemporalResolveDebugMaps& debug_maps,
+                               core::Dimensions size,
+                               uint64_t frame_id,
+                               bool specular) noexcept {
     if (debug_maps.history_weight.size() != static_cast<size_t>(size.width) * size.height) {
         return 0.0;
     }
@@ -225,8 +225,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
             temporal_edge_sum += MeanEdgeEnergy(temporal, frame.context.display_size);
             thin_feature_contrast_sum += ThinFeatureContrastRatio(spatial, temporal, frame.context.display_size);
             text_readability_sum += TextReadabilityContrastRatio(spatial, temporal, frame.context.display_size, frame_settings.frame_id);
-            specular_history_leak_sum += MaterialHistoryLeak(debug_maps, frame.context.display_size, frame_settings.frame_id, true);
-            transparent_history_leak_sum += MaterialHistoryLeak(debug_maps, frame.context.display_size, frame_settings.frame_id, false);
+            specular_history_leak_sum += MeanMaterialHistoryLeak(debug_maps, frame.context.display_size, frame_settings.frame_id, true);
+            transparent_history_leak_sum += MeanMaterialHistoryLeak(debug_maps, frame.context.display_size, frame_settings.frame_id, false);
             ++delta_count;
         }
 

@@ -18,7 +18,8 @@ constexpr const char* kFrameHeader =
 
 constexpr const char* kMetricHeader =
     "frame_id,ghost_score,shimmer_score,disocclusion_leak,reactive_trail_score,"
-    "edge_preservation,text_contrast,history_reject_pct,residual_search_pct,"
+    "edge_preservation,thin_feature_contrast,text_contrast,text_readability_contrast,"
+    "specular_history_leak,transparent_history_leak,history_reject_pct,residual_search_pct,"
     "mv_luma_residual_mean,mv_luma_residual_p95,mv_depth_residual_mean,mv_depth_residual_p95,"
     "bad_history_trusted_pct,good_history_rejected_pct,reactive_history_trusted_pct,"
     "disocclusion_history_trusted_pct,trust_evidence_agreement_pct,history_trust_mean,"
@@ -228,7 +229,11 @@ bool CapturePackWriter::WriteMetricRow(const HarnessMetricRow& row) {
         << row.disocclusion_leak << ","
         << row.reactive_trail_score << ","
         << row.edge_preservation << ","
+        << row.thin_feature_contrast << ","
         << row.text_contrast << ","
+        << row.text_readability_contrast << ","
+        << row.specular_history_leak << ","
+        << row.transparent_history_leak << ","
         << row.history_reject_pct << ","
         << row.residual_search_pct << ","
         << row.mv_luma_residual_mean << ","

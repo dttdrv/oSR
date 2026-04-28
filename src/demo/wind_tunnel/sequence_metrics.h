@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/frame_context.h"
+#include "demo/wind_tunnel/temporal_resolve.h"
 
 #include <cstdint>
 #include <vector>
@@ -44,6 +45,10 @@ struct SequenceMetricsResult {
                                            const std::vector<uint32_t>& rhs) noexcept;
 [[nodiscard]] double MeanEdgeEnergy(const std::vector<uint32_t>& image,
                                     core::Dimensions size) noexcept;
+[[nodiscard]] double MeanMaterialHistoryLeak(const TemporalResolveDebugMaps& debug_maps,
+                                             core::Dimensions size,
+                                             uint64_t frame_id,
+                                             bool specular) noexcept;
 
 [[nodiscard]] SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings);
 

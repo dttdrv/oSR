@@ -97,6 +97,9 @@ int main() {
     HarnessMetricRow metrics;
     metrics.frame_id = frame.frame_id;
     metrics.text_contrast = 0.42;
+    metrics.text_readability_contrast = 0.84;
+    metrics.specular_history_leak = 0.07;
+    metrics.transparent_history_leak = 0.18;
     if (!writer.WriteMetricRow(metrics)) {
         return Fail("WriteMetricRow failed");
     }
@@ -125,7 +128,10 @@ int main() {
     if (!Contains(root / "frames.csv", "frame_id,scenario_time_ms,render_w")) {
         return Fail("frames.csv missing header");
     }
-    if (!Contains(root / "metrics.csv", "1,0,0,0,0,0,0.42,0,0")) {
+    if (!Contains(root / "metrics.csv", "thin_feature_contrast,text_contrast,text_readability_contrast,specular_history_leak,transparent_history_leak")) {
+        return Fail("metrics.csv missing ROI metric header");
+    }
+    if (!Contains(root / "metrics.csv", "1,0,0,0,0,0,0,0.42,0.84,0.07,0.18,0,0")) {
         return Fail("metrics.csv missing row");
     }
     if (!Contains(root / "warnings.jsonl", "\"code\":\"warn_code\"")) {

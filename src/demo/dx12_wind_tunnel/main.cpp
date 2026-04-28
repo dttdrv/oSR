@@ -814,6 +814,17 @@ int main(int argc, char** argv) {
         metrics.history_trust_mean = temporal_diagnostics.history_trust_mean;
         metrics.accumulation_weight_mean = temporal_diagnostics.accumulation_weight_mean;
         metrics.history_reject_pct = 100.0 - temporal_resolve_stats.history_weight_mean * 100.0;
+        if (temporal_mode) {
+            metrics.reactive_trail_score = temporal_resolve_stats.reactive_history_weight_mean;
+            metrics.specular_history_leak = osr::demo::wind_tunnel::MeanMaterialHistoryLeak(temporal_debug_maps,
+                                                                                            synthetic.context.display_size,
+                                                                                            synthetic.context.frame_id,
+                                                                                            true);
+            metrics.transparent_history_leak = osr::demo::wind_tunnel::MeanMaterialHistoryLeak(temporal_debug_maps,
+                                                                                               synthetic.context.display_size,
+                                                                                               synthetic.context.frame_id,
+                                                                                               false);
+        }
         capture.WriteMetricRow(metrics);
         capture.WriteValidationWarnings(synthetic.context.frame_id, report);
         for (const auto& finding : temporal_verdict.findings) {

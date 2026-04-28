@@ -428,6 +428,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `32` and max mean byte diff `0.0120251`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct --metric-gate` exited `0`; `flip-x` and `jitter-contaminated` metric-gated runs failed as expected.
 
+### Capture Pack ROI Metrics
+
+- Extended capture-pack `metrics.csv` with `thin_feature_contrast`, `text_readability_contrast`, `specular_history_leak`, and `transparent_history_leak` columns.
+- Single-frame temporal captures now populate material leak metrics from temporal debug history-weight maps.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`; latest capture metrics row reported specular leak `0.0636396` and transparent leak `0.116467`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
