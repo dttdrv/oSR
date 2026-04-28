@@ -387,7 +387,7 @@ int main(int argc, char** argv) {
     std::filesystem::create_directories("build/manual");
     osr::core::Logger::Instance().Configure("build/manual/osr_dx12_wind_tunnel.log", osr::core::LogLevel::Debug);
 
-    if (headless && requested_frames > 1) {
+    if (headless && requested_frames > 1 && reconstruction_mode != ReconstructionMode::TemporalGpu) {
         osr::demo::wind_tunnel::SequenceMetricsSettings sequence_settings;
         sequence_settings.display_size = requested_display_size;
         sequence_settings.render_scale = requested_render_scale;
@@ -428,6 +428,187 @@ int main(int argc, char** argv) {
         Release(dx);
         std::cout << "DX12 initialization failed. See console output.\n";
         return 1;
+    }
+
+    if (headless && requested_frames > 1 && reconstruction_mode == ReconstructionMode::TemporalGpu) {
+        osr::demo::wind_tunnel::SyntheticFrameSettings sequence_frame_settings;
+        sequence_frame_settings.display_size = requested_display_size;
+        sequence_frame_settings.render_scale = requested_render_scale;
+        sequence_frame_settings.frame_id = requested_frame_id;
+        sequence_frame_settings.motion_vector_mode = mv_mode;
+        auto first_frame = osr::demo::wind_tunnel::BuildSyntheticFrame(sequence_frame_settings);
+        const auto render_size = first_frame.context.render_size;
+        const auto display_size = first_frame.context.display_size;
+
+        bool ok = true;
+        ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.color_input, L"oSR sequence color input");
+        ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.color_output, L"oSR sequence color output");
+        ok = ok && CreateTexture(dx.device, display_size, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_NONE, &dx.previous_history, L"oSR sequence previous history");
+        ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.depth, L"oSR sequence depth");
+        ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_NONE, &dx.previous_depth, L"oSR sequence previous depth");
+        ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32G32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.motion_vectors, L"oSR sequence motion vectors");
+        ok = ok && CreateTexture(dx.device, render_size, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, &dx.reactive_mask, L"oSR sequence reactive mask");
+        if (!ok) {
+            std::cerr << "Failed to create sequence D3D12 textures.\n";
+            Release(dx);
+            return 1;
+        }
+
+        auto upload_sequence = [&](ID3D12Resource* resource,
+                                   DXGI_FORMAT format,
+                                   osr::core::Dimensions size,
+                                   const void* data,
+                                   uint64_t row_bytes,
+                                   const char* name) {
+            osr::demo::dx12_wind_tunnel::TextureTransferResult result;
+            return osr::demo::dx12_wind_tunnel::UploadReadbackTexture2D(dx.device,
+                                                                         dx.queue,
+                                                                         dx.allocator,
+                                                                         dx.command_list,
+                                                                         dx.sync,
+                                                                         resource,
+                                                                         format,
+                                                                         size,
+                                                                         data,
+                                                                         row_bytes,
+                                                                         name,
+                                                                         result) && result.matched;
+        };
+
+        auto copy_resource = [&](ID3D12Resource* src, ID3D12Resource* dst) {
+            if (Failed(dx.allocator->Reset(), "Reset allocator") ||
+                Failed(dx.command_list->Reset(dx.allocator, nullptr), "Reset command list")) {
+                return false;
+            }
+            D3D12_RESOURCE_BARRIER barriers[2] {};
+            barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barriers[0].Transition.pResource = src;
+            barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+            barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barriers[1].Transition.pResource = dst;
+            barriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+            dx.command_list->ResourceBarrier(2, barriers);
+            dx.command_list->CopyResource(dst, src);
+            std::swap(barriers[0].Transition.StateBefore, barriers[0].Transition.StateAfter);
+            std::swap(barriers[1].Transition.StateBefore, barriers[1].Transition.StateAfter);
+            dx.command_list->ResourceBarrier(2, barriers);
+            return osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);
+        };
+
+        osr::backends::dx12::TemporalResolvePass temporal_pass;
+        if (!temporal_pass.Initialize(dx.device)) {
+            Release(dx);
+            return 1;
+        }
+
+        std::vector<uint32_t> previous_cpu_temporal;
+        osr::demo::wind_tunnel::SyntheticFrame previous_frame;
+        double max_mean_abs_diff = 0.0;
+        uint32_t max_abs_diff = 0;
+        uint32_t frames_checked = 0;
+        bool sequence_ok = true;
+
+        for (uint32_t frame_index = 0; frame_index < requested_frames && sequence_ok; ++frame_index) {
+            osr::demo::wind_tunnel::SyntheticFrameSettings frame_settings;
+            frame_settings.display_size = requested_display_size;
+            frame_settings.render_scale = requested_render_scale;
+            frame_settings.frame_id = requested_frame_id + frame_index;
+            frame_settings.reset_history = frame_index == 0;
+            frame_settings.motion_vector_mode = mv_mode;
+            auto frame = osr::demo::wind_tunnel::BuildSyntheticFrame(frame_settings);
+            frame.context.source_api = "oSR.dx12_temporal_sequence";
+            frame.context.color_input = D3DResource(osr::core::ResourceKind::ColorInput, dx.color_input, 0x3000, render_size, DXGI_FORMAT_R8G8B8A8_UNORM, "dx12_sequence_color_input_rgba8");
+            frame.context.color_output = D3DResource(osr::core::ResourceKind::ColorOutput, dx.color_output, 0x3001, display_size, DXGI_FORMAT_R8G8B8A8_UNORM, "dx12_sequence_color_output_rgba8");
+            frame.context.depth = D3DResource(osr::core::ResourceKind::Depth, dx.depth, 0x3002, render_size, DXGI_FORMAT_R32_FLOAT, "dx12_sequence_depth_r32f");
+            frame.context.motion_vectors = D3DResource(osr::core::ResourceKind::MotionVectors, dx.motion_vectors, 0x3003, render_size, DXGI_FORMAT_R32G32_FLOAT, "dx12_sequence_motion_vectors_r32g32f");
+            frame.context.reactive_mask = D3DResource(osr::core::ResourceKind::ReactiveMask, dx.reactive_mask, 0x3004, render_size, DXGI_FORMAT_R32_FLOAT, "dx12_sequence_reactive_mask_r32f");
+
+            const auto spatial = osr::demo::dx12_wind_tunnel::UpscaleBilinear(frame.color, render_size, display_size);
+            std::vector<uint32_t> cpu_temporal = spatial;
+            osr::demo::wind_tunnel::TemporalResolveStats stats;
+            if (!previous_cpu_temporal.empty()) {
+                cpu_temporal = osr::demo::wind_tunnel::ResolveTemporalDisplay(spatial,
+                                                                               previous_cpu_temporal,
+                                                                               frame,
+                                                                               display_size,
+                                                                               {},
+                                                                               &stats,
+                                                                               &previous_frame);
+            }
+
+            sequence_ok = sequence_ok &&
+                upload_sequence(dx.color_input, DXGI_FORMAT_R8G8B8A8_UNORM, render_size, frame.color.data(), static_cast<uint64_t>(render_size.width) * sizeof(uint32_t), "sequence_color_input") &&
+                upload_sequence(dx.color_output, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, cpu_temporal.data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "sequence_color_output_reference") &&
+                upload_sequence(dx.depth, DXGI_FORMAT_R32_FLOAT, render_size, frame.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "sequence_depth") &&
+                upload_sequence(dx.motion_vectors, DXGI_FORMAT_R32G32_FLOAT, render_size, frame.motion_vectors.data(), static_cast<uint64_t>(render_size.width) * sizeof(osr::demo::wind_tunnel::Float2Buffer), "sequence_motion_vectors") &&
+                upload_sequence(dx.reactive_mask, DXGI_FORMAT_R32_FLOAT, render_size, frame.reactive_mask.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "sequence_reactive_mask");
+            if (!sequence_ok) {
+                break;
+            }
+
+            if (frame_index == 0) {
+                sequence_ok = upload_sequence(dx.previous_history, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, spatial.data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "sequence_initial_history") &&
+                              upload_sequence(dx.previous_depth, DXGI_FORMAT_R32_FLOAT, render_size, frame.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "sequence_initial_previous_depth");
+            } else if (Failed(dx.allocator->Reset(), "Reset allocator") ||
+                       Failed(dx.command_list->Reset(dx.allocator, nullptr), "Reset command list")) {
+                sequence_ok = false;
+            } else {
+                osr::backends::dx12::TemporalResolveResources temporal_resources;
+                temporal_resources.current_color = dx.color_input;
+                temporal_resources.previous_history = dx.previous_history;
+                temporal_resources.current_depth = dx.depth;
+                temporal_resources.previous_depth = dx.previous_depth;
+                temporal_resources.motion_vectors = dx.motion_vectors;
+                temporal_resources.reactive_mask = dx.reactive_mask;
+                temporal_resources.output_color = dx.color_output;
+                osr::backends::dx12::TemporalResolveConstants constants;
+                constants.render_size = render_size;
+                constants.display_size = display_size;
+                sequence_ok = temporal_pass.Dispatch(dx.command_list, frame.context, temporal_resources, constants) &&
+                              osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);
+                osr::demo::dx12_wind_tunnel::TextureTransferResult readback;
+                sequence_ok = sequence_ok &&
+                    osr::demo::dx12_wind_tunnel::ReadbackTexture2D(dx.device,
+                                                                   dx.queue,
+                                                                   dx.allocator,
+                                                                   dx.command_list,
+                                                                   dx.sync,
+                                                                   dx.color_output,
+                                                                   DXGI_FORMAT_R8G8B8A8_UNORM,
+                                                                   display_size,
+                                                                   cpu_temporal.data(),
+                                                                   static_cast<uint64_t>(display_size.width) * sizeof(uint32_t),
+                                                                   "sequence_temporal_gpu_output",
+                                                                   readback) &&
+                    readback.matched;
+                max_abs_diff = std::max(max_abs_diff, readback.max_abs_diff);
+                max_mean_abs_diff = std::max(max_mean_abs_diff, readback.mean_abs_diff);
+                ++frames_checked;
+            }
+
+            sequence_ok = sequence_ok &&
+                          copy_resource(dx.color_output, dx.previous_history) &&
+                          copy_resource(dx.depth, dx.previous_depth);
+            previous_cpu_temporal = std::move(cpu_temporal);
+            previous_frame = std::move(frame);
+        }
+
+        std::cout << "oSR DX12 temporal-gpu sequence\n";
+        std::cout << "Frames: " << requested_frames << "\n";
+        std::cout << "Checked temporal frames: " << frames_checked << "\n";
+        std::cout << "Max byte diff: " << max_abs_diff << "\n";
+        std::cout << "Max mean byte diff: " << max_mean_abs_diff << "\n";
+        std::cout << "Persistent history: GPU output copied forward each frame\n";
+        Release(dx);
+        if (!sequence_ok || (metric_gate && (max_abs_diff > 32 || max_mean_abs_diff > 0.02))) {
+            std::cerr << "Temporal-gpu sequence gate failed.\n";
+            return 3;
+        }
+        return 0;
     }
 
     osr::demo::wind_tunnel::SyntheticFrameSettings settings;
