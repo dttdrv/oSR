@@ -168,6 +168,12 @@ if(OSR_BUILD_TESTS)
     target_link_libraries(osr_wind_tunnel_synthetic_frame_tests PRIVATE osr_core osr_wind_tunnel)
     add_test(NAME wind_tunnel_synthetic_frame COMMAND osr_wind_tunnel_synthetic_frame_tests)
 
+    add_executable(osr_display_upscale_tests
+        src/tests/display_upscale_tests.cpp
+    )
+    target_link_libraries(osr_display_upscale_tests PRIVATE osr_core osr_wind_tunnel)
+    add_test(NAME display_upscale COMMAND osr_display_upscale_tests)
+
     add_executable(osr_wind_tunnel_debug_dumps_tests
         src/tests/wind_tunnel_debug_dumps_tests.cpp
     )

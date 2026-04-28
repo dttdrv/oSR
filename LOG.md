@@ -315,6 +315,16 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`, with matched transfer/readback hashes and diagnostic gate `ok`.
 - Verification: `tools/run_dx12_mv_sweep.bat` exited `0`; all current MV truth-table modes completed and produced expected diagnostic findings for corrupted modes.
 
+### Bilinear Spatial Base For Temporal CPU Path
+
+- Added CPU bilinear display upscale alongside the existing nearest debug upscale.
+- Switched the sequence lab and DX12 `temporal-cpu` mode to feed temporal resolve from bilinear spatial color, while preserving nearest output for the existing `spatial-gpu` debug path.
+- Added display-upscale tests covering nearest block preservation, bilinear center sampling, and invalid dimension rejection.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.668671`, stability improvement `33.1329%`, ghost score `0.213331`, edge preservation `1.00145`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.65822`, stability improvement `34.178%`, ghost score `0.25372`, edge preservation `1.0012`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`, with matched transfer/readback hashes.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

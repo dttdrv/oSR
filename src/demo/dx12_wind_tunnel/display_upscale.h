@@ -11,4 +11,8 @@ namespace osr::demo::dx12_wind_tunnel {
                                                    core::Dimensions src_size,
                                                    core::Dimensions dst_size);
 
+[[nodiscard]] std::vector<uint32_t> UpscaleBilinear(const std::vector<uint32_t>& src,
+                                                    core::Dimensions src_size,
+                                                    core::Dimensions dst_size);
+
 } // namespace osr::demo::dx12_wind_tunnel

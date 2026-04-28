@@ -22,6 +22,9 @@ if errorlevel 1 goto fail
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/wind_tunnel_synthetic_frame_tests.cpp src/demo/wind_tunnel/synthetic_frame.cpp src/core/frame_context.cpp src/core/quality_mode.cpp -o build\manual\osr_wind_tunnel_synthetic_frame_tests.exe && build\manual\osr_wind_tunnel_synthetic_frame_tests.exe
 if errorlevel 1 goto fail
 
+"%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/display_upscale_tests.cpp src/demo/dx12_wind_tunnel/display_upscale.cpp src/core/frame_context.cpp -o build\manual\osr_display_upscale_tests.exe && build\manual\osr_display_upscale_tests.exe
+if errorlevel 1 goto fail
+
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/wind_tunnel_debug_dumps_tests.cpp src/demo/wind_tunnel/debug_dumps.cpp src/demo/wind_tunnel/synthetic_frame.cpp src/core/frame_context.cpp src/core/quality_mode.cpp -o build\manual\osr_wind_tunnel_debug_dumps_tests.exe && build\manual\osr_wind_tunnel_debug_dumps_tests.exe
 if errorlevel 1 goto fail
 

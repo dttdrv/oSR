@@ -480,8 +480,10 @@ int main(int argc, char** argv) {
         return transfer_ok && result.matched;
     };
 
-    const auto spatial_output = osr::demo::dx12_wind_tunnel::UpscaleNearest(synthetic.color, render_size, display_size);
-    const auto previous_display_output = osr::demo::dx12_wind_tunnel::UpscaleNearest(previous_synthetic.color, render_size, display_size);
+    const auto spatial_output = reconstruction_mode == ReconstructionMode::TemporalCpu
+        ? osr::demo::dx12_wind_tunnel::UpscaleBilinear(synthetic.color, render_size, display_size)
+        : osr::demo::dx12_wind_tunnel::UpscaleNearest(synthetic.color, render_size, display_size);
+    const auto previous_display_output = osr::demo::dx12_wind_tunnel::UpscaleBilinear(previous_synthetic.color, render_size, display_size);
     osr::demo::wind_tunnel::TemporalResolveStats temporal_resolve_stats;
     std::vector<uint32_t> resolved_output = spatial_output;
     if (reconstruction_mode == ReconstructionMode::TemporalCpu) {

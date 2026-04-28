@@ -35,6 +35,7 @@ build_status:
     - Default motion rejection is tightened to 3 render pixels after final accepted-history ghost metrics exposed excessive low-resolution motion trust.
     - CPU temporal resolve uses bilinear sampling for reprojected display history and previous-depth residual validation.
     - Temporal diagnostics now use the same bilinear subpixel luma/depth reprojection model as the CPU temporal resolve.
+    - Sequence lab and DX12 temporal-cpu mode now use a bilinear spatial base instead of nearest-neighbor color.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -79,6 +80,7 @@ next_actions:
   - Refactor DX12 wind tunnel --frames N from CPU sequence metric mode into a true per-frame DX12 capture loop with capture-pack rows.
   - Add shimmer/ghost/text/edge metrics over multi-frame sequences, not only one-frame diagnostics.
   - Add confidence-gated edge/text ROI metrics so readability and thin-geometry stability become first-class gates.
+  - Port bilinear spatial base to the DX12 compute path so GPU and CPU temporal paths start from the same reconstruction input.
   - Port sequence-lab temporal resolve from CPU display-space into a DX12 temporal pass with history textures.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
