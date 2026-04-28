@@ -2,6 +2,7 @@
 
 #include "core/frame_context.h"
 #include "demo/wind_tunnel/synthetic_frame.h"
+#include "demo/wind_tunnel/temporal_resolve.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -20,6 +21,9 @@ struct DebugDumpResult {
     bool reactive_mask_raw = false;
     bool output_ppm = false;
     bool output_raw = false;
+    bool history_weight_pgm = false;
+    bool color_residual_pgm = false;
+    bool depth_residual_pgm = false;
     bool artifacts_json = false;
 
     [[nodiscard]] bool AllRequired() const noexcept;
@@ -45,6 +49,7 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
                                               uint64_t color_output_hash = 0,
                                               uint64_t depth_hash = 0,
                                               uint64_t motion_vectors_hash = 0,
-                                              uint64_t reactive_mask_hash = 0);
+                                              uint64_t reactive_mask_hash = 0,
+                                              const TemporalResolveDebugMaps* temporal_debug_maps = nullptr);
 
 } // namespace osr::demo::wind_tunnel

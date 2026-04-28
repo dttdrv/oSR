@@ -325,6 +325,16 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.65822`, stability improvement `34.178%`, ghost score `0.25372`, edge preservation `1.0012`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`, with matched transfer/readback hashes.
 
+### Temporal Debug Maps
+
+- Added optional temporal resolve debug maps for accepted history weight, luma residual, and depth residual.
+- DX12 `temporal-cpu` capture packs now write `history_weight.pgm`, `color_residual.pgm`, and `depth_residual.pgm` inside each frame dump.
+- `depth_residual.pgm` marks previous-depth reprojection out-of-bounds as full-scale residual for visibility.
+- Added debug-dump tests for temporal map output and manifest integration.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`; latest capture `build/manual/captures/2026-04-28T14-36-53Z_dx12_wind_tunnel_h1_buffer_truth_correct` contains temporal residual/weight PGM maps.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.668671`, stability improvement `33.1329%`, ghost score `0.213331`, edge preservation `1.00145`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

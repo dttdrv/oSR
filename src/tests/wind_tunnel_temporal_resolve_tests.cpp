@@ -25,7 +25,8 @@ int main() {
     settings.max_history_weight = 0.5f;
     settings.color_rejection_threshold = 0.0f;
     osr::demo::wind_tunnel::TemporalResolveStats stats;
-    const auto blended = osr::demo::wind_tunnel::ResolveTemporalDisplay(current, history, frame, frame_settings.display_size, settings, &stats);
+    osr::demo::wind_tunnel::TemporalResolveDebugMaps debug_maps;
+    const auto blended = osr::demo::wind_tunnel::ResolveTemporalDisplay(current, history, frame, frame_settings.display_size, settings, &stats, nullptr, &debug_maps);
     if (blended.size() != current.size()) {
         return Fail("temporal resolve output size mismatch");
     }
@@ -34,6 +35,9 @@ int main() {
     }
     if (stats.history_weight_mean <= 0.0 || stats.history_weight_max > 0.5) {
         return Fail("temporal resolve stats are outside expected range");
+    }
+    if (debug_maps.history_weight.size() != blended.size() || debug_maps.color_residual.size() != blended.size()) {
+        return Fail("temporal resolve debug maps should match display output size");
     }
 
     frame.context.flags.reset_history = true;

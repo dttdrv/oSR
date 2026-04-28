@@ -93,7 +93,8 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                                              core::Dimensions display_size,
                                              const TemporalResolveSettings& settings,
                                              TemporalResolveStats* stats,
-                                             const SyntheticFrame* previous_frame) {
+                                             const SyntheticFrame* previous_frame,
+                                             TemporalResolveDebugMaps* debug_maps) {
     const size_t display_pixels = static_cast<size_t>(display_size.width) * display_size.height;
     if (current_display.size() != display_pixels ||
         previous_history.size() != display_pixels ||
@@ -102,10 +103,19 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
         if (stats) {
             *stats = {};
         }
+        if (debug_maps) {
+            *debug_maps = {};
+        }
         return current_display;
     }
 
     std::vector<uint32_t> output(display_pixels);
+    if (debug_maps) {
+        debug_maps->display_size = display_size;
+        debug_maps->history_weight.assign(display_pixels, 0.0f);
+        debug_maps->color_residual.assign(display_pixels, 0.0f);
+        debug_maps->depth_residual.assign(display_pixels, 0.0f);
+    }
     const auto render_size = current_frame.context.render_size;
     double weight_sum = 0.0;
     double weight_min = 1.0;
@@ -201,9 +211,15 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
             if (has_previous_depth) {
                 if (previous_depth_oob) {
                     history_weight = 0.0f;
+                    if (debug_maps) {
+                        debug_maps->depth_residual[display_index] = 1.0f;
+                    }
                     ++depth_rejected;
                 } else {
                     const float depth_residual = std::abs(current_frame.depth[render_index] - previous_depth_sample);
+                    if (debug_maps) {
+                        debug_maps->depth_residual[display_index] = depth_residual;
+                    }
                     depth_residual_sum += depth_residual;
                     ++depth_samples;
                     if (settings.depth_rejection_threshold > 0.0f && depth_residual > settings.depth_rejection_threshold) {
@@ -221,6 +237,10 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 motion_weight_sum += history_weight;
             }
 
+            if (debug_maps) {
+                debug_maps->history_weight[display_index] = history_weight;
+                debug_maps->color_residual[display_index] = color_residual;
+            }
             output[display_index] = BlendColor(current_display[display_index], history_sample, history_weight);
             weight_sum += history_weight;
             weight_min = std::min(weight_min, static_cast<double>(history_weight));

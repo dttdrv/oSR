@@ -485,6 +485,7 @@ int main(int argc, char** argv) {
         : osr::demo::dx12_wind_tunnel::UpscaleNearest(synthetic.color, render_size, display_size);
     const auto previous_display_output = osr::demo::dx12_wind_tunnel::UpscaleBilinear(previous_synthetic.color, render_size, display_size);
     osr::demo::wind_tunnel::TemporalResolveStats temporal_resolve_stats;
+    osr::demo::wind_tunnel::TemporalResolveDebugMaps temporal_debug_maps;
     std::vector<uint32_t> resolved_output = spatial_output;
     if (reconstruction_mode == ReconstructionMode::TemporalCpu) {
         osr::demo::wind_tunnel::TemporalResolveSettings resolve_settings;
@@ -494,7 +495,8 @@ int main(int argc, char** argv) {
                                                                           display_size,
                                                                           resolve_settings,
                                                                           &temporal_resolve_stats,
-                                                                          &previous_synthetic);
+                                                                          &previous_synthetic,
+                                                                          &temporal_debug_maps);
         synthetic.context.notes.push_back("CPU temporal resolve blended display-space history before DX12 presentation.");
     }
 
@@ -610,7 +612,8 @@ int main(int argc, char** argv) {
                                                                                        color_output_hash,
                                                                                        depth_hash,
                                                                                        motion_vectors_hash,
-                                                                                       reactive_mask_hash);
+                                                                                       reactive_mask_hash,
+                                                                                       reconstruction_mode == ReconstructionMode::TemporalCpu ? &temporal_debug_maps : nullptr);
         if (!dump_result.AllRequired()) {
             osr::core::ValidationReport dump_report;
             dump_report.messages.push_back({

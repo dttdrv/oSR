@@ -32,12 +32,20 @@ struct TemporalResolveStats {
     double depth_residual_mean = 0.0;
 };
 
+struct TemporalResolveDebugMaps {
+    core::Dimensions display_size {};
+    std::vector<float> history_weight;
+    std::vector<float> color_residual;
+    std::vector<float> depth_residual;
+};
+
 [[nodiscard]] std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& current_display,
                                                            const std::vector<uint32_t>& previous_history,
                                                            const SyntheticFrame& current_frame,
                                                            core::Dimensions display_size,
                                                            const TemporalResolveSettings& settings,
                                                            TemporalResolveStats* stats,
-                                                           const SyntheticFrame* previous_frame = nullptr);
+                                                           const SyntheticFrame* previous_frame = nullptr,
+                                                           TemporalResolveDebugMaps* debug_maps = nullptr);
 
 } // namespace osr::demo::wind_tunnel
