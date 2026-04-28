@@ -19,7 +19,7 @@ struct TemporalResolveResources {
 struct TemporalResolveConstants {
     core::Dimensions render_size {};
     core::Dimensions display_size {};
-    float max_history_weight = 0.78f;
+    float max_history_weight = 0.84f;
     float reactive_penalty = 0.90f;
     float motion_rejection_pixels = 3.0f;
     float color_rejection_threshold = 0.16f;

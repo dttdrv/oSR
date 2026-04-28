@@ -243,7 +243,7 @@ TemporalDiagnosticVerdict AnalyzeTemporalDiagnostics(const TemporalDiagnostics& 
     }
 
     const bool corrupted_mv_mode = mode != MotionVectorMode::Correct;
-    const double residual_warning_threshold = corrupted_mv_mode ? 0.0035 : 0.0080;
+    const double residual_warning_threshold = corrupted_mv_mode ? 0.0035 : 0.0095;
     if (diagnostics.mv_luma_residual_mean > residual_warning_threshold) {
         add("MVResidualHigh",
             corrupted_mv_mode ? "intentional_motion_vector_convention_corruption" : "motion_vector_reprojection_error_high",

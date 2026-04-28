@@ -63,6 +63,9 @@ int main() {
     bool saw_text_panel = false;
     bool saw_text_glyph = false;
     bool saw_moving_text_motion = false;
+    bool saw_specular = false;
+    bool saw_transparent = false;
+    bool saw_material_reactive = false;
     for (size_t i = 0; i < expected_pixels; ++i) {
         const auto mv = frame.motion_vectors[i];
         if (!std::isfinite(mv.x) || !std::isfinite(mv.y) || !std::isfinite(frame.depth[i])) {
@@ -75,12 +78,17 @@ int main() {
         const float v = (static_cast<float>(y) + 0.5f + frame.context.jitter_offset.y) /
                         static_cast<float>(frame.context.render_size.height);
         const auto text = osr::demo::wind_tunnel::EvaluateSyntheticTextCoverage(u, v, frame.context.frame_id, true);
+        const auto material = osr::demo::wind_tunnel::EvaluateSyntheticMaterialCoverage(u, v, frame.context.frame_id, true);
         saw_motion = saw_motion || std::abs(mv.x) > 0.01f || std::abs(mv.y) > 0.01f;
         saw_reactive = saw_reactive || frame.reactive_mask[i] > 0.5f;
         saw_foreground_depth = saw_foreground_depth || frame.depth[i] < 0.3f;
         saw_text_panel = saw_text_panel || text.panel;
         saw_text_glyph = saw_text_glyph || text.glyph;
         saw_moving_text_motion = saw_moving_text_motion || (text.glyph && text.moving && std::abs(mv.x) > 0.01f);
+        saw_specular = saw_specular || material.specular;
+        saw_transparent = saw_transparent || material.transparent;
+        saw_material_reactive = saw_material_reactive ||
+                                ((material.specular || material.transparent) && frame.reactive_mask[i] > 0.5f);
     }
     if (!saw_motion) {
         return Fail("synthetic frame did not produce non-zero motion vectors");
@@ -96,6 +104,9 @@ int main() {
     }
     if (!saw_moving_text_motion) {
         return Fail("moving synthetic text should carry object motion vectors");
+    }
+    if (!saw_specular || !saw_transparent || !saw_material_reactive) {
+        return Fail("synthetic frame did not produce reactive material stress coverage");
     }
 
     settings.reset_history = false;

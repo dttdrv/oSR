@@ -10,7 +10,7 @@ struct TrustFieldSettings {
     float depth_consistency_threshold = 0.02f;
     float motion_consistency_threshold_pixels = 64.0f;
     float color_consistency_threshold = 0.12f;
-    float reactive_penalty = 0.65f;
+    float reactive_penalty = 0.90f;
     float disocclusion_penalty = 0.85f;
     float trust_decay_rate = 0.08f;
     float trust_recovery_floor = 0.90f;

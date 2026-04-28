@@ -25,6 +25,8 @@ struct SequenceMetricsResult {
     double edge_preservation = 0.0;
     double thin_feature_contrast = 0.0;
     double text_readability_contrast = 0.0;
+    double specular_history_leak = 0.0;
+    double transparent_history_leak = 0.0;
     double reprojected_history_pct = 0.0;
     double reproject_out_of_bounds_pct = 0.0;
     double color_rejected_pct = 0.0;

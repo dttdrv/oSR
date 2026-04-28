@@ -478,6 +478,11 @@ void DrawScene(AppState& app) {
     DrawCube(app, {0.0f, 0.12f, 5.4f}, {2.0f, 0.12f, 0.18f}, 0.0f, Color(96, 87, 73), jitter_x, jitter_y);
     DrawWorldLabel(app, {-1.5f, 2.28f, 2.5f}, "OSR", 3, Color(235, 241, 220), Color(27, 33, 38), jitter_x, jitter_y);
     DrawWorldLabel(app, {1.35f, 1.34f, 3.2f + std::sin(t) * 0.65f}, "760M", 2, Color(241, 213, 126), Color(31, 35, 39), jitter_x, jitter_y);
+    DrawCube(app, {2.85f, 1.15f, 2.65f}, {0.018f, 0.86f, 0.42f}, 0.0f, Color(75, 148, 169), jitter_x, jitter_y);
+    DrawWorldLine(app, {2.83f, 0.45f, 2.22f}, {2.83f, 1.85f, 3.08f}, Color(132, 211, 226), jitter_x, jitter_y);
+    DrawWorldLine(app, {2.83f, 0.62f, 2.22f}, {2.83f, 2.02f, 3.08f}, Color(132, 211, 226), jitter_x, jitter_y);
+    DrawCube(app, {2.55f + std::sin(t * 3.4f) * 0.42f, 1.86f + std::cos(t * 2.6f) * 0.16f, 2.25f},
+             {0.04f, 0.04f, 0.04f}, 0.0f, Color(255, 250, 214), jitter_x, jitter_y);
 
     if (app.rails) {
         for (int i = -4; i <= 4; ++i) {

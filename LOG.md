@@ -414,6 +414,20 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct --metric-gate` exited `0`; `flip-x` and `jitter-contaminated` metric-gated runs failed as expected with diagnostic verdicts.
 
+### Material Stress ROI Gates
+
+- Added synthetic specular and transparent material stress targets. Specular glints use a small moving reactive ROI; transparent pane stripes use zero motion vectors and full reactive coverage.
+- Added matching material stress props to the native Win32 3D wind tunnel: a transparent pane, diagonal highlights, and a moving glint.
+- Added `specular_history_leak` and `transparent_history_leak` metrics from temporal debug history-weight maps. The metric gate fails if specular leak exceeds `0.12` or transparent leak exceeds `0.32`.
+- Updated the trust-field default reactive penalty from `0.65` to `0.90` so temporal diagnostics align with the resolve path's reactive-history suppression policy.
+- Balanced the material stress footprint so it catches material ghosting without dominating global temporal stability.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: direct MinGW build of `build/manual/osr_3d_wind_tunnel.exe` exited `0`.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.788988`, reactive trail score `0.0324146`, specular leak `0.054587`, transparent leak `0.113783`, and text readability contrast `1.01544`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --reconstruction temporal-cpu --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.781903`, specular leak `0.0535225`, and transparent leak `0.113338`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `32` and max mean byte diff `0.0120251`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct --metric-gate` exited `0`; `flip-x` and `jitter-contaminated` metric-gated runs failed as expected.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

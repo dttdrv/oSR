@@ -49,6 +49,7 @@ int main(int argc, char** argv) {
     csv << "frames,spatial_frame_delta_mean,temporal_frame_delta_mean,temporal_delta_ratio,"
            "stability_improvement_pct,ghost_score,reactive_trail_score,"
            "edge_preservation,thin_feature_contrast,text_readability_contrast,"
+           "specular_history_leak,transparent_history_leak,"
            "reprojected_history_pct,reproject_out_of_bounds_pct,"
            "color_rejected_pct,color_residual_mean,depth_rejected_pct,depth_residual_mean,sharpening_amount_mean,"
            "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
@@ -62,6 +63,8 @@ int main(int argc, char** argv) {
         << result.edge_preservation << ","
         << result.thin_feature_contrast << ","
         << result.text_readability_contrast << ","
+        << result.specular_history_leak << ","
+        << result.transparent_history_leak << ","
         << result.reprojected_history_pct << ","
         << result.reproject_out_of_bounds_pct << ","
         << result.color_rejected_pct << ","
@@ -84,6 +87,8 @@ int main(int argc, char** argv) {
     std::cout << "Edge preservation: " << result.edge_preservation << "\n";
     std::cout << "Thin feature contrast: " << result.thin_feature_contrast << "\n";
     std::cout << "Text readability contrast: " << result.text_readability_contrast << "\n";
+    std::cout << "Specular history leak: " << result.specular_history_leak << "\n";
+    std::cout << "Transparent history leak: " << result.transparent_history_leak << "\n";
     std::cout << "Reprojected history: " << result.reprojected_history_pct << "%\n";
     std::cout << "Reproject OOB: " << result.reproject_out_of_bounds_pct << "%\n";
     std::cout << "Color rejected: " << result.color_rejected_pct << "%\n";
@@ -101,8 +106,10 @@ int main(int argc, char** argv) {
                         result.thin_feature_contrast < 0.82 ||
                         result.thin_feature_contrast > 1.45 ||
                         result.text_readability_contrast < 0.72 ||
-                        result.text_readability_contrast > 1.35)) {
-        std::cerr << "Metric gate failed: temporal stability, ghost, reactive-trail, edge preservation, thin-feature, or text readability outside threshold.\n";
+                        result.text_readability_contrast > 1.35 ||
+                        result.specular_history_leak > 0.12 ||
+                        result.transparent_history_leak > 0.32)) {
+        std::cerr << "Metric gate failed: temporal stability, ghost, reactive-trail, edge/text quality, or material history leak outside threshold.\n";
         return 3;
     }
     return 0;

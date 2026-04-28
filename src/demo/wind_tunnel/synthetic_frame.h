@@ -27,6 +27,7 @@ struct SyntheticFrameSettings {
     bool particles_enabled = true;
     bool rails_enabled = true;
     bool text_enabled = true;
+    bool material_stress_enabled = true;
     MotionVectorMode motion_vector_mode = MotionVectorMode::Correct;
 };
 
@@ -49,6 +50,11 @@ struct SyntheticTextCoverage {
     bool moving = false;
 };
 
+struct SyntheticMaterialCoverage {
+    bool specular = false;
+    bool transparent = false;
+};
+
 [[nodiscard]] float Halton(uint32_t index, uint32_t base) noexcept;
 [[nodiscard]] const char* ToString(MotionVectorMode mode) noexcept;
 [[nodiscard]] core::Dimensions BuildRenderSize(core::Dimensions display_size, float render_scale) noexcept;
@@ -57,6 +63,10 @@ struct SyntheticTextCoverage {
                                                                   float v,
                                                                   uint64_t frame_id,
                                                                   bool enabled) noexcept;
+[[nodiscard]] SyntheticMaterialCoverage EvaluateSyntheticMaterialCoverage(float u,
+                                                                         float v,
+                                                                         uint64_t frame_id,
+                                                                         bool enabled) noexcept;
 [[nodiscard]] SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings);
 
 } // namespace osr::demo::wind_tunnel

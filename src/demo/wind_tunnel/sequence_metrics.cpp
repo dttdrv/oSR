@@ -133,6 +133,31 @@ double TextReadabilityContrastRatio(const std::vector<uint32_t>& spatial,
     return TextContrast(temporal, size, frame_id) / spatial_contrast;
 }
 
+double MaterialHistoryLeak(const TemporalResolveDebugMaps& debug_maps,
+                           core::Dimensions size,
+                           uint64_t frame_id,
+                           bool specular) noexcept {
+    if (debug_maps.history_weight.size() != static_cast<size_t>(size.width) * size.height) {
+        return 0.0;
+    }
+    double sum = 0.0;
+    uint64_t count = 0;
+    for (uint32_t y = 0; y < size.height; ++y) {
+        for (uint32_t x = 0; x < size.width; ++x) {
+            const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(size.width);
+            const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(size.height);
+            const auto material = EvaluateSyntheticMaterialCoverage(u, v, frame_id, true);
+            const bool selected = specular ? material.specular : material.transparent;
+            if (!selected) {
+                continue;
+            }
+            sum += debug_maps.history_weight[static_cast<size_t>(y) * size.width + x];
+            ++count;
+        }
+    }
+    return count == 0 ? 0.0 : sum / static_cast<double>(count);
+}
+
 SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings) {
     SequenceMetricsResult result;
     if (!settings.display_size.IsValid() || settings.frame_count < 2) {
@@ -159,6 +184,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     double temporal_edge_sum = 0.0;
     double thin_feature_contrast_sum = 0.0;
     double text_readability_sum = 0.0;
+    double specular_history_leak_sum = 0.0;
+    double transparent_history_leak_sum = 0.0;
     uint32_t delta_count = 0;
     SyntheticFrame previous_frame;
     bool has_previous_frame = false;
@@ -173,9 +200,10 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
         const auto spatial = dx12_wind_tunnel::UpscaleBilinear(frame.color, frame.context.render_size, frame.context.display_size);
 
         TemporalResolveStats stats;
+        TemporalResolveDebugMaps debug_maps;
         std::vector<uint32_t> temporal = spatial;
         if (!previous_temporal.empty() && has_previous_frame) {
-            temporal = ResolveTemporalDisplay(spatial, previous_temporal, frame, frame.context.display_size, {}, &stats, &previous_frame);
+            temporal = ResolveTemporalDisplay(spatial, previous_temporal, frame, frame.context.display_size, {}, &stats, &previous_frame, &debug_maps);
         }
 
         if (!previous_spatial.empty()) {
@@ -197,6 +225,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
             temporal_edge_sum += MeanEdgeEnergy(temporal, frame.context.display_size);
             thin_feature_contrast_sum += ThinFeatureContrastRatio(spatial, temporal, frame.context.display_size);
             text_readability_sum += TextReadabilityContrastRatio(spatial, temporal, frame.context.display_size, frame_settings.frame_id);
+            specular_history_leak_sum += MaterialHistoryLeak(debug_maps, frame.context.display_size, frame_settings.frame_id, true);
+            transparent_history_leak_sum += MaterialHistoryLeak(debug_maps, frame.context.display_size, frame_settings.frame_id, false);
             ++delta_count;
         }
 
@@ -218,6 +248,8 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     result.edge_preservation = spatial_edge_sum <= 0.0 ? 0.0 : temporal_edge_sum / spatial_edge_sum;
     result.thin_feature_contrast = delta_count == 0 ? 0.0 : thin_feature_contrast_sum / static_cast<double>(delta_count);
     result.text_readability_contrast = delta_count == 0 ? 0.0 : text_readability_sum / static_cast<double>(delta_count);
+    result.specular_history_leak = delta_count == 0 ? 0.0 : specular_history_leak_sum / static_cast<double>(delta_count);
+    result.transparent_history_leak = delta_count == 0 ? 0.0 : transparent_history_leak_sum / static_cast<double>(delta_count);
     result.reprojected_history_pct = delta_count == 0 ? 0.0 : reprojected_sum / static_cast<double>(delta_count);
     result.reproject_out_of_bounds_pct = delta_count == 0 ? 0.0 : reproject_oob_sum / static_cast<double>(delta_count);
     result.color_rejected_pct = delta_count == 0 ? 0.0 : color_rejected_sum / static_cast<double>(delta_count);

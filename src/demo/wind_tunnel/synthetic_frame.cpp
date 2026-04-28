@@ -247,6 +247,25 @@ SyntheticTextCoverage EvaluateSyntheticTextCoverage(float u,
     return coverage;
 }
 
+SyntheticMaterialCoverage EvaluateSyntheticMaterialCoverage(float u,
+                                                           float v,
+                                                           uint64_t frame_id,
+                                                           bool enabled) noexcept {
+    SyntheticMaterialCoverage coverage;
+    if (!enabled) {
+        return coverage;
+    }
+    const float t = static_cast<float>(frame_id) * 0.03125f;
+    const float glint_x = 0.80f + std::sin(t * 3.1f) * 0.075f;
+    const float glint_y = 0.24f + std::cos(t * 2.3f) * 0.040f;
+    coverage.specular = std::hypot(u - glint_x, v - glint_y) < 0.010f;
+
+    const bool pane = u > 0.855f && u < 0.925f && v > 0.48f && v < 0.65f;
+    const float stripe = std::abs(std::fmod((u - 0.855f) * 10.0f + (v - 0.48f) * 13.0f + t * 0.16f, 1.0f) - 0.5f);
+    coverage.transparent = pane && stripe < 0.040f;
+    return coverage;
+}
+
 SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
     SyntheticFrame frame;
     const core::Dimensions render_size = BuildRenderSize(settings.display_size, settings.render_scale);
@@ -322,6 +341,20 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
                 mv.y = 0.0f;
                 reactive = 0.0f;
             }
+            const auto material = EvaluateSyntheticMaterialCoverage(u, v, settings.frame_id, settings.material_stress_enabled);
+            if (material.transparent) {
+                const float shimmer = 0.5f + 0.5f * std::sin(t * 1.9f + u * 41.0f + v * 29.0f);
+                c = Color(116.0f + shimmer * 24.0f, 188.0f + shimmer * 22.0f, 204.0f + shimmer * 18.0f);
+                depth = 0.285f;
+                mv = {};
+                reactive = 1.0f;
+            }
+            if (material.specular) {
+                c = Color(255.0f, 250.0f, 214.0f);
+                depth = 0.215f;
+                mv = {};
+                reactive = 1.0f;
+            }
 
             frame.color[idx] = c;
             frame.depth[idx] = depth;
@@ -356,6 +389,9 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
     frame.context.notes.push_back(settings.text_enabled
         ? "Synthetic text targets are enabled for readability/edge-preservation metrics."
         : "Synthetic text targets are disabled.");
+    frame.context.notes.push_back(settings.material_stress_enabled
+        ? "Synthetic specular/transparent material stress targets are enabled."
+        : "Synthetic material stress targets are disabled.");
     frame.context.notes.push_back(std::string("Synthetic MV mode: ") + ToString(settings.motion_vector_mode));
     return frame;
 }

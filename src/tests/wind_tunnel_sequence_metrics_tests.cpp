@@ -44,6 +44,12 @@ int main() {
     if (result.text_readability_contrast < 0.72 || result.text_readability_contrast > 1.35) {
         return Fail("temporal resolve should preserve readable text contrast without excessive ringing");
     }
+    if (result.specular_history_leak > 0.12) {
+        return Fail("temporal resolve should suppress history on specular stress regions");
+    }
+    if (result.transparent_history_leak > 0.32) {
+        return Fail("temporal resolve should limit history on transparent stress regions");
+    }
     if (result.reprojected_history_pct <= 0.0) {
         return Fail("temporal resolve should reproject some moving history");
     }
