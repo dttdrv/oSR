@@ -417,6 +417,29 @@ std::vector<uint32_t> Rgba8BytesToVector(const std::vector<uint8_t>& bytes, osr:
     return out;
 }
 
+std::string ClassifySyntheticDisplayPixel(uint32_t x, uint32_t y, osr::core::Dimensions size, uint64_t frame_id) {
+    if (!size.IsValid()) {
+        return "invalid";
+    }
+    const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(size.width);
+    const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(size.height);
+    const auto text = osr::demo::wind_tunnel::EvaluateSyntheticTextCoverage(u, v, frame_id, true);
+    const auto material = osr::demo::wind_tunnel::EvaluateSyntheticMaterialCoverage(u, v, frame_id, true);
+    if (text.glyph) {
+        return text.moving ? "moving_text_glyph" : "static_text_glyph";
+    }
+    if (text.panel) {
+        return text.moving ? "moving_text_panel" : "static_text_panel";
+    }
+    if (material.specular) {
+        return "specular";
+    }
+    if (material.transparent) {
+        return "transparent";
+    }
+    return "unclassified";
+}
+
 osr::demo::dx12_wind_tunnel::TextureTransferResult CompareRgba8Output(const std::vector<uint32_t>& expected,
                                                                       const std::vector<uint32_t>& actual,
                                                                       osr::core::Dimensions size,
@@ -938,7 +961,9 @@ int main(int argc, char** argv) {
         std::cout << "Max mean byte diff: " << max_mean_abs_diff << "\n";
         std::cout << "Worst byte diff location: frame=" << worst_diff_frame_id
                   << " pixel=(" << worst_diff_x << "," << worst_diff_y << ")"
-                  << " channel=" << worst_diff_channel << "\n";
+                  << " channel=" << worst_diff_channel
+                  << " roi=" << ClassifySyntheticDisplayPixel(worst_diff_x, worst_diff_y, display_size, worst_diff_frame_id)
+                  << "\n";
         std::cout << "Persistent history: GPU output copied forward each frame\n";
         if (requested_capture_frame_id >= 0) {
             std::cout << "Capture frame: " << requested_capture_frame_id

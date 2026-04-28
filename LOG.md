@@ -567,9 +567,9 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 ### Temporal Sequence Worst-Diff Location
 
 - Added worst byte-difference location reporting for temporal-GPU sequence parity checks.
-- Sequence output now includes the frame id, display pixel, and byte channel for the maximum CPU-vs-GPU temporal output difference.
+- Sequence output now includes the frame id, display pixel, byte channel, and synthetic ROI class for the maximum CPU-vs-GPU temporal output difference.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
-- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run reported worst diff at `frame=14 pixel=(928,345) channel=2`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run reported worst diff at `frame=14 pixel=(928,345) channel=2 roi=unclassified`.
 
 ### Research Links
 
