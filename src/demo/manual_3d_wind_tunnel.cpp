@@ -57,8 +57,11 @@ struct ScreenVertex {
 
 enum class ViewMode {
     Color,
+    Luma,
+    Depth,
     EdgeEnergy,
-    Luma
+    HistoryWeight,
+    RejectionRisk
 };
 
 enum class QualityPreset {
@@ -168,8 +171,11 @@ const char* ToString(QualityPreset preset) {
 const char* ToString(ViewMode view) {
     switch (view) {
         case ViewMode::Color: return "Color";
-        case ViewMode::EdgeEnergy: return "Edge energy";
         case ViewMode::Luma: return "Luma";
+        case ViewMode::Depth: return "Depth";
+        case ViewMode::EdgeEnergy: return "Edge energy";
+        case ViewMode::HistoryWeight: return "History weight";
+        case ViewMode::RejectionRisk: return "Rejection risk";
     }
     return "Unknown";
 }
@@ -390,6 +396,18 @@ void BuildDebugView(AppState& app) {
         return;
     }
 
+    auto local_edge = [&](int x, int y, float l) {
+        const int xr = std::min(app.render_w - 1, x + 1);
+        const int yd = std::min(app.render_h - 1, y + 1);
+        const size_t idx = static_cast<size_t>(y) * app.render_w + x;
+        const float depth = app.depth[idx];
+        const float dx = std::abs(l - Luma(app.color[static_cast<size_t>(y) * app.render_w + xr]));
+        const float dy = std::abs(l - Luma(app.color[static_cast<size_t>(yd) * app.render_w + x]));
+        const float depth_dx = std::abs(depth - app.depth[static_cast<size_t>(y) * app.render_w + xr]) / std::max(1.0f, depth);
+        const float depth_dy = std::abs(depth - app.depth[static_cast<size_t>(yd) * app.render_w + x]) / std::max(1.0f, depth);
+        return std::clamp((dx + dy) * 5.0f + (depth_dx + depth_dy) * 1.75f, 0.0f, 1.0f);
+    };
+
     for (int y = 0; y < app.render_h; ++y) {
         for (int x = 0; x < app.render_w; ++x) {
             const size_t idx = static_cast<size_t>(y) * app.render_w + x;
@@ -399,14 +417,28 @@ void BuildDebugView(AppState& app) {
                 app.debug_color[idx] = Color(v, v, v);
                 continue;
             }
-            const int xr = std::min(app.render_w - 1, x + 1);
-            const int yu = std::min(app.render_h - 1, y + 1);
-            const float edge = std::clamp((std::abs(l - Luma(app.color[static_cast<size_t>(y) * app.render_w + xr])) +
-                                           std::abs(l - Luma(app.color[static_cast<size_t>(yu) * app.render_w + x]))) * 5.0f,
-                                          0.0f, 1.0f);
-            app.debug_color[idx] = Color(static_cast<uint8_t>(edge * 255.0f),
-                                         static_cast<uint8_t>(edge * 208.0f),
-                                         static_cast<uint8_t>(edge * 108.0f));
+            if (app.view == ViewMode::Depth) {
+                const float d = app.depth[idx] > 1000000.0f ? 0.0f : std::clamp(1.0f - app.depth[idx] / 12.0f, 0.0f, 1.0f);
+                app.debug_color[idx] = Color(static_cast<uint8_t>(d * 208.0f),
+                                             static_cast<uint8_t>(d * 224.0f),
+                                             static_cast<uint8_t>(d * 238.0f));
+                continue;
+            }
+            const float edge = local_edge(x, y, l);
+            if (app.view == ViewMode::HistoryWeight) {
+                const float trust = std::clamp(1.0f - edge, 0.0f, 1.0f);
+                app.debug_color[idx] = Color(static_cast<uint8_t>(trust * 118.0f),
+                                             static_cast<uint8_t>(trust * 190.0f),
+                                             static_cast<uint8_t>(trust * 164.0f));
+            } else if (app.view == ViewMode::RejectionRisk) {
+                app.debug_color[idx] = Color(static_cast<uint8_t>(edge * 226.0f),
+                                             static_cast<uint8_t>(edge * 118.0f),
+                                             static_cast<uint8_t>(edge * 80.0f));
+            } else {
+                app.debug_color[idx] = Color(static_cast<uint8_t>(edge * 255.0f),
+                                             static_cast<uint8_t>(edge * 208.0f),
+                                             static_cast<uint8_t>(edge * 108.0f));
+            }
         }
     }
 }
@@ -624,8 +656,11 @@ void CreateControls(HWND hwnd, AppState& app) {
     app.view_label = MakeControl(hwnd, "STATIC", "Debug view", 0, 2003);
     app.view_combo = MakeControl(hwnd, "COMBOBOX", "", CBS_DROPDOWNLIST, kViewCombo);
     AddComboItem(app.view_combo, "Color");
-    AddComboItem(app.view_combo, "Edge energy");
     AddComboItem(app.view_combo, "Luma");
+    AddComboItem(app.view_combo, "Depth");
+    AddComboItem(app.view_combo, "Edge energy");
+    AddComboItem(app.view_combo, "History weight");
+    AddComboItem(app.view_combo, "Rejection risk");
 
     app.animate_check = MakeControl(hwnd, "BUTTON", "Animate scene", BS_AUTOCHECKBOX, kAnimateCheck);
     app.jitter_check = MakeControl(hwnd, "BUTTON", "Subpixel jitter", BS_AUTOCHECKBOX, kJitterCheck);
@@ -660,7 +695,7 @@ void StepInput(AppState& app) {
 }
 
 void CycleView(AppState& app) {
-    app.view = static_cast<ViewMode>((static_cast<int>(app.view) + 1) % 3);
+    app.view = static_cast<ViewMode>((static_cast<int>(app.view) + 1) % 6);
     SyncControls(app);
 }
 
@@ -703,7 +738,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
                 case kViewCombo:
                     if (HIWORD(wparam) == CBN_SELCHANGE) {
                         const auto sel = static_cast<int>(SendMessageA(app->view_combo, CB_GETCURSEL, 0, 0));
-                        app->view = static_cast<ViewMode>(std::clamp(sel, 0, 2));
+                        app->view = static_cast<ViewMode>(std::clamp(sel, 0, 5));
                     }
                     return 0;
                 case kAnimateCheck:

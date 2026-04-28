@@ -335,6 +335,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --metric-gate` exited `0`; latest capture `build/manual/captures/2026-04-28T14-36-53Z_dx12_wind_tunnel_h1_buffer_truth_correct` contains temporal residual/weight PGM maps.
 - Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.668671`, stability improvement `33.1329%`, ghost score `0.213331`, edge preservation `1.00145`.
 
+### Manual Harness Debug Views
+
+- Extended the native Win32 3D wind-tunnel executable with depth, history-weight proxy, and rejection-risk proxy debug views in addition to color, luma, and edge energy.
+- The `V` shortcut and debug-view combo now cycle through all six views.
+- Verification: direct MinGW build of `build/manual/osr_3d_wind_tunnel.exe` exited `0`.
+- Verification: `tools/run_3d_wind_tunnel.bat` launched the updated executable and the process stayed open during smoke testing.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>
