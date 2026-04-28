@@ -20,6 +20,7 @@ target_include_directories(osr_core PUBLIC src)
 
 add_library(osr_reconstruction STATIC
     src/reconstruction/disocclusion.cpp
+    src/reconstruction/feature_locks.cpp
     src/reconstruction/history_rejection.cpp
     src/reconstruction/reactive_mask_synthesis.cpp
     src/reconstruction/residual_search.cpp
@@ -180,6 +181,12 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_residual_search_tests PRIVATE osr_reconstruction)
     add_test(NAME residual_search COMMAND osr_residual_search_tests)
+
+    add_executable(osr_feature_locks_tests
+        src/tests/feature_locks_tests.cpp
+    )
+    target_link_libraries(osr_feature_locks_tests PRIVATE osr_reconstruction)
+    add_test(NAME feature_locks COMMAND osr_feature_locks_tests)
 
     add_executable(osr_sharpening_tests
         src/tests/sharpening_tests.cpp

@@ -16,6 +16,9 @@ if errorlevel 1 goto fail
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/residual_search_tests.cpp src/reconstruction/residual_search.cpp -o build\manual\osr_residual_search_tests.exe && build\manual\osr_residual_search_tests.exe
 if errorlevel 1 goto fail
 
+"%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/feature_locks_tests.cpp src/reconstruction/feature_locks.cpp -o build\manual\osr_feature_locks_tests.exe && build\manual\osr_feature_locks_tests.exe
+if errorlevel 1 goto fail
+
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/sharpening_tests.cpp src/reconstruction/sharpening.cpp -o build\manual\osr_sharpening_tests.exe && build\manual\osr_sharpening_tests.exe
 if errorlevel 1 goto fail
 

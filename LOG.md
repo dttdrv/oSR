@@ -715,3 +715,10 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Added XeSS proxy execute-log throttling: log the first 16 execute calls, announce throttling at call 17, then log every 120th execute with the execute count as the frame correlation ID.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name ycocg_clip_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed.
+
+### Trust Field v2: Feature Lock Groundwork
+
+- Added `src/reconstruction/feature_locks.*` as a standalone module for stable thin/text feature lock acquisition, reinforcement, decay, hard unlock, and reset clearing.
+- Added `src/tests/feature_locks_tests.cpp` and wired it into both CMake and `tools/run_manual_tests.bat`.
+- The lock policy is intentionally conservative: locks require edge strength, high history trust, low luma delta, low luma variance, low motion, and non-reactive/non-disoccluded evidence.
+- Verification: `tools/run_manual_tests.bat` exited `0`.

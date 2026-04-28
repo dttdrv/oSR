@@ -85,6 +85,7 @@ build_status:
     - Real No Man's Sky launch proof reached the XeSS Vulkan dispatch boundary: proxy log contains real runtime load, input-resolution/property queries, xessVKInit, and repeated xessVKExecute calls.
     - The installed No Man's Sky proxy build now throttles execute logging after the first 16 dispatches and logs every 120th dispatch afterward.
     - CPU oracle and DX12 temporal shader now use matching YCoCg history clipping instead of independent RGB channel clipping.
+    - Trust Field v2 feature-lock groundwork exists as a standalone tested reconstruction module, but is not yet wired into CPU/GPU resolve output.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -139,6 +140,7 @@ next_actions:
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
+  - Wire feature locks into CPU temporal resolve debug maps, then into confidence-gated sharpening once metrics prove it helps text/thin-feature stability.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
   - Add throttled XeSS execute-parameter metadata decoding for No Man's Sky once the exact SDK header version is identified, without dereferencing unknown resources unsafely.
