@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <string>
 
 namespace osr::demo::wind_tunnel {
@@ -59,6 +60,105 @@ Float2Buffer ApplyMotionVectorMode(Float2Buffer mv, MotionVectorMode mode, core:
     return mv;
 }
 
+bool GlyphBit(char glyph, int col, int row) noexcept {
+    if (col < 0 || col >= 5 || row < 0 || row >= 7) {
+        return false;
+    }
+    const char* bits = nullptr;
+    switch (glyph) {
+    case '0': bits = "11110"
+                     "10010"
+                     "10010"
+                     "10010"
+                     "10010"
+                     "10010"
+                     "11110"; break;
+    case '6': bits = "01110"
+                     "10000"
+                     "10000"
+                     "11110"
+                     "10010"
+                     "10010"
+                     "01110"; break;
+    case '7': bits = "11110"
+                     "00010"
+                     "00100"
+                     "00100"
+                     "01000"
+                     "01000"
+                     "01000"; break;
+    case 'M': bits = "10001"
+                     "11011"
+                     "10101"
+                     "10101"
+                     "10001"
+                     "10001"
+                     "10001"; break;
+    case 'O': bits = "01110"
+                     "10001"
+                     "10001"
+                     "10001"
+                     "10001"
+                     "10001"
+                     "01110"; break;
+    case 'R': bits = "11110"
+                     "10001"
+                     "10001"
+                     "11110"
+                     "10100"
+                     "10010"
+                     "10001"; break;
+    case 'S': bits = "01111"
+                     "10000"
+                     "10000"
+                     "01110"
+                     "00001"
+                     "00001"
+                     "11110"; break;
+    case 'T': bits = "11111"
+                     "00100"
+                     "00100"
+                     "00100"
+                     "00100"
+                     "00100"
+                     "00100"; break;
+    default:
+        return false;
+    }
+    return bits[row * 5 + col] == '1';
+}
+
+bool TextGlyphAt(float u, float v, float left, float top, float glyph_height, const char* text) noexcept {
+    constexpr int glyph_w = 5;
+    constexpr int glyph_h = 7;
+    constexpr int gap = 1;
+    const float cell = glyph_height / static_cast<float>(glyph_h);
+    const float total_width = static_cast<float>(std::max(0, static_cast<int>(std::strlen(text))) * (glyph_w + gap) - gap) * cell;
+    if (u < left || v < top || u >= left + total_width || v >= top + glyph_height) {
+        return false;
+    }
+    const int cell_x = static_cast<int>((u - left) / cell);
+    const int cell_y = static_cast<int>((v - top) / cell);
+    const int advance = glyph_w + gap;
+    const int glyph_index = cell_x / advance;
+    const int col = cell_x - glyph_index * advance;
+    if (col >= glyph_w || glyph_index < 0 || glyph_index >= static_cast<int>(std::strlen(text))) {
+        return false;
+    }
+    return GlyphBit(text[glyph_index], col, cell_y);
+}
+
+bool TextPanelAt(float u, float v, float left, float top, float glyph_height, const char* text) noexcept {
+    constexpr int glyph_w = 5;
+    constexpr int glyph_h = 7;
+    constexpr int gap = 1;
+    const float cell = glyph_height / static_cast<float>(glyph_h);
+    const float total_width = static_cast<float>(std::max(0, static_cast<int>(std::strlen(text))) * (glyph_w + gap) - gap) * cell;
+    const float pad = cell * 1.2f;
+    return u >= left - pad && u < left + total_width + pad &&
+           v >= top - pad && v < top + glyph_height + pad;
+}
+
 } // namespace
 
 float Halton(uint32_t index, uint32_t base) noexcept {
@@ -108,6 +208,43 @@ core::Float2 BuildJitterOffset(uint64_t frame_id, uint32_t sequence_length, bool
     const uint32_t length = std::max(1u, sequence_length);
     const uint32_t index = static_cast<uint32_t>(frame_id % length) + 1u;
     return {Halton(index, 2) - 0.5f, Halton(index, 3) - 0.5f};
+}
+
+SyntheticTextCoverage EvaluateSyntheticTextCoverage(float u,
+                                                    float v,
+                                                    uint64_t frame_id,
+                                                    bool enabled) noexcept {
+    SyntheticTextCoverage coverage;
+    if (!enabled) {
+        return coverage;
+    }
+    const float t = static_cast<float>(frame_id) * 0.03125f;
+    const float cube_x = 0.5f + std::sin(t * 0.9f) * 0.18f;
+
+    const float moving_left = cube_x - 0.060f;
+    const float moving_top = 0.438f;
+    constexpr const char* moving_text = "OSR";
+    constexpr float moving_height = 0.050f;
+    if (TextPanelAt(u, v, moving_left, moving_top, moving_height, moving_text)) {
+        coverage.panel = true;
+        coverage.moving = true;
+    }
+    if (TextGlyphAt(u, v, moving_left, moving_top, moving_height, moving_text)) {
+        coverage.glyph = true;
+        coverage.moving = true;
+    }
+
+    constexpr const char* static_text = "760M";
+    constexpr float static_left = 0.088f;
+    constexpr float static_top = 0.104f;
+    constexpr float static_height = 0.060f;
+    if (TextPanelAt(u, v, static_left, static_top, static_height, static_text)) {
+        coverage.panel = true;
+    }
+    if (TextGlyphAt(u, v, static_left, static_top, static_height, static_text)) {
+        coverage.glyph = true;
+    }
+    return coverage;
 }
 
 SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
@@ -170,6 +307,21 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
                 mv.y = std::sin(t * 1.7f) * 0.12f * 1.7f * 0.03125f * static_cast<float>(render_size.height);
                 reactive = 1.0f;
             }
+            const auto text = EvaluateSyntheticTextCoverage(u, v, settings.frame_id, settings.text_enabled);
+            if (text.panel) {
+                c = text.moving ? Color(28.0f, 34.0f, 40.0f) : Color(32.0f, 36.0f, 39.0f);
+                depth = text.moving ? 0.335f : 0.46f;
+                mv.x = text.moving ? cube_motion_pixels : 0.0f;
+                mv.y = 0.0f;
+                reactive = 0.0f;
+            }
+            if (text.glyph) {
+                c = text.moving ? Color(235.0f, 241.0f, 220.0f) : Color(241.0f, 213.0f, 126.0f);
+                depth = text.moving ? 0.325f : 0.455f;
+                mv.x = text.moving ? cube_motion_pixels : 0.0f;
+                mv.y = 0.0f;
+                reactive = 0.0f;
+            }
 
             frame.color[idx] = c;
             frame.depth[idx] = depth;
@@ -201,6 +353,9 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
     frame.context.reactive_mask = Resource(core::ResourceKind::ReactiveMask, frame.reactive_mask.data(), 0x1004, render_size, "synthetic_reactive_mask_f32");
     frame.context.notes.push_back("Synthetic wind-tunnel frame emits color/depth/MV/reactive/reset for SR validation.");
     frame.context.notes.push_back("Motion vectors are current-to-previous in pixel units and exclude jitter.");
+    frame.context.notes.push_back(settings.text_enabled
+        ? "Synthetic text targets are enabled for readability/edge-preservation metrics."
+        : "Synthetic text targets are disabled.");
     frame.context.notes.push_back(std::string("Synthetic MV mode: ") + ToString(settings.motion_vector_mode));
     return frame;
 }

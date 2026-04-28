@@ -43,6 +43,10 @@ build_status:
     - DX12 wind tunnel supports --headless --reconstruction temporal-gpu --frames N with persistent GPU output history copied forward each frame.
     - CPU and DX12 temporal resolve paths apply confidence-gated detail recovery and report sharpening_amount_mean.
     - Sequence and DX12 metric gates now include thin_feature_contrast to protect high-frequency edge/text-like regions from blur or excessive ringing.
+    - Synthetic and native 3D wind tunnels include readable in-scene block text targets.
+    - Sequence and DX12 metric gates now include text_readability_contrast to prevent temporal wins that smear readable glyphs.
+    - Temporal resolve now uses a 0.78 clean-history ceiling while retaining residual/depth/reactive rejection.
+    - DX12 temporal shader now quantizes the temporal blend before detail recovery to match the CPU oracle ordering.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -88,9 +92,10 @@ next_actions:
   - Add shimmer/ghost/text/edge metrics over multi-frame sequences, not only one-frame diagnostics.
   - Add confidence-gated edge/text ROI metrics so readability and thin-geometry stability become first-class gates.
   - Replace manual harness history-weight/rejection-risk proxy views with real temporal resolve debug maps once the harness owns frame history.
-  - Tighten temporal-gpu parity by reducing max_abs_diff below the current 29-byte worst persistent-history edge-pixel delta.
+  - Tighten temporal-gpu parity by reducing max_abs_diff below the current 30-byte worst persistent-history edge-pixel delta.
   - Add temporal shader debug UAVs for history_weight, color_residual, and depth_residual.
-  - Add explicit text glyph patches to the synthetic scene so the thin-feature gate includes readable text, not only geometric edges.
+  - Add explicit specular/transparent/reactive material ROIs to the synthetic scene so the gates catch material ghosting, not only geometry/text.
+  - Add ROI-labeled metric rows for text, specular glints, transparent panes, reactive particles, and corrupted-MV stress regions.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.

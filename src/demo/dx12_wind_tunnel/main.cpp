@@ -315,7 +315,7 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
     }
     csv << "frames,spatial_frame_delta_mean,temporal_frame_delta_mean,temporal_delta_ratio,"
            "stability_improvement_pct,ghost_score,reactive_trail_score,"
-           "edge_preservation,thin_feature_contrast,"
+           "edge_preservation,thin_feature_contrast,text_readability_contrast,"
            "reprojected_history_pct,reproject_out_of_bounds_pct,"
            "color_rejected_pct,color_residual_mean,depth_rejected_pct,depth_residual_mean,sharpening_amount_mean,"
            "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
@@ -328,6 +328,7 @@ bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult
         << result.reactive_trail_score << ","
         << result.edge_preservation << ","
         << result.thin_feature_contrast << ","
+        << result.text_readability_contrast << ","
         << result.reprojected_history_pct << ","
         << result.reproject_out_of_bounds_pct << ","
         << result.color_rejected_pct << ","
@@ -409,6 +410,7 @@ int main(int argc, char** argv) {
         std::cout << "Reactive trail score: " << sequence.reactive_trail_score << "\n";
         std::cout << "Edge preservation: " << sequence.edge_preservation << "\n";
         std::cout << "Thin feature contrast: " << sequence.thin_feature_contrast << "\n";
+        std::cout << "Text readability contrast: " << sequence.text_readability_contrast << "\n";
         std::cout << "Reprojected history: " << sequence.reprojected_history_pct << "%\n";
         std::cout << "Reproject OOB: " << sequence.reproject_out_of_bounds_pct << "%\n";
         std::cout << "Color rejected: " << sequence.color_rejected_pct << "%\n";
@@ -423,8 +425,10 @@ int main(int argc, char** argv) {
                             sequence.reactive_trail_score > 0.12 ||
                             sequence.edge_preservation < 0.72 ||
                             sequence.thin_feature_contrast < 0.82 ||
-                            sequence.thin_feature_contrast > 1.45)) {
-            std::cerr << "Metric gate failed: temporal stability, ghost, reactive-trail, edge preservation, or thin-feature contrast outside threshold.\n";
+                            sequence.thin_feature_contrast > 1.45 ||
+                            sequence.text_readability_contrast < 0.72 ||
+                            sequence.text_readability_contrast > 1.35)) {
+            std::cerr << "Metric gate failed: temporal stability, ghost, reactive-trail, edge preservation, thin-feature, or text readability outside threshold.\n";
             return 3;
         }
         return 0;

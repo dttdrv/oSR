@@ -60,14 +60,27 @@ int main() {
     bool saw_motion = false;
     bool saw_reactive = false;
     bool saw_foreground_depth = false;
+    bool saw_text_panel = false;
+    bool saw_text_glyph = false;
+    bool saw_moving_text_motion = false;
     for (size_t i = 0; i < expected_pixels; ++i) {
         const auto mv = frame.motion_vectors[i];
         if (!std::isfinite(mv.x) || !std::isfinite(mv.y) || !std::isfinite(frame.depth[i])) {
             return Fail("synthetic frame contains non-finite values");
         }
+        const uint32_t x = static_cast<uint32_t>(i % frame.context.render_size.width);
+        const uint32_t y = static_cast<uint32_t>(i / frame.context.render_size.width);
+        const float u = (static_cast<float>(x) + 0.5f + frame.context.jitter_offset.x) /
+                        static_cast<float>(frame.context.render_size.width);
+        const float v = (static_cast<float>(y) + 0.5f + frame.context.jitter_offset.y) /
+                        static_cast<float>(frame.context.render_size.height);
+        const auto text = osr::demo::wind_tunnel::EvaluateSyntheticTextCoverage(u, v, frame.context.frame_id, true);
         saw_motion = saw_motion || std::abs(mv.x) > 0.01f || std::abs(mv.y) > 0.01f;
         saw_reactive = saw_reactive || frame.reactive_mask[i] > 0.5f;
         saw_foreground_depth = saw_foreground_depth || frame.depth[i] < 0.3f;
+        saw_text_panel = saw_text_panel || text.panel;
+        saw_text_glyph = saw_text_glyph || text.glyph;
+        saw_moving_text_motion = saw_moving_text_motion || (text.glyph && text.moving && std::abs(mv.x) > 0.01f);
     }
     if (!saw_motion) {
         return Fail("synthetic frame did not produce non-zero motion vectors");
@@ -77,6 +90,12 @@ int main() {
     }
     if (!saw_foreground_depth) {
         return Fail("synthetic frame did not produce foreground depth");
+    }
+    if (!saw_text_panel || !saw_text_glyph) {
+        return Fail("synthetic frame did not produce readable text coverage");
+    }
+    if (!saw_moving_text_motion) {
+        return Fail("moving synthetic text should carry object motion vectors");
     }
 
     settings.reset_history = false;

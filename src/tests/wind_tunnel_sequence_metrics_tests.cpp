@@ -41,6 +41,9 @@ int main() {
     if (result.thin_feature_contrast < 0.82 || result.thin_feature_contrast > 1.45) {
         return Fail("temporal resolve should preserve thin-feature contrast without excessive ringing");
     }
+    if (result.text_readability_contrast < 0.72 || result.text_readability_contrast > 1.35) {
+        return Fail("temporal resolve should preserve readable text contrast without excessive ringing");
+    }
     if (result.reprojected_history_pct <= 0.0) {
         return Fail("temporal resolve should reproject some moving history");
     }

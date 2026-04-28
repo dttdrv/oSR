@@ -9,7 +9,7 @@
 namespace osr::demo::wind_tunnel {
 
 struct TemporalResolveSettings {
-    float max_history_weight = 0.72f;
+    float max_history_weight = 0.78f;
     float reactive_penalty = 0.90f;
     float motion_rejection_pixels = 3.0f;
     float color_rejection_threshold = 0.16f;

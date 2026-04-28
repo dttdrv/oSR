@@ -26,6 +26,7 @@ struct SyntheticFrameSettings {
     bool reset_history = false;
     bool particles_enabled = true;
     bool rails_enabled = true;
+    bool text_enabled = true;
     MotionVectorMode motion_vector_mode = MotionVectorMode::Correct;
 };
 
@@ -42,10 +43,20 @@ struct SyntheticFrame {
     std::vector<float> reactive_mask;
 };
 
+struct SyntheticTextCoverage {
+    bool panel = false;
+    bool glyph = false;
+    bool moving = false;
+};
+
 [[nodiscard]] float Halton(uint32_t index, uint32_t base) noexcept;
 [[nodiscard]] const char* ToString(MotionVectorMode mode) noexcept;
 [[nodiscard]] core::Dimensions BuildRenderSize(core::Dimensions display_size, float render_scale) noexcept;
 [[nodiscard]] core::Float2 BuildJitterOffset(uint64_t frame_id, uint32_t sequence_length, bool enabled) noexcept;
+[[nodiscard]] SyntheticTextCoverage EvaluateSyntheticTextCoverage(float u,
+                                                                  float v,
+                                                                  uint64_t frame_id,
+                                                                  bool enabled) noexcept;
 [[nodiscard]] SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings);
 
 } // namespace osr::demo::wind_tunnel

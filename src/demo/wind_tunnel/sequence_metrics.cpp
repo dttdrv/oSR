@@ -89,6 +89,50 @@ double ThinFeatureContrastRatio(const std::vector<uint32_t>& spatial,
     return spatial_sum <= 0.0 ? 0.0 : temporal_sum / spatial_sum;
 }
 
+double TextContrast(const std::vector<uint32_t>& image, core::Dimensions size, uint64_t frame_id) noexcept {
+    if (image.size() != static_cast<size_t>(size.width) * size.height || image.empty()) {
+        return 0.0;
+    }
+    double glyph_sum = 0.0;
+    double panel_sum = 0.0;
+    uint64_t glyph_count = 0;
+    uint64_t panel_count = 0;
+    for (uint32_t y = 0; y < size.height; ++y) {
+        for (uint32_t x = 0; x < size.width; ++x) {
+            const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(size.width);
+            const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(size.height);
+            const auto text = EvaluateSyntheticTextCoverage(u, v, frame_id, true);
+            if (!text.panel) {
+                continue;
+            }
+            const float luma = LumaFromRgba8(image[static_cast<size_t>(y) * size.width + x]);
+            if (text.glyph) {
+                glyph_sum += luma;
+                ++glyph_count;
+            } else {
+                panel_sum += luma;
+                ++panel_count;
+            }
+        }
+    }
+    if (glyph_count == 0 || panel_count == 0) {
+        return 0.0;
+    }
+    return std::abs(glyph_sum / static_cast<double>(glyph_count) -
+                    panel_sum / static_cast<double>(panel_count));
+}
+
+double TextReadabilityContrastRatio(const std::vector<uint32_t>& spatial,
+                                    const std::vector<uint32_t>& temporal,
+                                    core::Dimensions size,
+                                    uint64_t frame_id) noexcept {
+    const double spatial_contrast = TextContrast(spatial, size, frame_id);
+    if (spatial_contrast <= 0.0) {
+        return 0.0;
+    }
+    return TextContrast(temporal, size, frame_id) / spatial_contrast;
+}
+
 SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings) {
     SequenceMetricsResult result;
     if (!settings.display_size.IsValid() || settings.frame_count < 2) {
@@ -114,6 +158,7 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     double spatial_edge_sum = 0.0;
     double temporal_edge_sum = 0.0;
     double thin_feature_contrast_sum = 0.0;
+    double text_readability_sum = 0.0;
     uint32_t delta_count = 0;
     SyntheticFrame previous_frame;
     bool has_previous_frame = false;
@@ -151,6 +196,7 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
             spatial_edge_sum += MeanEdgeEnergy(spatial, frame.context.display_size);
             temporal_edge_sum += MeanEdgeEnergy(temporal, frame.context.display_size);
             thin_feature_contrast_sum += ThinFeatureContrastRatio(spatial, temporal, frame.context.display_size);
+            text_readability_sum += TextReadabilityContrastRatio(spatial, temporal, frame.context.display_size, frame_settings.frame_id);
             ++delta_count;
         }
 
@@ -171,6 +217,7 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     result.reactive_trail_score = delta_count == 0 ? 0.0 : reactive_history_weight_sum / static_cast<double>(delta_count);
     result.edge_preservation = spatial_edge_sum <= 0.0 ? 0.0 : temporal_edge_sum / spatial_edge_sum;
     result.thin_feature_contrast = delta_count == 0 ? 0.0 : thin_feature_contrast_sum / static_cast<double>(delta_count);
+    result.text_readability_contrast = delta_count == 0 ? 0.0 : text_readability_sum / static_cast<double>(delta_count);
     result.reprojected_history_pct = delta_count == 0 ? 0.0 : reprojected_sum / static_cast<double>(delta_count);
     result.reproject_out_of_bounds_pct = delta_count == 0 ? 0.0 : reproject_oob_sum / static_cast<double>(delta_count);
     result.color_rejected_pct = delta_count == 0 ? 0.0 : color_rejected_sum / static_cast<double>(delta_count);

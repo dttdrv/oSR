@@ -398,6 +398,22 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported thin-feature contrast `0.977663`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported thin-feature contrast `0.979736`.
 
+### Readable Text Stress Targets
+
+- Added deterministic 5x7 block-glyph text targets to the synthetic wind tunnel: a moving `OSR` label that carries object motion vectors and a static `760M` label for readability checks.
+- Added matching in-world block labels to the native Win32 3D wind tunnel so manual eye testing includes readable scene content that passes through the render/upscale path.
+- Added `text_readability_contrast` to sequence metrics, CSV output, console output, DX12 sequence output, and metric gates. The gate fails below `0.72` or above `1.35` to catch blur and excessive ringing on glyphs.
+- Raised the accepted-history ceiling from `0.72` to `0.78` after the text stress pack exposed overly conservative accumulation while residual/depth/reactive gates still rejected bad history.
+- Quantized the DX12 temporal blend before detail recovery to match the CPU oracle ordering, reducing persistent temporal-GPU mean byte drift after the history-weight change.
+- Adjusted the correct-MV luma residual warning threshold to `0.008` because the new text targets legitimately raise residuals; corrupted MV modes still fail metric-gated runs through explicit truth-mode diagnostics.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: direct MinGW build of `build/manual/osr_3d_wind_tunnel.exe` exited `0`.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.796429`, stability improvement `20.3571%`, thin-feature contrast `1.00594`, and text readability contrast `1.01355`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --reconstruction temporal-cpu --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.789007`, text readability contrast `1.01385`, and ghost score `0.264144`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `30` and max mean byte diff `0.0206208`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct --metric-gate` exited `0`; `flip-x` and `jitter-contaminated` metric-gated runs failed as expected with diagnostic verdicts.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

@@ -354,6 +354,111 @@ void DrawWorldLine(AppState& app, Vec3 a, Vec3 b, uint32_t color, float jitter_x
     DrawLine(app, Project(app, {a, color}, jitter_x, jitter_y), Project(app, {b, color}, jitter_x, jitter_y), color);
 }
 
+bool GlyphBit(char glyph, int col, int row) {
+    if (col < 0 || col >= 5 || row < 0 || row >= 7) {
+        return false;
+    }
+    const char* bits = nullptr;
+    switch (glyph) {
+        case '0': bits = "11110"
+                         "10010"
+                         "10010"
+                         "10010"
+                         "10010"
+                         "10010"
+                         "11110"; break;
+        case '6': bits = "01110"
+                         "10000"
+                         "10000"
+                         "11110"
+                         "10010"
+                         "10010"
+                         "01110"; break;
+        case '7': bits = "11110"
+                         "00010"
+                         "00100"
+                         "00100"
+                         "01000"
+                         "01000"
+                         "01000"; break;
+        case 'M': bits = "10001"
+                         "11011"
+                         "10101"
+                         "10101"
+                         "10001"
+                         "10001"
+                         "10001"; break;
+        case 'O': bits = "01110"
+                         "10001"
+                         "10001"
+                         "10001"
+                         "10001"
+                         "10001"
+                         "01110"; break;
+        case 'R': bits = "11110"
+                         "10001"
+                         "10001"
+                         "11110"
+                         "10100"
+                         "10010"
+                         "10001"; break;
+        case 'S': bits = "01111"
+                         "10000"
+                         "10000"
+                         "01110"
+                         "00001"
+                         "00001"
+                         "11110"; break;
+        default:
+            return false;
+    }
+    return bits[row * 5 + col] == '1';
+}
+
+void DrawBlockLabel(AppState& app, ScreenVertex anchor, const char* text, int scale, uint32_t ink, uint32_t panel) {
+    if (!anchor.valid || !text || scale <= 0) {
+        return;
+    }
+    constexpr int glyph_w = 5;
+    constexpr int glyph_h = 7;
+    constexpr int gap = 1;
+    const int count = static_cast<int>(std::strlen(text));
+    const int width = std::max(1, count * (glyph_w + gap) - gap) * scale;
+    const int height = glyph_h * scale;
+    const int left = static_cast<int>(std::round(anchor.x)) - width / 2;
+    const int top = static_cast<int>(std::round(anchor.y)) - height / 2;
+
+    for (int y = top - scale; y < top + height + scale; ++y) {
+        for (int x = left - scale; x < left + width + scale; ++x) {
+            PutPixel(app, x, y, anchor.z + 0.002f, panel);
+        }
+    }
+
+    for (int i = 0; i < count; ++i) {
+        const int glyph_left = left + i * (glyph_w + gap) * scale;
+        for (int row = 0; row < glyph_h; ++row) {
+            for (int col = 0; col < glyph_w; ++col) {
+                if (!GlyphBit(text[i], col, row)) {
+                    continue;
+                }
+                for (int py = 0; py < scale; ++py) {
+                    for (int px = 0; px < scale; ++px) {
+                        PutPixel(app,
+                                 glyph_left + col * scale + px,
+                                 top + row * scale + py,
+                                 anchor.z,
+                                 ink);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void DrawWorldLabel(AppState& app, Vec3 position, const char* text, int scale, uint32_t ink, uint32_t panel, float jitter_x, float jitter_y) {
+    DrawBlockLabel(app, Project(app, {position, ink}, jitter_x, jitter_y), text, scale, ink, panel);
+}
+
 void DrawScene(AppState& app) {
     Clear(app);
 
@@ -371,6 +476,8 @@ void DrawScene(AppState& app) {
     DrawCube(app, {-1.5f, 1.0f, 2.5f}, {0.75f, 1.0f, 0.75f}, t * 0.8f, Color(170, 196, 177), jitter_x, jitter_y);
     DrawCube(app, {1.35f, 0.55f, 3.2f + std::sin(t) * 0.65f}, {0.45f, 0.55f, 0.45f}, -t * 1.2f, Color(119, 171, 197), jitter_x, jitter_y);
     DrawCube(app, {0.0f, 0.12f, 5.4f}, {2.0f, 0.12f, 0.18f}, 0.0f, Color(96, 87, 73), jitter_x, jitter_y);
+    DrawWorldLabel(app, {-1.5f, 2.28f, 2.5f}, "OSR", 3, Color(235, 241, 220), Color(27, 33, 38), jitter_x, jitter_y);
+    DrawWorldLabel(app, {1.35f, 1.34f, 3.2f + std::sin(t) * 0.65f}, "760M", 2, Color(241, 213, 126), Color(31, 35, 39), jitter_x, jitter_y);
 
     if (app.rails) {
         for (int i = -4; i <= 4; ++i) {

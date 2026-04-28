@@ -24,6 +24,7 @@ struct SequenceMetricsResult {
     double reactive_trail_score = 0.0;
     double edge_preservation = 0.0;
     double thin_feature_contrast = 0.0;
+    double text_readability_contrast = 0.0;
     double reprojected_history_pct = 0.0;
     double reproject_out_of_bounds_pct = 0.0;
     double color_rejected_pct = 0.0;

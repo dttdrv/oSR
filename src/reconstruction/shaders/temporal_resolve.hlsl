@@ -185,6 +185,7 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
         history_weight *= saturate(1.0f - depth_residual / g_depth_rejection_threshold);
     }
 
-    float4 resolved = ApplyDetailRecovery(lerp(current_color, history_color, history_weight), display_px, history_weight, reactive, disoccluded);
+    float4 blended = QuantizeRgba8(lerp(current_color, history_color, history_weight));
+    float4 resolved = ApplyDetailRecovery(blended, display_px, history_weight, reactive, disoccluded);
     g_output_color[out_px] = QuantizeRgba8(resolved);
 }
