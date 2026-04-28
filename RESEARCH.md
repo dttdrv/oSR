@@ -54,6 +54,26 @@ The CPU oracle in `src/reconstruction/temporal_oracle.*` is the correctness refe
 
 The first robust shimmer test found a real bug: pure previous-trust decay slowly killed stable history even when current evidence was good. The policy now separates evidence trust from memory and allows stable evidence to rebuild trust.
 
+## Tile-Gated Work
+
+Radeon 760M cannot afford expensive validation everywhere. The tile classifier in `src/reconstruction/tile_classifier.*` is the first pass toward redundancy-aware reconstruction:
+
+- stable tiles take the cheap path
+- motion-risk tiles can run residual search around the motion-vector reprojection
+- reactive-risk tiles prefer current frame and suppress sharpening
+- disocclusion-risk tiles reject history more aggressively
+- reset tiles clear history immediately
+
+This is where attention-like behavior becomes practical: spend additional samples only where the trust field says the frame is ambiguous.
+
+Tile risk priority is intentional and tested:
+
+```text
+Reset > DisocclusionRisk > ReactiveRisk > MotionRisk > ShimmerRisk > Stable
+```
+
+The priority exists to prevent expensive or stale history paths from overriding hard invalidation events.
+
 ## Hardware Implication
 
 Radeon 760M is a small RDNA 3 integrated GPU with shared system memory. It has enough compute for lightweight compute passes but limited bandwidth and thermal headroom. The default path should target:

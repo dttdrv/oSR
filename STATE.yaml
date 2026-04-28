@@ -42,3 +42,4 @@ next_actions:
   - Replace metadata-only DX12 debug pass with command-list recording.
   - Port trust-field CPU policy to command-list-recorded HLSL passes.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
+  - Use tile classification to gate the first motion-vector residual search prototype.

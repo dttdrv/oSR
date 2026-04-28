@@ -24,6 +24,7 @@ add_library(osr_reconstruction STATIC
     src/reconstruction/spatial_upscale.cpp
     src/reconstruction/temporal_accumulation.cpp
     src/reconstruction/temporal_oracle.cpp
+    src/reconstruction/tile_classifier.cpp
     src/reconstruction/trust_field.cpp
 )
 target_include_directories(osr_reconstruction PUBLIC src)
@@ -93,4 +94,10 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_temporal_oracle_tests PRIVATE osr_reconstruction)
     add_test(NAME temporal_oracle COMMAND osr_temporal_oracle_tests)
+
+    add_executable(osr_tile_classifier_tests
+        src/tests/tile_classifier_tests.cpp
+    )
+    target_link_libraries(osr_tile_classifier_tests PRIVATE osr_reconstruction)
+    add_test(NAME tile_classifier COMMAND osr_tile_classifier_tests)
 endif()
