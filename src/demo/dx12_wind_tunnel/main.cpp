@@ -735,18 +735,57 @@ int main(int argc, char** argv) {
                     osr::demo::wind_tunnel::TemporalResolveDebugMaps gpu_debug_maps;
                     sequence_ok = ReadTemporalDebugMaps(dx, display_size, gpu_debug_maps, nullptr);
                     if (sequence_ok) {
-                        sequence_capture_path = std::filesystem::path("build/manual/temporal_gpu_sequence_capture") /
-                                                ("frame_" + std::to_string(frame.context.frame_id));
-                        const auto dump = osr::demo::wind_tunnel::WriteSyntheticFrameDebugDumps(sequence_capture_path,
-                                                                                                frame,
-                                                                                                cpu_temporal,
-                                                                                                0,
-                                                                                                0,
-                                                                                                0,
-                                                                                                0,
-                                                                                                0,
-                                                                                                &gpu_debug_maps);
-                        sequence_capture_written = dump.AllRequired();
+                        osr::debug::CapturePackConfig capture_config;
+                        capture_config.root = "build/manual/captures";
+                        capture_config.scenario = "dx12_temporal_sequence";
+                        capture_config.mode = std::string("temporal_gpu_sequence_") + osr::demo::wind_tunnel::ToString(mv_mode);
+                        capture_config.algorithm = ToString(reconstruction_mode);
+                        osr::debug::CapturePackWriter sequence_capture;
+                        sequence_ok = sequence_capture.BeginSession(capture_config) &&
+                                      sequence_capture.WriteSessionManifest(frame.context, GetCommandLineA());
+                        if (sequence_ok) {
+                            uint32_t validation_errors = 0;
+                            uint32_t validation_warnings = 0;
+                            const auto capture_report = osr::core::ValidateFrameContext(frame.context);
+                            CountValidation(capture_report, validation_errors, validation_warnings);
+                            osr::debug::HarnessFrameRow row;
+                            row.frame_id = frame.context.frame_id;
+                            row.render_size = render_size;
+                            row.display_size = display_size;
+                            row.jitter = frame.context.jitter_offset;
+                            row.motion_vector_scale = frame.context.motion_vector_scale;
+                            row.reset_history = frame.context.flags.reset_history;
+                            row.validation_errors = validation_errors;
+                            row.validation_warnings = validation_warnings;
+                            row.gpu_reconstruct_ms = 0.0;
+                            sequence_capture.WriteFrameRow(row);
+
+                            osr::debug::HarnessMetricRow metrics;
+                            metrics.frame_id = frame.context.frame_id;
+                            metrics.reactive_trail_score = stats.reactive_history_weight_mean;
+                            metrics.specular_history_leak = osr::demo::wind_tunnel::MeanMaterialHistoryLeak(gpu_debug_maps, display_size, frame.context.frame_id, true);
+                            metrics.transparent_history_leak = osr::demo::wind_tunnel::MeanMaterialHistoryLeak(gpu_debug_maps, display_size, frame.context.frame_id, false);
+                            metrics.history_reject_pct = 100.0 - stats.history_weight_mean * 100.0;
+                            sequence_capture.WriteMetricRow(metrics);
+                            sequence_capture.WriteValidationWarnings(frame.context.frame_id, capture_report);
+                            sequence_capture.WriteFrameContextJson(frame.context);
+                        }
+                        std::ostringstream frame_dir_name;
+                        frame_dir_name << "frame_" << std::setw(6) << std::setfill('0') << frame.context.frame_id;
+                        sequence_capture_path = sequence_capture.SessionPath();
+                        osr::demo::wind_tunnel::DebugDumpResult dump;
+                        if (sequence_ok) {
+                            dump = osr::demo::wind_tunnel::WriteSyntheticFrameDebugDumps(sequence_capture.SessionPath() / frame_dir_name.str(),
+                                                                                         frame,
+                                                                                         cpu_temporal,
+                                                                                         0,
+                                                                                         0,
+                                                                                         0,
+                                                                                         0,
+                                                                                         0,
+                                                                                         &gpu_debug_maps);
+                        }
+                        sequence_capture_written = sequence_ok && dump.AllRequired();
                         sequence_ok = sequence_ok && sequence_capture_written;
                     }
                 }

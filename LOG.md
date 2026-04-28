@@ -457,9 +457,16 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 ### Selected Temporal-GPU Sequence Capture
 
 - Added `--capture-frame` / `--capture-frame-id` for temporal-GPU multi-frame runs.
-- The sequence path can now dump a selected temporal frame to `build/manual/temporal_gpu_sequence_capture/frame_<id>` without capturing every frame.
-- Selected sequence captures include shader-produced `history_weight.pgm`, `color_residual.pgm`, and `depth_residual.pgm` maps.
+- The sequence path can now dump a selected temporal frame into a normal capture pack without capturing every frame.
+- Selected sequence captures include `session.json`, `frames.csv`, `metrics.csv`, `frame_context.json`, and shader-produced `history_weight.pgm`, `color_residual.pgm`, and `depth_residual.pgm` maps.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 9 --metric-gate` exited `0`; capture `build/manual/temporal_gpu_sequence_capture/frame_9` contains all temporal debug PGM maps.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`.
+
+### Selected Sequence Capture Pack Integration
+
+- Replaced the standalone selected-frame sequence dump with `CapturePackWriter` integration under `build/manual/captures`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 9 --metric-gate` exited `0`; latest capture `2026-04-28T19-45-25Z_dx12_temporal_sequence_temporal_gpu_sequence_correct` contains frame `000009`, metrics, manifest, and all temporal debug maps.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`.
 
