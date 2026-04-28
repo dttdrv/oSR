@@ -229,6 +229,17 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --present-frames 3 --mv-mode correct` exited `0` after opening the DX12 presentation window and presenting three frames.
 - Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
 
+### CPU Temporal Resolve Mode
+
+- Added `src/demo/wind_tunnel/temporal_resolve.*`, a conservative display-space temporal resolve used by the DX12 wind tunnel as the first temporal reconstruction mode.
+- Added `--reconstruction spatial-gpu|temporal-cpu` and `--frame-id N` to the DX12 wind tunnel.
+- `temporal-cpu` blends the current spatial output with a deterministic previous display history, suppressing history through reactive mask coverage and large motion vectors.
+- Capture metrics now report temporal resolve history rejection through the existing `history_reject_pct` column, and metadata records history weight and suppression statistics.
+- Added `src/tests/wind_tunnel_temporal_resolve_tests.cpp` covering expected 50/50 blending, reset behavior, and reactive history suppression.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --mv-mode correct --metric-gate` exited `0` with matched transfer/readback hashes.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction spatial-gpu --mv-mode correct --metric-gate` exited `0` with matched transfer/readback hashes.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

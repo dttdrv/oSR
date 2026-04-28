@@ -14,6 +14,7 @@
 #include "demo/wind_tunnel/debug_dumps.h"
 #include "demo/wind_tunnel/synthetic_frame.h"
 #include "demo/wind_tunnel/temporal_diagnostics.h"
+#include "demo/wind_tunnel/temporal_resolve.h"
 
 #include <filesystem>
 #include <fstream>
@@ -45,6 +46,11 @@ struct Dx12Objects {
     ID3D12Resource* depth = nullptr;
     ID3D12Resource* motion_vectors = nullptr;
     ID3D12Resource* reactive_mask = nullptr;
+};
+
+enum class ReconstructionMode {
+    SpatialGpu,
+    TemporalCpu
 };
 
 void Release(Dx12Objects& dx) {
@@ -136,7 +142,8 @@ osr::core::ResourceDesc D3DResource(osr::core::ResourceKind kind,
 
 void ExportMetadata(const osr::core::FrameContext& frame,
                     const osr::core::ValidationReport& report,
-                    bool dispatch_result,
+                    const std::string& reconstruction_result,
+                    const osr::demo::wind_tunnel::TemporalResolveStats& temporal_resolve_stats,
                     const osr::demo::wind_tunnel::TemporalDiagnostics& diagnostics,
                     const osr::demo::wind_tunnel::TemporalDiagnosticVerdict& verdict,
                     const std::vector<osr::demo::dx12_wind_tunnel::TextureTransferResult>& transfers,
@@ -155,9 +162,15 @@ void ExportMetadata(const osr::core::FrameContext& frame,
     out << "reset_history: " << (frame.flags.reset_history ? "true" : "false") << "\n";
     out << "reactive_mask: " << (frame.reactive_mask.has_value() ? "present" : "absent") << "\n";
     out << "validation: " << osr::debug::SummarizeValidation(report) << "\n";
-    out << "debug_dispatch_result: " << (dispatch_result ? "recorded_and_executed" : "metadata_only_or_pending") << "\n";
+    out << "reconstruction_result: " << reconstruction_result << "\n";
     out << "capture_pack: " << capture_path.string() << "\n";
     out << "transfer_match: " << (osr::demo::dx12_wind_tunnel::AllTransfersMatched(transfers) ? "true" : "false") << "\n";
+    out << "temporal_resolve:\n";
+    out << "  history_weight_mean: " << temporal_resolve_stats.history_weight_mean << "\n";
+    out << "  history_weight_min: " << temporal_resolve_stats.history_weight_min << "\n";
+    out << "  history_weight_max: " << temporal_resolve_stats.history_weight_max << "\n";
+    out << "  reactive_suppressed_pct: " << temporal_resolve_stats.reactive_suppressed_pct << "\n";
+    out << "  motion_suppressed_pct: " << temporal_resolve_stats.motion_suppressed_pct << "\n";
     out << "temporal_diagnostics:\n";
     out << "  samples: " << diagnostics.sample_count << "\n";
     out << "  mv_luma_residual_mean: " << diagnostics.mv_luma_residual_mean << "\n";
@@ -255,6 +268,27 @@ bool ParseDimensions(const std::string& value, osr::core::Dimensions& dimensions
     return true;
 }
 
+const char* ToString(ReconstructionMode mode) noexcept {
+    switch (mode) {
+    case ReconstructionMode::SpatialGpu:
+        return "spatial-gpu";
+    case ReconstructionMode::TemporalCpu:
+        return "temporal-cpu";
+    }
+    return "unknown";
+}
+
+bool ParseReconstructionMode(const std::string& value, ReconstructionMode& mode) {
+    if (value == "spatial-gpu" || value == "spatial") {
+        mode = ReconstructionMode::SpatialGpu;
+    } else if (value == "temporal-cpu" || value == "temporal") {
+        mode = ReconstructionMode::TemporalCpu;
+    } else {
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -263,6 +297,9 @@ int main(int argc, char** argv) {
     bool metric_gate = false;
     osr::core::Dimensions requested_display_size {1280, 800};
     float requested_render_scale = 2.0f / 3.0f;
+    uint64_t requested_frame_id = 8;
+    bool requested_reset_history = false;
+    ReconstructionMode reconstruction_mode = ReconstructionMode::SpatialGpu;
     auto mv_mode = osr::demo::wind_tunnel::MotionVectorMode::Correct;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--headless") {
@@ -278,6 +315,15 @@ int main(int argc, char** argv) {
             }
         } else if (std::string(argv[i]) == "--render-scale" && i + 1 < argc) {
             requested_render_scale = static_cast<float>(std::atof(argv[++i]));
+        } else if (std::string(argv[i]) == "--frame-id" && i + 1 < argc) {
+            requested_frame_id = static_cast<uint64_t>(std::max(0, std::atoi(argv[++i])));
+        } else if (std::string(argv[i]) == "--reset-history") {
+            requested_reset_history = true;
+        } else if ((std::string(argv[i]) == "--reconstruction" || std::string(argv[i]) == "--mode") && i + 1 < argc) {
+            if (!ParseReconstructionMode(argv[++i], reconstruction_mode)) {
+                std::cerr << "Unknown --reconstruction. Use spatial-gpu or temporal-cpu.\n";
+                return 2;
+            }
         } else if (std::string(argv[i]) == "--mv-mode" && i + 1 < argc) {
             if (!ParseMotionVectorMode(argv[++i], mv_mode)) {
                 std::cerr << "Unknown --mv-mode. Use correct, zero, flip-x, flip-y, half-scale, double-scale, or jitter-contaminated.\n";
@@ -299,11 +345,11 @@ int main(int argc, char** argv) {
     osr::demo::wind_tunnel::SyntheticFrameSettings settings;
     settings.display_size = requested_display_size;
     settings.render_scale = requested_render_scale;
-    settings.frame_id = 1;
-    settings.reset_history = true;
+    settings.frame_id = requested_frame_id;
+    settings.reset_history = requested_reset_history;
     settings.motion_vector_mode = mv_mode;
     auto synthetic = osr::demo::wind_tunnel::BuildSyntheticFrame(settings);
-    synthetic.context.notes.push_back("DX12 debug upscale uses heartbeat command recording for scaled output until compute shader bytecode is embedded.");
+    synthetic.context.notes.push_back(std::string("Reconstruction mode: ") + ToString(reconstruction_mode));
     auto previous_settings = settings;
     previous_settings.frame_id = settings.frame_id > 0 ? settings.frame_id - 1 : 0;
     previous_settings.reset_history = false;
@@ -358,11 +404,24 @@ int main(int argc, char** argv) {
         return transfer_ok && result.matched;
     };
 
-    const auto display_output = osr::demo::dx12_wind_tunnel::UpscaleNearest(synthetic.color, render_size, display_size);
+    const auto spatial_output = osr::demo::dx12_wind_tunnel::UpscaleNearest(synthetic.color, render_size, display_size);
+    const auto previous_display_output = osr::demo::dx12_wind_tunnel::UpscaleNearest(previous_synthetic.color, render_size, display_size);
+    osr::demo::wind_tunnel::TemporalResolveStats temporal_resolve_stats;
+    std::vector<uint32_t> resolved_output = spatial_output;
+    if (reconstruction_mode == ReconstructionMode::TemporalCpu) {
+        osr::demo::wind_tunnel::TemporalResolveSettings resolve_settings;
+        resolved_output = osr::demo::wind_tunnel::ResolveTemporalDisplay(spatial_output,
+                                                                          previous_display_output,
+                                                                          synthetic,
+                                                                          display_size,
+                                                                          resolve_settings,
+                                                                          &temporal_resolve_stats);
+        synthetic.context.notes.push_back("CPU temporal resolve blended display-space history before DX12 presentation.");
+    }
 
     const bool transfer_ok =
         upload(dx.color_input, DXGI_FORMAT_R8G8B8A8_UNORM, render_size, synthetic.color.data(), static_cast<uint64_t>(render_size.width) * sizeof(uint32_t), "color_input") &&
-        upload(dx.color_output, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, display_output.data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "color_output") &&
+        upload(dx.color_output, DXGI_FORMAT_R8G8B8A8_UNORM, display_size, resolved_output.data(), static_cast<uint64_t>(display_size.width) * sizeof(uint32_t), "color_output") &&
         upload(dx.depth, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.depth.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "depth") &&
         upload(dx.motion_vectors, DXGI_FORMAT_R32G32_FLOAT, render_size, synthetic.motion_vectors.data(), static_cast<uint64_t>(render_size.width) * sizeof(osr::demo::wind_tunnel::Float2Buffer), "motion_vectors") &&
         upload(dx.reactive_mask, DXGI_FORMAT_R32_FLOAT, render_size, synthetic.reactive_mask.data(), static_cast<uint64_t>(render_size.width) * sizeof(float), "reactive_mask");
@@ -370,15 +429,18 @@ int main(int argc, char** argv) {
 
     const auto report = osr::core::ValidateFrameContext(synthetic.context);
     osr::backends::dx12::Dx12Backend backend;
-    const bool backend_initialized = backend.Initialize(dx.device);
+    const bool backend_initialized = reconstruction_mode == ReconstructionMode::SpatialGpu && backend.Initialize(dx.device);
     bool dispatch_result = false;
-    if (backend_initialized &&
+    if (reconstruction_mode == ReconstructionMode::SpatialGpu &&
+        backend_initialized &&
         SUCCEEDED(dx.allocator->Reset()) &&
         SUCCEEDED(dx.command_list->Reset(dx.allocator, nullptr))) {
         dispatch_result = backend.DispatchDebugUpscale(dx.command_list, synthetic.context) &&
                           osr::demo::dx12_wind_tunnel::ExecuteAndWait(dx.queue, dx.command_list, dx.sync);
+    } else if (reconstruction_mode == ReconstructionMode::TemporalCpu) {
+        dispatch_result = transfer_ok;
     }
-    synthetic.context.notes.push_back(dispatch_result ? "D3D12 debug upscale command list executed." : "D3D12 debug upscale command list did not execute.");
+    synthetic.context.notes.push_back(dispatch_result ? "Reconstruction output is present in D3D12 color_output." : "Reconstruction output did not complete.");
     osr::demo::dx12_wind_tunnel::TextureTransferResult reconstructed_output;
     const bool reconstructed_output_readback = dispatch_result &&
         osr::demo::dx12_wind_tunnel::ReadbackTexture2D(dx.device,
@@ -389,7 +451,7 @@ int main(int argc, char** argv) {
                                                        dx.color_output,
                                                        DXGI_FORMAT_R8G8B8A8_UNORM,
                                                        display_size,
-                                                       display_output.data(),
+                                                       resolved_output.data(),
                                                        static_cast<uint64_t>(display_size.width) * sizeof(uint32_t),
                                                        "color_output_after_dispatch",
                                                        reconstructed_output);
@@ -403,7 +465,7 @@ int main(int argc, char** argv) {
     capture_config.root = "build/manual/captures";
     capture_config.scenario = "dx12_wind_tunnel";
     capture_config.mode = std::string("h1_buffer_truth_") + osr::demo::wind_tunnel::ToString(mv_mode);
-    capture_config.algorithm = "debug_upscale";
+    capture_config.algorithm = ToString(reconstruction_mode);
     osr::debug::CapturePackWriter capture;
     const bool capture_started = capture.BeginSession(capture_config);
     if (capture_started) {
@@ -421,7 +483,7 @@ int main(int argc, char** argv) {
         row.validation_errors = validation_errors;
         row.validation_warnings = validation_warnings;
         row.gpu_upload_ms = 0.0;
-        row.gpu_reconstruct_ms = dispatch_result ? 0.0 : -1.0;
+        row.gpu_reconstruct_ms = reconstruction_mode == ReconstructionMode::SpatialGpu && dispatch_result ? 0.0 : -1.0;
         capture.WriteFrameRow(row);
         osr::debug::HarnessMetricRow metrics;
         metrics.frame_id = synthetic.context.frame_id;
@@ -436,6 +498,7 @@ int main(int argc, char** argv) {
         metrics.trust_evidence_agreement_pct = temporal_diagnostics.trust_evidence_agreement_pct;
         metrics.history_trust_mean = temporal_diagnostics.history_trust_mean;
         metrics.accumulation_weight_mean = temporal_diagnostics.accumulation_weight_mean;
+        metrics.history_reject_pct = 100.0 - temporal_resolve_stats.history_weight_mean * 100.0;
         capture.WriteMetricRow(metrics);
         capture.WriteValidationWarnings(synthetic.context.frame_id, report);
         for (const auto& finding : temporal_verdict.findings) {
@@ -463,7 +526,7 @@ int main(int argc, char** argv) {
         }
         const auto dump_result = osr::demo::wind_tunnel::WriteSyntheticFrameDebugDumps(capture.SessionPath() / frame_dir_name.str(),
                                                                                        synthetic,
-                                                                                       display_output,
+                                                                                       resolved_output,
                                                                                        color_input_hash,
                                                                                        color_output_hash,
                                                                                        depth_hash,
@@ -480,12 +543,16 @@ int main(int argc, char** argv) {
         }
     }
 
-    ExportMetadata(synthetic.context, report, dispatch_result, temporal_diagnostics, temporal_verdict, transfers, capture.SessionPath(), "build/manual/osr_dx12_wind_tunnel_metadata.txt");
+    const std::string reconstruction_result = dispatch_result
+        ? (reconstruction_mode == ReconstructionMode::SpatialGpu ? "dx12_compute_spatial_recorded_and_executed" : "cpu_temporal_resolve_uploaded")
+        : "reconstruction_failed";
+    ExportMetadata(synthetic.context, report, reconstruction_result, temporal_resolve_stats, temporal_diagnostics, temporal_verdict, transfers, capture.SessionPath(), "build/manual/osr_dx12_wind_tunnel_metadata.txt");
 
     std::cout << "oSR DX12 wind tunnel proof of life\n";
     std::cout << "Render: " << render_size.width << "x" << render_size.height
               << "  Display: " << display_size.width << "x" << display_size.height << "\n";
     std::cout << "MV mode: " << osr::demo::wind_tunnel::ToString(mv_mode) << "\n";
+    std::cout << "Reconstruction: " << ToString(reconstruction_mode) << "\n";
     std::cout << "Validation: " << osr::debug::SummarizeValidation(report) << "\n";
     std::cout << "Temporal diagnostics: luma_mean=" << temporal_diagnostics.mv_luma_residual_mean
               << " bad_trusted=" << temporal_diagnostics.bad_history_trusted_pct
@@ -497,6 +564,11 @@ int main(int argc, char** argv) {
     std::cout << "Capture: " << capture.SessionPath().string() << "\n";
     std::cout << "Transfer hashes: " << (transfer_ok ? "matched" : "FAILED") << "\n";
     std::cout << "Reconstruct output hash: " << (reconstructed_output_match ? "matched" : "FAILED") << "\n";
+    if (reconstruction_mode == ReconstructionMode::TemporalCpu) {
+        std::cout << "Temporal resolve: history_mean=" << temporal_resolve_stats.history_weight_mean
+                  << " reactive_suppressed=" << temporal_resolve_stats.reactive_suppressed_pct
+                  << "% motion_suppressed=" << temporal_resolve_stats.motion_suppressed_pct << "%\n";
+    }
     std::cout << "Log: build/manual/osr_dx12_wind_tunnel.log\n";
 
     osr::demo::dx12_wind_tunnel::PresentState present;

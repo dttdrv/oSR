@@ -23,6 +23,8 @@ build_status:
     - DX12 debug upscale backend records and executes a real GPU copy path for native-size color input/output resources.
     - Scaled DX12 debug output now records and executes a compute spatial debug upscale path, then readbacks and hashes color_output_after_dispatch against the CPU nearest reference.
     - The current DX12 compute shader is runtime-compiled from embedded HLSL for prototype speed; production packaging should embed bytecode.
+    - DX12 wind tunnel supports --reconstruction spatial-gpu|temporal-cpu.
+    - The first temporal-cpu mode blends display-space history conservatively and suppresses history in reactive/high-motion regions.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -79,3 +81,5 @@ next_actions:
   - Extend capture packs with raw texture dumps and debug-view images after swapchain/debug presentation is available.
   - Replace CPU nearest display upscale with a command-list-recorded debug upscale/copy shader.
   - Add headless multi-frame sweeps that compare correct vs corrupted motion-vector modes and fail on trust-regression thresholds.
+  - Refactor DX12 wind tunnel into a true --frames N loop so spatial-gpu and temporal-cpu can be compared over deterministic sequences.
+  - Add shimmer/ghost/text/edge metrics over multi-frame sequences, not only one-frame diagnostics.
