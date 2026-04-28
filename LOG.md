@@ -343,6 +343,16 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_3d_wind_tunnel.bat` launched the updated executable and the process stayed open during smoke testing.
 - Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
 
+### DX12 Bilinear Spatial Debug Shader
+
+- Updated the DX12 compute debug upscale shader from nearest sampling to bilinear sampling.
+- Kept the native-size path as a direct GPU copy when input/output dimensions and formats match.
+- The DX12 readback verifier now records exact CPU/GPU hashes plus max/mean byte delta; shader output may pass only when max byte delta is `<= 1`, covering UNORM float quantization without hiding larger mismatches.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --mv-mode correct --metric-gate` exited `0`; latest scaled compute readback reported `max_abs_diff=1`, `mean_abs_diff=4.15039e-06`, and `matched=true`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --render-scale 1.0 --display-size 640x400 --metric-gate` exited `0` through the native-size copy path.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.65822`, stability improvement `34.178%`, ghost score `0.25372`, edge preservation `1.0012`.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

@@ -38,6 +38,7 @@ build_status:
     - Sequence lab and DX12 temporal-cpu mode now use a bilinear spatial base instead of nearest-neighbor color.
     - DX12 temporal-cpu capture packs now include history_weight, color_residual, and depth_residual debug maps.
     - Native 3D wind-tunnel executable exposes color, luma, depth, edge-energy, history-weight proxy, and rejection-risk proxy views.
+    - DX12 compute spatial debug upscale now uses bilinear sampling and verifies readback with exact hashes plus max/mean byte deltas.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -83,7 +84,6 @@ next_actions:
   - Add shimmer/ghost/text/edge metrics over multi-frame sequences, not only one-frame diagnostics.
   - Add confidence-gated edge/text ROI metrics so readability and thin-geometry stability become first-class gates.
   - Replace manual harness history-weight/rejection-risk proxy views with real temporal resolve debug maps once the harness owns frame history.
-  - Port bilinear spatial base to the DX12 compute path so GPU and CPU temporal paths start from the same reconstruction input.
   - Port sequence-lab temporal resolve from CPU display-space into a DX12 temporal pass with history textures.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.

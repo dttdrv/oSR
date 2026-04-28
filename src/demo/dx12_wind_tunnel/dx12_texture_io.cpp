@@ -69,6 +69,32 @@ uint64_t HashLinearRows(const uint8_t* data, uint64_t row_pitch, uint64_t row_si
     return hash;
 }
 
+void CompareLinearRows(const uint8_t* expected,
+                       uint64_t expected_row_pitch,
+                       const uint8_t* actual,
+                       uint64_t actual_row_pitch,
+                       uint64_t row_size,
+                       uint32_t rows,
+                       TextureTransferResult& result) {
+    uint64_t diff_sum = 0;
+    uint64_t samples = 0;
+    uint32_t max_diff = 0;
+    for (uint32_t y = 0; y < rows; ++y) {
+        const uint8_t* expected_row = expected + static_cast<uint64_t>(y) * expected_row_pitch;
+        const uint8_t* actual_row = actual + static_cast<uint64_t>(y) * actual_row_pitch;
+        for (uint64_t x = 0; x < row_size; ++x) {
+            const uint32_t diff = expected_row[x] > actual_row[x]
+                ? expected_row[x] - actual_row[x]
+                : actual_row[x] - expected_row[x];
+            max_diff = std::max(max_diff, diff);
+            diff_sum += diff;
+            ++samples;
+        }
+    }
+    result.max_abs_diff = max_diff;
+    result.mean_abs_diff = samples == 0 ? 0.0 : static_cast<double>(diff_sum) / static_cast<double>(samples);
+}
+
 } // namespace
 
 bool InitializeSync(ID3D12Device* device, Dx12Sync& sync) {
@@ -218,6 +244,13 @@ bool UploadReadbackTexture2D(ID3D12Device* device,
     result.total_bytes = total_bytes;
     result.cpu_hash = HashLinearRows(src, source_row_bytes, row_size, rows);
     result.gpu_hash = HashLinearRows(mapped_readback + footprint.Offset, footprint.Footprint.RowPitch, row_size, rows);
+    CompareLinearRows(src,
+                      source_row_bytes,
+                      mapped_readback + footprint.Offset,
+                      footprint.Footprint.RowPitch,
+                      row_size,
+                      rows,
+                      result);
     result.matched = result.cpu_hash == result.gpu_hash;
 
     D3D12_RANGE no_write {0, 0};
@@ -306,7 +339,14 @@ bool ReadbackTexture2D(ID3D12Device* device,
     result.total_bytes = total_bytes;
     result.cpu_hash = HashLinearRows(src, expected_row_bytes, row_size, rows);
     result.gpu_hash = HashLinearRows(mapped_readback + footprint.Offset, footprint.Footprint.RowPitch, row_size, rows);
-    result.matched = result.cpu_hash == result.gpu_hash;
+    CompareLinearRows(src,
+                      expected_row_bytes,
+                      mapped_readback + footprint.Offset,
+                      footprint.Footprint.RowPitch,
+                      row_size,
+                      rows,
+                      result);
+    result.matched = result.cpu_hash == result.gpu_hash || result.max_abs_diff <= 1;
 
     D3D12_RANGE no_write {0, 0};
     readback->Unmap(0, &no_write);

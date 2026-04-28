@@ -28,6 +28,8 @@ struct TextureTransferResult {
     uint64_t total_bytes = 0;
     uint64_t cpu_hash = 0;
     uint64_t gpu_hash = 0;
+    uint32_t max_abs_diff = 0;
+    double mean_abs_diff = 0.0;
     bool matched = false;
 };
 

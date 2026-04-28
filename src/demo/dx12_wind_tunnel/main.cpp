@@ -221,6 +221,8 @@ void ExportMetadata(const osr::core::FrameContext& frame,
             << " total_bytes=" << transfer.total_bytes
             << " cpu_hash=" << transfer.cpu_hash
             << " gpu_hash=" << transfer.gpu_hash
+            << " max_abs_diff=" << transfer.max_abs_diff
+            << " mean_abs_diff=" << transfer.mean_abs_diff
             << " matched=" << (transfer.matched ? "true" : "false")
             << "\n";
     }
@@ -480,9 +482,7 @@ int main(int argc, char** argv) {
         return transfer_ok && result.matched;
     };
 
-    const auto spatial_output = reconstruction_mode == ReconstructionMode::TemporalCpu
-        ? osr::demo::dx12_wind_tunnel::UpscaleBilinear(synthetic.color, render_size, display_size)
-        : osr::demo::dx12_wind_tunnel::UpscaleNearest(synthetic.color, render_size, display_size);
+    const auto spatial_output = osr::demo::dx12_wind_tunnel::UpscaleBilinear(synthetic.color, render_size, display_size);
     const auto previous_display_output = osr::demo::dx12_wind_tunnel::UpscaleBilinear(previous_synthetic.color, render_size, display_size);
     osr::demo::wind_tunnel::TemporalResolveStats temporal_resolve_stats;
     osr::demo::wind_tunnel::TemporalResolveDebugMaps temporal_debug_maps;
