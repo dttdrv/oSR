@@ -240,6 +240,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-cpu --mv-mode correct --metric-gate` exited `0` with matched transfer/readback hashes.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction spatial-gpu --mv-mode correct --metric-gate` exited `0` with matched transfer/readback hashes.
 
+### Sequence Lab Metrics
+
+- Added `src/demo/wind_tunnel/sequence_metrics.*` and `src/demo/sequence_lab.cpp`.
+- Added `tools/run_sequence_lab.bat` to build/run `osr_sequence_lab.exe`.
+- The sequence lab runs deterministic synthetic frames, compares spatial nearest output against the conservative temporal resolve, and writes `build/manual/osr_sequence_lab_metrics.csv`.
+- Added `src/tests/wind_tunnel_sequence_metrics_tests.cpp` requiring temporal resolve to reduce mean frame-to-frame luma delta versus the spatial baseline on the default synthetic sequence.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported spatial delta `0.00436588`, temporal delta `0.00192951`, temporal/spatial ratio `0.441952`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

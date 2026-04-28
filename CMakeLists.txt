@@ -78,6 +78,8 @@ add_library(osr_wind_tunnel STATIC
     src/demo/wind_tunnel/synthetic_frame.cpp
     src/demo/wind_tunnel/temporal_diagnostics.cpp
     src/demo/wind_tunnel/temporal_resolve.cpp
+    src/demo/wind_tunnel/sequence_metrics.cpp
+    src/demo/dx12_wind_tunnel/display_upscale.cpp
 )
 target_include_directories(osr_wind_tunnel PUBLIC src)
 target_link_libraries(osr_wind_tunnel PUBLIC osr_core osr_reconstruction)
@@ -110,6 +112,11 @@ target_link_libraries(osr_dx12_wind_tunnel PRIVATE osr_core osr_debug osr_wind_t
 if(WIN32)
     target_link_libraries(osr_dx12_wind_tunnel PRIVATE d3d12 dxgi dxguid d3dcompiler user32)
 endif()
+
+add_executable(osr_sequence_lab
+    src/demo/sequence_lab.cpp
+)
+target_link_libraries(osr_sequence_lab PRIVATE osr_core osr_wind_tunnel)
 
 if(OSR_BUILD_TESTS)
     enable_testing()
@@ -178,6 +185,12 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_wind_tunnel_temporal_resolve_tests PRIVATE osr_core osr_wind_tunnel)
     add_test(NAME wind_tunnel_temporal_resolve COMMAND osr_wind_tunnel_temporal_resolve_tests)
+
+    add_executable(osr_wind_tunnel_sequence_metrics_tests
+        src/tests/wind_tunnel_sequence_metrics_tests.cpp
+    )
+    target_link_libraries(osr_wind_tunnel_sequence_metrics_tests PRIVATE osr_core osr_wind_tunnel)
+    add_test(NAME wind_tunnel_sequence_metrics COMMAND osr_wind_tunnel_sequence_metrics_tests)
 
     add_executable(osr_capture_pack_tests
         src/tests/capture_pack_tests.cpp
