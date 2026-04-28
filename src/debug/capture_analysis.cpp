@@ -137,6 +137,52 @@ CaptureValueStats ComputeStats(const std::vector<float>& values, double threshol
     return stats;
 }
 
+void ComputeMotionSplitHistory(const std::vector<float>& history,
+                               core::Dimensions display_size,
+                               const std::vector<float>& motion,
+                               core::Dimensions render_size,
+                               CaptureFrameAnalysis& analysis) {
+    if (history.size() != static_cast<size_t>(display_size.width) * display_size.height ||
+        motion.size() != static_cast<size_t>(render_size.width) * render_size.height ||
+        !display_size.IsValid() ||
+        !render_size.IsValid()) {
+        return;
+    }
+    double motion_history_sum = 0.0;
+    double static_history_sum = 0.0;
+    uint64_t motion_count = 0;
+    uint64_t static_count = 0;
+    uint64_t motion_trusted = 0;
+    uint64_t static_trusted = 0;
+    for (uint32_t y = 0; y < display_size.height; ++y) {
+        const uint32_t ry = std::min(render_size.height - 1,
+                                     static_cast<uint32_t>((static_cast<uint64_t>(y) * render_size.height) / display_size.height));
+        for (uint32_t x = 0; x < display_size.width; ++x) {
+            const uint32_t rx = std::min(render_size.width - 1,
+                                         static_cast<uint32_t>((static_cast<uint64_t>(x) * render_size.width) / display_size.width));
+            const float history_weight = history[static_cast<size_t>(y) * display_size.width + x];
+            const bool motion_region = motion[static_cast<size_t>(ry) * render_size.width + rx] > 0.01f;
+            if (motion_region) {
+                motion_history_sum += history_weight;
+                ++motion_count;
+                if (history_weight > 0.5f) {
+                    ++motion_trusted;
+                }
+            } else {
+                static_history_sum += history_weight;
+                ++static_count;
+                if (history_weight > 0.5f) {
+                    ++static_trusted;
+                }
+            }
+        }
+    }
+    analysis.motion_region_mean_history = motion_count == 0 ? 0.0 : motion_history_sum / static_cast<double>(motion_count);
+    analysis.static_region_mean_history = static_count == 0 ? 0.0 : static_history_sum / static_cast<double>(static_count);
+    analysis.motion_region_history_trusted_pct = motion_count == 0 ? 0.0 : static_cast<double>(motion_trusted) * 100.0 / static_cast<double>(motion_count);
+    analysis.static_region_history_trusted_pct = static_count == 0 ? 0.0 : static_cast<double>(static_trusted) * 100.0 / static_cast<double>(static_count);
+}
+
 bool LoadFloatResource(const std::string& manifest,
                        const std::filesystem::path& frame_dir,
                        const std::string& name,
@@ -171,8 +217,21 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
         return analysis;
     }
 
-    if (!LoadFloatResource(manifest, frame_dir, "history_weight", 0.5, &analysis.display_size, &analysis.history_weight, &analysis.error) ||
-        !LoadFloatResource(manifest, frame_dir, "color_residual", 0.16, &analysis.display_size, &analysis.color_residual, &analysis.error) ||
+    const auto history_artifact = FindResource(manifest, frame_dir, "history_weight");
+    if (!history_artifact) {
+        analysis.error = "missing resource: history_weight";
+        return analysis;
+    }
+    const auto history_values = ReadFloatRaw(history_artifact->raw,
+                                             static_cast<uint64_t>(history_artifact->size.width) * history_artifact->size.height);
+    if (history_values.empty()) {
+        analysis.error = "failed to read raw resource: " + history_artifact->raw.string();
+        return analysis;
+    }
+    analysis.display_size = history_artifact->size;
+    analysis.history_weight = ComputeStats(history_values, 0.5);
+
+    if (!LoadFloatResource(manifest, frame_dir, "color_residual", 0.16, &analysis.display_size, &analysis.color_residual, &analysis.error) ||
         !LoadFloatResource(manifest, frame_dir, "depth_residual", 0.035, &analysis.display_size, &analysis.depth_residual, &analysis.error)) {
         return analysis;
     }
@@ -190,6 +249,7 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
     }
     analysis.render_size = motion->size;
     analysis.motion_magnitude = ComputeStats(magnitudes, 0.01);
+    ComputeMotionSplitHistory(history_values, analysis.display_size, magnitudes, analysis.render_size, analysis);
     analysis.ok = true;
     return analysis;
 }
@@ -209,7 +269,11 @@ std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis) {
         << " depth_residual_mean=" << analysis.depth_residual.mean
         << " depth_reject_candidate_pct=" << analysis.depth_residual.over_threshold_pct
         << " motion_mean=" << analysis.motion_magnitude.mean
-        << " motion_active_pct=" << analysis.motion_magnitude.over_threshold_pct;
+        << " motion_active_pct=" << analysis.motion_magnitude.over_threshold_pct
+        << " motion_history_mean=" << analysis.motion_region_mean_history
+        << " motion_history_trusted_pct=" << analysis.motion_region_history_trusted_pct
+        << " static_history_mean=" << analysis.static_region_mean_history
+        << " static_history_trusted_pct=" << analysis.static_region_history_trusted_pct;
     return out.str();
 }
 

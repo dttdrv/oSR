@@ -533,6 +533,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --metric-gate` exited `0`; latest run reported temporal debug map parity `max_abs=0.244383`, `mean_abs=0.000611632`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run checked `63` temporal frames with max byte diff `58` and max mean byte diff `0.00891309`.
 
+### Motion/Static Capture Analysis Split
+
+- Extended the offline capture analyzer with motion-region versus static-region history trust summaries.
+- The analyzer maps display-space history weights back to render-space motion-vector magnitude so captures show whether accumulated history is concentrated in stable areas.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_capture_analyzer.bat build/manual/captures/2026-04-28T20-10-23Z_dx12_temporal_sequence_temporal_gpu_sequence_correct/frame_000012` exited `0`; output reported `motion_history_trusted_pct=0` and `static_history_trusted_pct=98.9709`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

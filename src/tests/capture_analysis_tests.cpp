@@ -68,9 +68,14 @@ int main() {
     if (analysis.motion_magnitude.max < 4.99 || analysis.motion_magnitude.max > 5.01) {
         return Fail("motion magnitude max mismatch");
     }
+    if (analysis.motion_region_history_trusted_pct != 50.0 ||
+        analysis.static_region_history_trusted_pct != 0.0) {
+        return Fail("motion/static history trust split mismatch");
+    }
     const std::string summary = osr::debug::SummarizeCaptureAnalysis(analysis);
     if (summary.find("history_trusted_pct=25") == std::string::npos ||
-        summary.find("motion_active_pct=50") == std::string::npos) {
+        summary.find("motion_active_pct=50") == std::string::npos ||
+        summary.find("motion_history_trusted_pct=50") == std::string::npos) {
         return Fail("capture analysis summary missing expected metrics");
     }
 

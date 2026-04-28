@@ -26,6 +26,10 @@ struct CaptureFrameAnalysis {
     CaptureValueStats color_residual;
     CaptureValueStats depth_residual;
     CaptureValueStats motion_magnitude;
+    double motion_region_history_trusted_pct = 0.0;
+    double static_region_history_trusted_pct = 0.0;
+    double motion_region_mean_history = 0.0;
+    double static_region_mean_history = 0.0;
 };
 
 [[nodiscard]] CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir);
