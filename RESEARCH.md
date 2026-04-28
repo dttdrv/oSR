@@ -74,6 +74,18 @@ Reset > DisocclusionRisk > ReactiveRisk > MotionRisk > ShimmerRisk > Stable
 
 The priority exists to prevent expensive or stale history paths from overriding hard invalidation events.
 
+## Bounded Residual Search
+
+The first attention-like candidate selector is `src/reconstruction/residual_search.*`. It does not estimate optical flow. Instead, it searches a tiny window around the game-provided motion-vector prediction and chooses the history candidate with the best luma/depth/prior score.
+
+This is deliberately gated by tile risk:
+
+- stable tiles should skip it
+- motion-risk/shimmer-risk tiles can use it to correct small motion-vector residuals
+- disocclusion/reactive/reset tiles should usually prefer rejection over search
+
+The prototype is CPU-only for now so shader behavior can be tested against exact candidate choices before GPU implementation.
+
 ## Hardware Implication
 
 Radeon 760M is a small RDNA 3 integrated GPU with shared system memory. It has enough compute for lightweight compute passes but limited bandwidth and thermal headroom. The default path should target:

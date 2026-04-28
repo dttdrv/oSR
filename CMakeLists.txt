@@ -20,6 +20,7 @@ add_library(osr_reconstruction STATIC
     src/reconstruction/disocclusion.cpp
     src/reconstruction/history_rejection.cpp
     src/reconstruction/reactive_mask_synthesis.cpp
+    src/reconstruction/residual_search.cpp
     src/reconstruction/sharpening.cpp
     src/reconstruction/spatial_upscale.cpp
     src/reconstruction/temporal_accumulation.cpp
@@ -100,4 +101,10 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_tile_classifier_tests PRIVATE osr_reconstruction)
     add_test(NAME tile_classifier COMMAND osr_tile_classifier_tests)
+
+    add_executable(osr_residual_search_tests
+        src/tests/residual_search_tests.cpp
+    )
+    target_link_libraries(osr_residual_search_tests PRIVATE osr_reconstruction)
+    add_test(NAME residual_search COMMAND osr_residual_search_tests)
 endif()

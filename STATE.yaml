@@ -43,3 +43,4 @@ next_actions:
   - Port trust-field CPU policy to command-list-recorded HLSL passes.
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
+  - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
