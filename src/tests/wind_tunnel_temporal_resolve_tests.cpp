@@ -23,6 +23,7 @@ int main() {
     const std::vector<uint32_t> history(16, 0xffa0a0a0u);
     osr::demo::wind_tunnel::TemporalResolveSettings settings;
     settings.max_history_weight = 0.5f;
+    settings.color_rejection_threshold = 0.0f;
     osr::demo::wind_tunnel::TemporalResolveStats stats;
     const auto blended = osr::demo::wind_tunnel::ResolveTemporalDisplay(current, history, frame, frame_settings.display_size, settings, &stats);
     if (blended.size() != current.size()) {
@@ -94,6 +95,19 @@ int main() {
     }
     if (stats.reproject_out_of_bounds_pct <= 0.0) {
         return Fail("out-of-bounds reprojection should be counted");
+    }
+
+    custom.motion_vectors.assign(16, {});
+    custom.reactive_mask.assign(16, 0.0f);
+    repro_current.assign(16, 0xff000000u);
+    repro_history.assign(16, 0xffffffffu);
+    settings.color_rejection_threshold = 0.1f;
+    const auto rejected = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current, repro_history, custom, custom.context.display_size, settings, &stats);
+    if (rejected[5] != repro_current[5]) {
+        return Fail("large color residual should reject history");
+    }
+    if (stats.color_rejected_pct <= 0.0 || stats.color_residual_mean <= 0.0) {
+        return Fail("color residual rejection stats should be populated");
     }
 
     return 0;

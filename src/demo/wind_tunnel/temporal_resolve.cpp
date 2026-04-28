@@ -21,6 +21,13 @@ uint32_t BlendColor(uint32_t current, uint32_t history, float history_weight) no
     return 0xff000000u | (blend(16) << 16) | (blend(8) << 8) | blend(0);
 }
 
+float Luma(uint32_t color) noexcept {
+    const float r = static_cast<float>(Channel(color, 16)) / 255.0f;
+    const float g = static_cast<float>(Channel(color, 8)) / 255.0f;
+    const float b = static_cast<float>(Channel(color, 0)) / 255.0f;
+    return r * 0.2126f + g * 0.7152f + b * 0.0722f;
+}
+
 double Percent(uint64_t value, uint64_t total) noexcept {
     return total == 0 ? 0.0 : (static_cast<double>(value) * 100.0) / static_cast<double>(total);
 }
@@ -55,8 +62,10 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
     uint64_t motion_pixels = 0;
     uint64_t reprojected_pixels = 0;
     uint64_t reproject_out_of_bounds = 0;
+    uint64_t color_rejected = 0;
     double reactive_weight_sum = 0.0;
     double motion_weight_sum = 0.0;
+    double color_residual_sum = 0.0;
     const float display_per_render_x = static_cast<float>(display_size.width) / static_cast<float>(render_size.width);
     const float display_per_render_y = static_cast<float>(display_size.height) / static_cast<float>(render_size.height);
 
@@ -109,6 +118,15 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 motion_weight_sum += history_weight;
             }
 
+            const float color_residual = std::abs(Luma(current_display[display_index]) - Luma(previous_history[history_index]));
+            color_residual_sum += color_residual;
+            if (settings.color_rejection_threshold > 0.0f && color_residual > settings.color_rejection_threshold) {
+                history_weight = 0.0f;
+                ++color_rejected;
+            } else if (settings.color_rejection_threshold > 0.0f) {
+                history_weight *= std::clamp(1.0f - color_residual / settings.color_rejection_threshold, 0.0f, 1.0f);
+            }
+
             output[display_index] = BlendColor(current_display[display_index], previous_history[history_index], history_weight);
             weight_sum += history_weight;
             weight_min = std::min(weight_min, static_cast<double>(history_weight));
@@ -126,6 +144,8 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
         stats->motion_history_weight_mean = motion_pixels == 0 ? 0.0 : motion_weight_sum / static_cast<double>(motion_pixels);
         stats->reprojected_history_pct = Percent(reprojected_pixels, display_pixels);
         stats->reproject_out_of_bounds_pct = Percent(reproject_out_of_bounds, display_pixels);
+        stats->color_rejected_pct = Percent(color_rejected, display_pixels);
+        stats->color_residual_mean = display_pixels == 0 ? 0.0 : color_residual_sum / static_cast<double>(display_pixels);
     }
     return output;
 }

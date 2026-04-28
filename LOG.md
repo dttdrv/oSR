@@ -275,6 +275,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.44874`, reprojected history `5.13261%`, OOB `0%`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.436929`, reprojected history `5.1424%`, OOB `0%`.
 
+### Residual Rejection And Edge Gate
+
+- Added luma residual rejection at the reprojected history sample to reduce history trust when the current output disagrees with the motion-compensated history sample.
+- Sequence metrics now report `color_rejected_pct`, `color_residual_mean`, and `edge_preservation`.
+- Metric gates now include edge preservation so temporal stability cannot pass by excessive blur.
+- Verification: `tools/run_sequence_lab.bat --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.726543`, stability improvement `27.3457%`, ghost score `0.362473`, edge preservation `0.991795`, color rejected `0.292174%`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --frames 64 --metric-gate` exited `0`; latest run reported temporal/spatial ratio `0.718624`, stability improvement `28.1376%`, ghost score `0.407826`, edge preservation `0.991795`, color rejected `0.274369%`.
+- Verification: `tools/run_manual_tests.bat` passed with `OSR_NO_PAUSE=1`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

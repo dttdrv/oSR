@@ -27,6 +27,25 @@ double MeanAbsoluteLumaDelta(const std::vector<uint32_t>& lhs,
     return sum / static_cast<double>(lhs.size());
 }
 
+double MeanEdgeEnergy(const std::vector<uint32_t>& image, core::Dimensions size) noexcept {
+    const size_t expected = static_cast<size_t>(size.width) * size.height;
+    if (image.size() != expected || size.width < 2 || size.height < 2) {
+        return 0.0;
+    }
+    double sum = 0.0;
+    uint64_t samples = 0;
+    for (uint32_t y = 0; y + 1 < size.height; ++y) {
+        for (uint32_t x = 0; x + 1 < size.width; ++x) {
+            const size_t idx = static_cast<size_t>(y) * size.width + x;
+            const float center = LumaFromRgba8(image[idx]);
+            sum += std::abs(center - LumaFromRgba8(image[idx + 1]));
+            sum += std::abs(center - LumaFromRgba8(image[idx + size.width]));
+            samples += 2;
+        }
+    }
+    return samples == 0 ? 0.0 : sum / static_cast<double>(samples);
+}
+
 SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings) {
     SequenceMetricsResult result;
     if (!settings.display_size.IsValid() || settings.frame_count < 2) {
@@ -44,6 +63,10 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     double motion_history_weight_sum = 0.0;
     double reprojected_sum = 0.0;
     double reproject_oob_sum = 0.0;
+    double color_rejected_sum = 0.0;
+    double color_residual_sum = 0.0;
+    double spatial_edge_sum = 0.0;
+    double temporal_edge_sum = 0.0;
     uint32_t delta_count = 0;
 
     for (uint32_t i = 0; i < settings.frame_count; ++i) {
@@ -71,6 +94,10 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
             motion_history_weight_sum += stats.motion_history_weight_mean;
             reprojected_sum += stats.reprojected_history_pct;
             reproject_oob_sum += stats.reproject_out_of_bounds_pct;
+            color_rejected_sum += stats.color_rejected_pct;
+            color_residual_sum += stats.color_residual_mean;
+            spatial_edge_sum += MeanEdgeEnergy(spatial, frame.context.display_size);
+            temporal_edge_sum += MeanEdgeEnergy(temporal, frame.context.display_size);
             ++delta_count;
         }
 
@@ -87,8 +114,11 @@ SequenceMetricsResult RunSequenceMetrics(const SequenceMetricsSettings& settings
     result.stability_improvement_pct = (1.0 - result.temporal_delta_ratio) * 100.0;
     result.ghost_score = delta_count == 0 ? 0.0 : motion_history_weight_sum / static_cast<double>(delta_count);
     result.reactive_trail_score = delta_count == 0 ? 0.0 : reactive_history_weight_sum / static_cast<double>(delta_count);
+    result.edge_preservation = spatial_edge_sum <= 0.0 ? 0.0 : temporal_edge_sum / spatial_edge_sum;
     result.reprojected_history_pct = delta_count == 0 ? 0.0 : reprojected_sum / static_cast<double>(delta_count);
     result.reproject_out_of_bounds_pct = delta_count == 0 ? 0.0 : reproject_oob_sum / static_cast<double>(delta_count);
+    result.color_rejected_pct = delta_count == 0 ? 0.0 : color_rejected_sum / static_cast<double>(delta_count);
+    result.color_residual_mean = delta_count == 0 ? 0.0 : color_residual_sum / static_cast<double>(delta_count);
     result.temporal_history_weight_mean = delta_count == 0 ? 0.0 : history_weight_sum / static_cast<double>(delta_count);
     result.temporal_reactive_suppressed_pct = delta_count == 0 ? 0.0 : reactive_sum / static_cast<double>(delta_count);
     result.temporal_motion_suppressed_pct = delta_count == 0 ? 0.0 : motion_sum / static_cast<double>(delta_count);

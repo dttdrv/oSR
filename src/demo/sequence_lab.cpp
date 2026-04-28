@@ -48,7 +48,9 @@ int main(int argc, char** argv) {
     std::ofstream csv("build/manual/osr_sequence_lab_metrics.csv", std::ios::trunc);
     csv << "frames,spatial_frame_delta_mean,temporal_frame_delta_mean,temporal_delta_ratio,"
            "stability_improvement_pct,ghost_score,reactive_trail_score,"
+           "edge_preservation,"
            "reprojected_history_pct,reproject_out_of_bounds_pct,"
+           "color_rejected_pct,color_residual_mean,"
            "temporal_history_weight_mean,temporal_reactive_suppressed_pct,temporal_motion_suppressed_pct\n";
     csv << result.frames << ","
         << result.spatial_frame_delta_mean << ","
@@ -57,8 +59,11 @@ int main(int argc, char** argv) {
         << result.stability_improvement_pct << ","
         << result.ghost_score << ","
         << result.reactive_trail_score << ","
+        << result.edge_preservation << ","
         << result.reprojected_history_pct << ","
         << result.reproject_out_of_bounds_pct << ","
+        << result.color_rejected_pct << ","
+        << result.color_residual_mean << ","
         << result.temporal_history_weight_mean << ","
         << result.temporal_reactive_suppressed_pct << ","
         << result.temporal_motion_suppressed_pct << "\n";
@@ -71,15 +76,19 @@ int main(int argc, char** argv) {
     std::cout << "Stability improvement: " << result.stability_improvement_pct << "%\n";
     std::cout << "Ghost score: " << result.ghost_score << "\n";
     std::cout << "Reactive trail score: " << result.reactive_trail_score << "\n";
+    std::cout << "Edge preservation: " << result.edge_preservation << "\n";
     std::cout << "Reprojected history: " << result.reprojected_history_pct << "%\n";
     std::cout << "Reproject OOB: " << result.reproject_out_of_bounds_pct << "%\n";
+    std::cout << "Color rejected: " << result.color_rejected_pct << "%\n";
+    std::cout << "Color residual mean: " << result.color_residual_mean << "\n";
     std::cout << "Temporal history weight mean: " << result.temporal_history_weight_mean << "\n";
     std::cout << "Metrics: build/manual/osr_sequence_lab_metrics.csv\n";
 
     if (metric_gate && (result.temporal_delta_ratio > 0.80 ||
                         result.ghost_score > 0.45 ||
-                        result.reactive_trail_score > 0.12)) {
-        std::cerr << "Metric gate failed: temporal stability, ghost, or reactive-trail score outside threshold.\n";
+                        result.reactive_trail_score > 0.12 ||
+                        result.edge_preservation < 0.72)) {
+        std::cerr << "Metric gate failed: temporal stability, ghost, reactive-trail, or edge preservation outside threshold.\n";
         return 3;
     }
     return 0;

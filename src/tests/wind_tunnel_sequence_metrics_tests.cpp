@@ -35,8 +35,14 @@ int main() {
     if (result.reactive_trail_score > 0.12) {
         return Fail("temporal resolve should keep reactive trail score low");
     }
+    if (result.edge_preservation < 0.72) {
+        return Fail("temporal resolve should preserve enough edge energy");
+    }
     if (result.reprojected_history_pct <= 0.0) {
         return Fail("temporal resolve should reproject some moving history");
+    }
+    if (result.color_residual_mean <= 0.0) {
+        return Fail("sequence metrics should report color residuals");
     }
     if (result.ghost_score > 0.65) {
         return Fail("temporal resolve should keep motion ghost score below gate");
