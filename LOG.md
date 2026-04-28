@@ -564,6 +564,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --metric-gate` exited `0`; output included `Capture analysis gate: ok reason=ok`.
 
+### Temporal Sequence Worst-Diff Location
+
+- Added worst byte-difference location reporting for temporal-GPU sequence parity checks.
+- Sequence output now includes the frame id, display pixel, and byte channel for the maximum CPU-vs-GPU temporal output difference.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 64 --metric-gate` exited `0`; latest run reported worst diff at `frame=14 pixel=(928,345) channel=2`.
+
 ### Research Links
 
 - OptiScaler architecture and compatibility model: <https://github.com/optiscaler/OptiScaler>

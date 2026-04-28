@@ -30,6 +30,9 @@ struct TextureTransferResult {
     uint64_t gpu_hash = 0;
     uint32_t max_abs_diff = 0;
     double mean_abs_diff = 0.0;
+    uint32_t worst_x = 0;
+    uint32_t worst_y = 0;
+    uint32_t worst_channel = 0;
     bool matched = false;
 };
 

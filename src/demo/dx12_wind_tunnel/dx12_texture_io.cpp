@@ -87,6 +87,12 @@ void CompareLinearRows(const uint8_t* expected,
                 ? expected_row[x] - actual_row[x]
                 : actual_row[x] - expected_row[x];
             max_diff = std::max(max_diff, diff);
+            if (diff > result.max_abs_diff) {
+                result.worst_x = static_cast<uint32_t>(x);
+                result.worst_y = y;
+                result.worst_channel = 0;
+                result.max_abs_diff = diff;
+            }
             diff_sum += diff;
             ++samples;
         }

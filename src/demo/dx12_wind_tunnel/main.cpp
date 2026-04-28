@@ -245,6 +245,7 @@ void ExportMetadata(const osr::core::FrameContext& frame,
             << " gpu_hash=" << transfer.gpu_hash
             << " max_abs_diff=" << transfer.max_abs_diff
             << " mean_abs_diff=" << transfer.mean_abs_diff
+            << " worst=(" << transfer.worst_x << "," << transfer.worst_y << "," << transfer.worst_channel << ")"
             << " matched=" << (transfer.matched ? "true" : "false")
             << "\n";
     }
@@ -441,7 +442,12 @@ osr::demo::dx12_wind_tunnel::TextureTransferResult CompareRgba8Output(const std:
         const auto* b = reinterpret_cast<const uint8_t*>(&actual[i]);
         for (uint32_t channel = 0; channel < sizeof(uint32_t); ++channel) {
             const uint32_t diff = a[channel] > b[channel] ? a[channel] - b[channel] : b[channel] - a[channel];
-            max_diff = std::max(max_diff, diff);
+            if (diff > max_diff) {
+                max_diff = diff;
+                result.worst_x = static_cast<uint32_t>(i % size.width);
+                result.worst_y = static_cast<uint32_t>(i / size.width);
+                result.worst_channel = channel;
+            }
             diff_sum += diff;
             ++samples;
         }
@@ -723,6 +729,10 @@ int main(int argc, char** argv) {
         osr::demo::wind_tunnel::SyntheticFrame previous_frame;
         double max_mean_abs_diff = 0.0;
         uint32_t max_abs_diff = 0;
+        uint64_t worst_diff_frame_id = 0;
+        uint32_t worst_diff_x = 0;
+        uint32_t worst_diff_y = 0;
+        uint32_t worst_diff_channel = 0;
         uint32_t frames_checked = 0;
         bool sequence_ok = true;
         bool sequence_capture_written = false;
@@ -820,6 +830,12 @@ int main(int argc, char** argv) {
                     gpu_temporal = Rgba8BytesToVector(output_bytes, display_size);
                     const auto readback = CompareRgba8Output(cpu_temporal, gpu_temporal, display_size, "sequence_temporal_gpu_output");
                     sequence_ok = readback.matched;
+                    if (readback.max_abs_diff > max_abs_diff) {
+                        worst_diff_frame_id = frame.context.frame_id;
+                        worst_diff_x = readback.worst_x;
+                        worst_diff_y = readback.worst_y;
+                        worst_diff_channel = readback.worst_channel;
+                    }
                     max_abs_diff = std::max(max_abs_diff, readback.max_abs_diff);
                     max_mean_abs_diff = std::max(max_mean_abs_diff, readback.mean_abs_diff);
                     ++frames_checked;
@@ -920,6 +936,9 @@ int main(int argc, char** argv) {
         std::cout << "Checked temporal frames: " << frames_checked << "\n";
         std::cout << "Max byte diff: " << max_abs_diff << "\n";
         std::cout << "Max mean byte diff: " << max_mean_abs_diff << "\n";
+        std::cout << "Worst byte diff location: frame=" << worst_diff_frame_id
+                  << " pixel=(" << worst_diff_x << "," << worst_diff_y << ")"
+                  << " channel=" << worst_diff_channel << "\n";
         std::cout << "Persistent history: GPU output copied forward each frame\n";
         if (requested_capture_frame_id >= 0) {
             std::cout << "Capture frame: " << requested_capture_frame_id
