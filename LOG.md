@@ -843,3 +843,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name native_reference_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture gate passed and reported `text_native_contrast_ratio=0.934855`.
 - Verified `native_reference.ppm` and `native_reference.rgba8.raw` exist in `build/manual/captures/native_reference_v1/frame_000012/artifacts.json`.
+
+### Native Contrast Gate And Tuning
+
+- Added `min_text_native_contrast_ratio` to capture gate thresholds, with a default floor of `0.90`.
+- Capture analysis now fails selected-frame gates when a native reference exists and the text/native contrast ratio falls below the configured floor.
+- Capture compare now reports `text_native_contrast_ratio` and adds a small native-detail term to ranking.
+- Ran a bounded sharpening check at `0.45` and `0.50`; both passed all gates.
+- Result: `0.50` improved `text_native_contrast_ratio` from `0.934855` to `0.937315`, raised locked-detail score from `83.4721` to `83.7542`, and lowered transparent history trust from `3.62745%` to `3.43137%`.
+- Promoted default temporal sharpening from `0.40` to `0.50` in CPU temporal settings and DX12 temporal constants.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name native_default_s050_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture gate passed.
+- Comparison: `tools/run_capture_compare.bat build/manual/captures/native_gate_v1 build/manual/captures/native_s050_v1 build/manual/captures/native_default_s050_v1` exited `0`; default `0.50` tied the override run and outranked the previous default.

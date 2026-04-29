@@ -100,6 +100,8 @@ build_status:
     - Feature-lock acquisition thresholds are now exposed through temporal settings, DX12 constants, and DX12 wind-tunnel CLI overrides.
     - First guarded feature-lock threshold sweep did not beat defaults; edge tightening lowered static text lock strength, and luma-delta 0.035 matched default output.
     - Selected DX12 captures now include native_reference artifacts, and capture analysis reports text_native_contrast_ratio; current default reports 0.934855.
+    - Capture analysis now gates text_native_contrast_ratio at 0.90 when native_reference exists.
+    - Default temporal sharpening is tuned to 0.50 after native-reference captures improved text_native_contrast_ratio to 0.937315 without failing bad-lock/reactive gates.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -156,7 +158,7 @@ next_actions:
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Tune feature-lock thresholds using locked_detail_score, text_contrast_ratio, and bad_lock_signal instead of the older ROI/history score alone.
   - Add a static-detail confidence map that can distinguish true stable text edges from transparent-pane stripe edges before loosening feature locks.
-  - Promote text_native_contrast_ratio into capture compare and eventually into the locked-detail score after thresholds are calibrated.
+  - Run a small sharpening upper-bound sweep around 0.55/0.60 and stop if color_reject_candidate_pct or parity mean diff rises faster than native contrast.
   - Add a saved high-resolution reference or supersampled oracle artifact so future detail scoring can move beyond spatial-baseline comparisons.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.

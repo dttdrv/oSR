@@ -213,9 +213,16 @@ int main() {
     if (osr::debug::EvaluateCaptureAnalysisGate(bad_lock_analysis).passed) {
         return Fail("ROI capture analysis gate should fail bad lock leakage");
     }
+    auto weak_native_analysis = roi_analysis;
+    weak_native_analysis.locked_detail.text_native_contrast = 1.0;
+    weak_native_analysis.locked_detail.text_native_contrast_ratio = 0.85;
+    if (osr::debug::EvaluateCaptureAnalysisGate(weak_native_analysis).passed) {
+        return Fail("ROI capture analysis gate should fail weak native contrast");
+    }
     osr::debug::CaptureAnalysisGateThresholds relaxed;
     relaxed.max_reactive_history_trusted_pct = 30.0;
     relaxed.max_bad_lock_signal = 0.30;
+    relaxed.min_text_native_contrast_ratio = 0.80;
     if (!osr::debug::EvaluateCaptureAnalysisGate(failing_analysis, relaxed).passed) {
         return Fail("ROI capture analysis gate should honor custom relaxed thresholds");
     }
@@ -225,10 +232,12 @@ int main() {
         thresholds_file << "min_static_history_trusted_pct = 80\n";
         thresholds_file << "min_locked_detail_score = 10\n";
         thresholds_file << "max_bad_lock_signal = 0.30\n";
+        thresholds_file << "min_text_native_contrast_ratio = 0.80\n";
     }
     const auto loaded_thresholds = osr::debug::LoadCaptureAnalysisGateThresholds(dir.parent_path() / "thresholds.cfg");
     if (!osr::debug::EvaluateCaptureAnalysisGate(failing_analysis, loaded_thresholds).passed ||
-        !osr::debug::EvaluateCaptureAnalysisGate(bad_lock_analysis, loaded_thresholds).passed) {
+        !osr::debug::EvaluateCaptureAnalysisGate(bad_lock_analysis, loaded_thresholds).passed ||
+        !osr::debug::EvaluateCaptureAnalysisGate(weak_native_analysis, loaded_thresholds).passed) {
         return Fail("ROI capture analysis gate should honor loaded threshold config");
     }
     const auto gate = osr::debug::EvaluateCaptureAnalysisGate(roi_analysis, loaded_thresholds);
@@ -245,6 +254,7 @@ int main() {
         !Contains(analysis_json, "\"text_native_contrast_ratio\"") ||
         !Contains(analysis_json, "\"min_locked_detail_score\":10") ||
         !Contains(analysis_json, "\"max_bad_lock_signal\":0.3") ||
+        !Contains(analysis_json, "\"min_text_native_contrast_ratio\":0.8") ||
         !Contains(analysis_json, "\"feature_lock_strength\": {") ||
         !Contains(analysis_json, "\"mean_feature_lock\"") ||
         !Contains(analysis_json, "\"max_reactive_history_trusted_pct\":30")) {

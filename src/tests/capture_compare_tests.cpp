@@ -22,6 +22,7 @@ void WriteAnalysis(const std::filesystem::path& dir,
                    double reactive,
                    double color_reject,
                    double text_contrast_ratio,
+                   double text_native_contrast_ratio,
                    double bad_lock,
                    double locked_detail) {
     std::filesystem::create_directories(dir);
@@ -36,6 +37,7 @@ void WriteAnalysis(const std::filesystem::path& dir,
     out << "  \"motion_static_split\": {\"motion_region_history_trusted_pct\":" << motion
         << ",\"static_region_history_trusted_pct\":" << stat << "},\n";
     out << "  \"locked_detail\": {\"text_contrast_ratio\":" << text_contrast_ratio
+        << ",\"text_native_contrast_ratio\":" << text_native_contrast_ratio
         << ",\"bad_lock_signal\":" << bad_lock
         << ",\"score\":" << locked_detail << "},\n";
     out << "  \"regions\": {\n";
@@ -52,15 +54,18 @@ void WriteAnalysis(const std::filesystem::path& dir,
 int main() {
     const std::filesystem::path root = "build/manual/capture_compare_tests";
     std::filesystem::remove_all(root);
-    WriteAnalysis(root / "good", true, 0.0, 99.0, 55.0, 0.0, 1.0, 0.0, 0.5, 1.08, 0.05, 95.0);
-    WriteAnalysis(root / "blurry", true, 0.0, 89.0, 20.0, 0.0, 1.0, 0.0, 0.5, 0.90, 0.05, 5.0);
-    WriteAnalysis(root / "leaky", false, 5.0, 99.0, 55.0, 15.0, 20.0, 10.0, 10.0, 1.08, 0.95, 90.0);
+    WriteAnalysis(root / "good", true, 0.0, 99.0, 55.0, 0.0, 1.0, 0.0, 0.5, 1.08, 0.97, 0.05, 95.0);
+    WriteAnalysis(root / "blurry", true, 0.0, 89.0, 20.0, 0.0, 1.0, 0.0, 0.5, 0.90, 0.80, 0.05, 5.0);
+    WriteAnalysis(root / "leaky", false, 5.0, 99.0, 55.0, 15.0, 20.0, 10.0, 10.0, 1.08, 0.97, 0.95, 90.0);
 
     auto good = osr::debug::LoadCaptureComparisonRow(root / "good");
     auto blurry = osr::debug::LoadCaptureComparisonRow(root / "blurry");
     auto leaky = osr::debug::LoadCaptureComparisonRow(root / "leaky");
     if (!good.loaded || !good.analysis_ok || !good.gate_passed) {
         return Fail("good comparison row failed to load");
+    }
+    if (good.text_native_contrast_ratio < 0.969 || good.text_native_contrast_ratio > 0.971) {
+        return Fail("native contrast ratio failed to load");
     }
     if (!(good.score > blurry.score && blurry.score > leaky.score)) {
         return Fail("comparison score ordering mismatch");
@@ -74,6 +79,7 @@ int main() {
     const auto row = osr::debug::CaptureComparisonCsvRow(1, ranked[0]);
     if (header.find("reactive_history_trusted_pct") == std::string::npos ||
         header.find("text_contrast_ratio") == std::string::npos ||
+        header.find("text_native_contrast_ratio") == std::string::npos ||
         header.find("bad_lock_signal") == std::string::npos ||
         header.find("locked_detail_score") == std::string::npos ||
         row.find(",1,1,1,") == std::string::npos) {

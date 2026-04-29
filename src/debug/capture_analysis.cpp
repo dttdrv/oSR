@@ -639,6 +639,8 @@ CaptureAnalysisGateThresholds LoadCaptureAnalysisGateThresholds(const std::files
             thresholds.min_locked_detail_score = std::stod(value);
         } else if (key == "max_bad_lock_signal") {
             thresholds.max_bad_lock_signal = std::stod(value);
+        } else if (key == "min_text_native_contrast_ratio") {
+            thresholds.min_text_native_contrast_ratio = std::stod(value);
         }
     }
     return thresholds;
@@ -689,6 +691,11 @@ CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis
     if (analysis.feature_lock_strength.samples > 0 &&
         analysis.locked_detail.bad_lock_signal > thresholds.max_bad_lock_signal) {
         return fail("bad lock signal above threshold");
+    }
+    if (analysis.feature_lock_strength.samples > 0 &&
+        analysis.locked_detail.text_native_contrast > 0.0 &&
+        analysis.locked_detail.text_native_contrast_ratio < thresholds.min_text_native_contrast_ratio) {
+        return fail("text native contrast ratio below threshold");
     }
     gate.passed = true;
     gate.reason = "ok";
@@ -744,7 +751,8 @@ bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
         << "\"max_reactive_history_trusted_pct\":" << thresholds.max_reactive_history_trusted_pct << ","
         << "\"max_color_reject_candidate_pct\":" << thresholds.max_color_reject_candidate_pct << ","
         << "\"min_locked_detail_score\":" << thresholds.min_locked_detail_score << ","
-        << "\"max_bad_lock_signal\":" << thresholds.max_bad_lock_signal
+        << "\"max_bad_lock_signal\":" << thresholds.max_bad_lock_signal << ","
+        << "\"min_text_native_contrast_ratio\":" << thresholds.min_text_native_contrast_ratio
         << "},\n";
     out << "  \"global\": {\n";
     write_value_stats("history_weight", analysis.history_weight, true);

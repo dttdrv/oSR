@@ -23,6 +23,7 @@ struct CaptureComparisonRow {
     double reactive_history_trusted_pct = 0.0;
     double color_reject_candidate_pct = 0.0;
     double text_contrast_ratio = 0.0;
+    double text_native_contrast_ratio = 0.0;
     double bad_lock_signal = 0.0;
     double locked_detail_score = 0.0;
 };
