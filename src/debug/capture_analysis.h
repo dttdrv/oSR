@@ -50,6 +50,8 @@ struct CaptureFrameAnalysis {
     double motion_region_mean_history = 0.0;
     double static_region_mean_history = 0.0;
     CaptureRegionStats text_region;
+    CaptureRegionStats static_text_region;
+    CaptureRegionStats moving_text_region;
     CaptureRegionStats specular_region;
     CaptureRegionStats transparent_region;
     CaptureRegionStats reactive_region;

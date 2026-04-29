@@ -92,6 +92,8 @@ build_status:
     - CPU and DX12 temporal resolve now use feature-lock evidence to conservatively boost detail recovery on stable high-trust edges.
     - DX12 temporal resolve now emits feature_lock_strength as a GPU debug UAV, and selected captures include CPU-vs-GPU feature-lock parity.
     - Capture dumps now include an optional spatial_baseline artifact, and capture analysis gates a baseline-aware locked_detail score.
+    - Capture analysis now separates all/static/moving text ROI metrics; locked_detail scoring prefers static text when available.
+    - Default temporal sharpening is tuned to 0.40 after a split-text DX12 temporal sweep beat the previous 0.28 default without adding moving/reactive feature locks.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -147,7 +149,7 @@ next_actions:
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Tune feature-lock thresholds using locked_detail_score, text_contrast_ratio, and bad_lock_signal instead of the older ROI/history score alone.
-  - Add static-only text ROI separation so the locked-detail gate can score static 760M separately from moving OSR.
+  - Run the next guarded clip-margin sweep around sharpening 0.40 to see whether tighter clipping raises static text contrast without increasing bad_lock_signal.
   - Add a saved high-resolution reference or supersampled oracle artifact so future detail scoring can move beyond spatial-baseline comparisons.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.

@@ -163,18 +163,24 @@ int main() {
         return Fail("ROI capture analysis should parse synthetic artifacts");
     }
     if (roi_analysis.text_region.samples == 0 ||
+        roi_analysis.static_text_region.samples == 0 ||
+        roi_analysis.moving_text_region.samples == 0 ||
         roi_analysis.specular_region.samples == 0 ||
         roi_analysis.transparent_region.samples == 0 ||
         roi_analysis.reactive_region.samples != 0) {
         return Fail("expected nonzero synthetic ROI samples");
     }
     if (roi_analysis.text_region.history_trusted_pct != 100.0 ||
+        roi_analysis.static_text_region.history_trusted_pct != 100.0 ||
+        roi_analysis.moving_text_region.history_trusted_pct != 100.0 ||
         roi_analysis.specular_region.history_trusted_pct != 0.0 ||
         roi_analysis.transparent_region.history_trusted_pct != 0.0 ||
         roi_analysis.reactive_region.history_trusted_pct != 0.0) {
         return Fail("synthetic ROI trusted history percentages mismatch");
     }
     if (roi_analysis.text_region.mean_feature_lock < 0.7 ||
+        roi_analysis.static_text_region.mean_feature_lock < 0.7 ||
+        roi_analysis.moving_text_region.mean_feature_lock < 0.7 ||
         roi_analysis.specular_region.mean_feature_lock != 0.0 ||
         roi_analysis.transparent_region.mean_feature_lock != 0.0) {
         return Fail("synthetic ROI feature-lock metrics mismatch");
@@ -217,6 +223,8 @@ int main() {
     }
     if (!Contains(analysis_json, "\"schema\": \"osr.capture.analysis.v1\"") ||
         !Contains(analysis_json, "\"text\": {") ||
+        !Contains(analysis_json, "\"static_text\": {") ||
+        !Contains(analysis_json, "\"moving_text\": {") ||
         !Contains(analysis_json, "\"locked_detail\": {") ||
         !Contains(analysis_json, "\"text_contrast_ratio\"") ||
         !Contains(analysis_json, "\"min_locked_detail_score\":10") ||

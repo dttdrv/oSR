@@ -777,3 +777,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name locked_detail_metric_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed and reported `text_contrast_ratio=1.01007` and `locked_detail_score=83.1908`.
 - Comparison: `tools/run_capture_compare.bat build/manual/captures/feature_lock_uav_v1_verify build/manual/captures/locked_detail_metric_v1` exited `0`; the new capture ranked higher because old analysis files have no locked-detail score (`81.6484` vs `77.4889`).
+
+### Static Text Locked-Detail Tuning
+
+- Split capture-analysis text ROI metrics into all text, static text, and moving text buckets.
+- Locked-detail scoring now prefers static text contrast/feature-lock evidence when static glyph samples exist, leaving moving text as a guardrail instead of a reward target.
+- Ran a sharpening-only DX12 temporal sweep at `0.28`, `0.34`, and `0.40`; all passed capture gates.
+- Result: `--sharpening 0.40` ranked highest with `text_contrast_ratio=1.01712`, `locked_detail_score=83.5724`, `moving_text_feature_lock_mean=0`, and `reactive_feature_lock_mean=0`.
+- Promoted default temporal sharpening from `0.28` to `0.40` in CPU temporal settings and DX12 temporal constants.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name split_default_s040 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; default output matched the `--sharpening 0.40` capture metrics.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Comparison: `tools/run_capture_compare.bat build/manual/captures/split_baseline_s028 build/manual/captures/split_static_text_s040 build/manual/captures/split_default_s040` exited `0`; default `s040` ranked first/tied with the override run.

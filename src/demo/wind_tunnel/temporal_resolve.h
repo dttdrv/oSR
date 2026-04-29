@@ -14,7 +14,7 @@ struct TemporalResolveSettings {
     float motion_rejection_pixels = 1.25f;
     float color_rejection_threshold = 0.12f;
     float depth_rejection_threshold = 0.025f;
-    float sharpening_amount = 0.28f;
+    float sharpening_amount = 0.40f;
     float sharpening_low_trust_scale = 0.20f;
     float sharpening_reactive_scale = 0.25f;
     float history_clip_margin = 0.02f;
