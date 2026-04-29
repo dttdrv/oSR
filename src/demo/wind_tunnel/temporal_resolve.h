@@ -35,6 +35,7 @@ struct TemporalResolveStats {
     double depth_rejected_pct = 0.0;
     double depth_residual_mean = 0.0;
     double sharpening_amount_mean = 0.0;
+    double feature_lock_strength_mean = 0.0;
 };
 
 struct TemporalResolveDebugMaps {
@@ -42,6 +43,7 @@ struct TemporalResolveDebugMaps {
     std::vector<float> history_weight;
     std::vector<float> color_residual;
     std::vector<float> depth_residual;
+    std::vector<float> feature_lock_strength;
 };
 
 [[nodiscard]] std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& current_display,

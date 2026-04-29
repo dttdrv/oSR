@@ -37,7 +37,9 @@ int main() {
     if (stats.history_weight_mean <= 0.0 || stats.history_weight_max > 0.5) {
         return Fail("temporal resolve stats are outside expected range");
     }
-    if (debug_maps.history_weight.size() != blended.size() || debug_maps.color_residual.size() != blended.size()) {
+    if (debug_maps.history_weight.size() != blended.size() ||
+        debug_maps.color_residual.size() != blended.size() ||
+        debug_maps.feature_lock_strength.size() != blended.size()) {
         return Fail("temporal resolve debug maps should match display output size");
     }
     if (stats.sharpening_amount_mean <= 0.0 || stats.sharpening_amount_mean > settings.sharpening_amount) {
@@ -236,6 +238,28 @@ int main() {
     const uint32_t ycocg_green = (ycocg_clipped[4] >> 8) & 0xffu;
     if (ycocg_red >= 220u || ycocg_green >= 220u) {
         return Fail("YCoCg history clipping should reject luma-impossible yellow from red/green neighborhood");
+    }
+
+    repro_current.assign(9, 0xffffffffu);
+    repro_current[0] = 0xff000000u;
+    repro_current[3] = 0xff000000u;
+    repro_current[6] = 0xff000000u;
+    repro_history = repro_current;
+    settings.max_history_weight = 1.0f;
+    settings.history_clip_margin = 0.0f;
+    settings.color_rejection_threshold = 0.0f;
+    settings.depth_rejection_threshold = 0.0f;
+    osr::demo::wind_tunnel::TemporalResolveDebugMaps feature_debug;
+    (void)osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current,
+                                                          repro_history,
+                                                          custom,
+                                                          custom.context.display_size,
+                                                          settings,
+                                                          &stats,
+                                                          nullptr,
+                                                          &feature_debug);
+    if (stats.feature_lock_strength_mean <= 0.0 || feature_debug.feature_lock_strength[4] <= 0.0f) {
+        return Fail("stable high-trust edge should produce feature-lock diagnostics");
     }
 
     return 0;

@@ -722,3 +722,11 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Added `src/tests/feature_locks_tests.cpp` and wired it into both CMake and `tools/run_manual_tests.bat`.
 - The lock policy is intentionally conservative: locks require edge strength, high history trust, low luma delta, low luma variance, low motion, and non-reactive/non-disoccluded evidence.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
+
+### Feature Lock Resolve Diagnostics
+
+- Wired feature-lock candidate evaluation into the CPU temporal resolve diagnostics without changing final output color.
+- Added `feature_lock_strength_mean` to temporal resolve stats and `feature_lock_strength` to temporal resolve debug maps.
+- The diagnostic uses local edge strength plus temporal residual evidence; luma variance is currently a temporal residual proxy until multi-frame luma moments are available.
+- Added a temporal resolve regression test that requires stable high-trust edges to produce feature-lock diagnostics.
+- Verification: `tools/run_manual_tests.bat` exited `0`.

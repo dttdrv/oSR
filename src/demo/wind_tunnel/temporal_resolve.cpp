@@ -1,5 +1,7 @@
 #include "demo/wind_tunnel/temporal_resolve.h"
 
+#include "reconstruction/feature_locks.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -209,6 +211,26 @@ float Luma(uint32_t color) noexcept {
     return r * 0.2126f + g * 0.7152f + b * 0.0722f;
 }
 
+float LocalEdgeStrength(const std::vector<uint32_t>& current_display,
+                        core::Dimensions display_size,
+                        uint32_t x,
+                        uint32_t y) noexcept {
+    if (current_display.size() != static_cast<size_t>(display_size.width) * display_size.height ||
+        !display_size.IsValid()) {
+        return 0.0f;
+    }
+    const auto at_luma = [&](uint32_t sx, uint32_t sy) {
+        return Luma(current_display[static_cast<size_t>(sy) * display_size.width + sx]);
+    };
+    const uint32_t xl = x == 0 ? x : x - 1;
+    const uint32_t xr = std::min(x + 1, display_size.width - 1);
+    const uint32_t yu = y == 0 ? y : y - 1;
+    const uint32_t yd = std::min(y + 1, display_size.height - 1);
+    const float dx = std::abs(at_luma(xr, y) - at_luma(xl, y));
+    const float dy = std::abs(at_luma(x, yd) - at_luma(x, yu));
+    return std::clamp(std::max(dx, dy), 0.0f, 1.0f);
+}
+
 double Percent(uint64_t value, uint64_t total) noexcept {
     return total == 0 ? 0.0 : (static_cast<double>(value) * 100.0) / static_cast<double>(total);
 }
@@ -243,6 +265,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
         debug_maps->history_weight.assign(display_pixels, 0.0f);
         debug_maps->color_residual.assign(display_pixels, 0.0f);
         debug_maps->depth_residual.assign(display_pixels, 0.0f);
+        debug_maps->feature_lock_strength.assign(display_pixels, 0.0f);
     }
     const auto render_size = current_frame.context.render_size;
     double weight_sum = 0.0;
@@ -262,6 +285,8 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
     double color_residual_sum = 0.0;
     double depth_residual_sum = 0.0;
     double sharpening_amount_sum = 0.0;
+    double feature_lock_sum = 0.0;
+    const reconstruction::FeatureLockSettings feature_lock_settings;
     const float display_per_render_x = static_cast<float>(display_size.width) / static_cast<float>(render_size.width);
     const float display_per_render_y = static_cast<float>(display_size.height) / static_cast<float>(render_size.height);
     const bool has_previous_depth = previous_frame &&
@@ -283,6 +308,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
             float history_weight = std::clamp(settings.max_history_weight, 0.0f, 1.0f);
             bool previous_depth_oob = false;
             bool disoccluded = false;
+            float motion_length = 0.0f;
 
             const float reactive = render_index < current_frame.reactive_mask.size() ? current_frame.reactive_mask[render_index] : 0.0f;
             if (reactive > 0.0f) {
@@ -294,7 +320,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
             bool motion_pixel = false;
             if (render_index < current_frame.motion_vectors.size()) {
                 const auto mv = current_frame.motion_vectors[render_index];
-                const float motion_length = std::sqrt(mv.x * mv.x + mv.y * mv.y);
+                motion_length = std::sqrt(mv.x * mv.x + mv.y * mv.y);
                 motion_pixel = motion_length > 0.01f;
                 if (motion_pixel) {
                     const float hx = static_cast<float>(x) + mv.x * display_per_render_x;
@@ -379,6 +405,19 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                 debug_maps->history_weight[display_index] = history_weight;
                 debug_maps->color_residual[display_index] = color_residual;
             }
+            reconstruction::FeatureLockInputs lock_inputs;
+            lock_inputs.edge_strength = LocalEdgeStrength(current_display, display_size, x, y);
+            lock_inputs.history_trust = history_weight;
+            lock_inputs.luma_delta = color_residual;
+            lock_inputs.luma_variance = color_residual * color_residual;
+            lock_inputs.motion_pixels = motion_length;
+            lock_inputs.reactive_value = reactive;
+            lock_inputs.disoccluded = disoccluded;
+            const auto feature_lock = reconstruction::UpdateFeatureLock(lock_inputs, feature_lock_settings);
+            feature_lock_sum += feature_lock.strength;
+            if (debug_maps) {
+                debug_maps->feature_lock_strength[display_index] = feature_lock.strength;
+            }
             const uint32_t blended = BlendColor(current_display[display_index], history_sample, history_weight);
             float sharpening_amount = 0.0f;
             output[display_index] = ApplyDetailRecovery(current_display,
@@ -413,6 +452,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
         stats->depth_rejected_pct = Percent(depth_rejected, display_pixels);
         stats->depth_residual_mean = depth_samples == 0 ? 0.0 : depth_residual_sum / static_cast<double>(depth_samples);
         stats->sharpening_amount_mean = display_pixels == 0 ? 0.0 : sharpening_amount_sum / static_cast<double>(display_pixels);
+        stats->feature_lock_strength_mean = display_pixels == 0 ? 0.0 : feature_lock_sum / static_cast<double>(display_pixels);
     }
     return output;
 }
