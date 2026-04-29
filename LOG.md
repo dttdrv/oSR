@@ -916,3 +916,19 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name sequence_sidecar_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; sidecar reported `temporal_delta_ratio=0.796012`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name sequence_sidecar_s055_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg --sharpening 0.55` exited `0`; sidecar reported `temporal_delta_ratio=0.804987`.
 - Comparison: `tools/run_capture_compare.bat build/manual/captures/sequence_sidecar_v1 build/manual/captures/sequence_sidecar_s055_v1` exited `0`; the default `0.50` capture ranked above the sharper `0.55` capture once sequence stability was visible.
+
+### XeSS Vulkan FrameContext Decoder
+
+- Decision: do not call the current state `v1.0`. Bumped the repository/project status to `v0.2.0`; `v1.0` remains reserved for real game frames reaching an oSR-owned reconstruction path instead of pass-through forwarding.
+- Source check: fetched the official public Intel XeSS headers from `https://github.com/intel/xess` into `C:\tmp` for layout verification only. No XeSS headers were vendored.
+- Added `src/interop/xess_bridge/xess_vk_frame_context.*`, a clean-room-compatible local model of the public Vulkan init/execute metadata needed to normalize into oSR `FrameContext`.
+- Added static layout checks for the local XeSS Vulkan metadata structs and a focused unit test for init flags, resources, render/output sizes, jitter, exposure, responsive mask, reset, and velocity scale propagation.
+- Updated the diagnostic XeSS proxy to store Vulkan context state from `xessVKInit`, `xessSetVelocityScale`, `xessSetJitterScale`, and `xessSetExposureMultiplier`.
+- Updated `xessVKExecute` logging so non-null execute params produce a normalized `FrameContext source=xess_vk_proxy ...` summary before forwarding to the real XeSS runtime.
+- Added pass-through exports for `xessVKGetRequiredInstanceExtensions`, `xessVKGetRequiredDeviceExtensions`, `xessVKGetRequiredDeviceFeatures`, and `xessVKGetInitParams`.
+- Verification: the new `xess_vk_frame_context` test was first observed failing because the normalizer did not exist, then passed after implementation.
+- Verification: `tools/run_xess_proxy_smoke.bat` exited `0`; smoke now exercises synthetic `xessVKInit`, velocity scale, and `xessVKExecute` and checks for normalized frame-context logging.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- No Man's Sky install: `tools/osr_nms_xess_tool.bat install` exited `0` and installed the rebuilt proxy into the local Steam No Man's Sky `Binaries` folder.
+- No Man's Sky live check: a short hidden launch loaded oSR `libxess.dll`, loaded `libxess_real.dll`, registered a XeSS Vulkan context, and decoded `xessVKInit` as output `1920x1080`, `quality=102(Balanced)`, `scale=0.5`, flags `0x102(INVERTED_DEPTH|ENABLE_AUTOEXPOSURE)`.
+- Limitation: the short launch did not reach a fresh rendered `xessVKExecute` after the decoder landed. Next manual gate is to enter a real scene with XeSS enabled and verify `FrameContext source=xess_vk_proxy` in `osr_xess_proxy.log`.

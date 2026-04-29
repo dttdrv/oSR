@@ -15,6 +15,7 @@ Local oSR state:
 
 - `src/interop/xess_bridge/xess_bridge.h` marks XeSS replacement out of v0.
 - `src/interop/xess_bridge/xess_proxy.cpp` is a diagnostic proxy that forwards/logs entrypoints.
+- `src/interop/xess_bridge/xess_vk_frame_context.*` cleanly models the public Vulkan init/execute parameter layout without vendoring XeSS headers and normalizes it to oSR `FrameContext`.
 - No XeSS SDK headers are vendored into oSR.
 
 ## Inputs
@@ -25,6 +26,21 @@ XeSS accepts a low-resolution jittered color input, motion vectors, optional dep
 - low-resolution undilated motion vectors plus depth so XeSS can upsample/dilate internally.
 
 The public headers expose execute parameters for color, velocity, depth, exposure scale texture, responsive mask, output, jitter, exposure multiplier, reset, input dimensions, and coordinate offsets.
+
+oSR now records the corresponding Vulkan boundary:
+
+- `xessVKInit`: output resolution, quality setting, init flags.
+- `xessSetVelocityScale`: per-context motion-vector scale.
+- `xessSetJitterScale`: per-context jitter scale for diagnostics.
+- `xessSetExposureMultiplier`: per-context exposure multiplier.
+- `xessVKExecute`: color, velocity, depth, exposure, responsive mask, output, jitter, reset, input dimensions, and normalized `FrameContext` summary.
+
+No Man's Sky launch evidence from 2026-04-29:
+
+- The local Steam install loaded oSR's `libxess.dll` proxy and the preserved Intel runtime `libxess_real.dll`.
+- The game registered a XeSS Vulkan context and called `xessGetInputResolution`, `xessGetProperties`, and `xessVKInit`.
+- Observed settings were output `1920x1080`, `quality=102(Balanced)`, `scale=0.5`, and init flags `0x102`, decoded as `INVERTED_DEPTH|ENABLE_AUTOEXPOSURE`.
+- The short hidden launch did not stay in a rendered scene long enough to capture a new `xessVKExecute` frame after the metadata decoder landed; that remains the next manual in-game test gate.
 
 ## Motion, Jitter, Responsive Mask
 

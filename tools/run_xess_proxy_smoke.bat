@@ -5,7 +5,7 @@ set "CXX=C:\Users\deyan\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.Wi
 if not exist build\manual mkdir build\manual
 if not exist build\manual\xess_proxy mkdir build\manual\xess_proxy
 
-"%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 -O2 -shared src/interop/xess_bridge/xess_proxy.cpp src/core/logging.cpp -o build\manual\xess_proxy\libxess.dll
+"%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 -O2 -shared src/interop/xess_bridge/xess_proxy.cpp src/interop/xess_bridge/xess_vk_frame_context.cpp src/core/frame_context.cpp src/core/logging.cpp -o build\manual\xess_proxy\libxess.dll
 if errorlevel 1 exit /b 1
 
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 -O2 src/tests/xess_proxy_smoke.cpp -o build\manual\osr_xess_proxy_smoke.exe

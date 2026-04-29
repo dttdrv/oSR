@@ -7,8 +7,11 @@
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
+#include <unordered_map>
 #include <sstream>
 #include <string>
+
+#include "interop/xess_bridge/xess_vk_frame_context.h"
 
 namespace {
 
@@ -30,6 +33,8 @@ struct ProxyState {
     bool attempted_load = false;
     std::atomic<uint64_t> d3d12_execute_count {0};
     std::atomic<uint64_t> vk_execute_count {0};
+    std::mutex contexts_mutex;
+    std::unordered_map<void*, osr::interop::xess_bridge::XessVkRuntimeState> vk_contexts;
 };
 
 ProxyState& State() {
@@ -44,29 +49,11 @@ std::string Ptr(const void* value) {
 }
 
 const char* QualityName(unsigned int quality) noexcept {
-    switch (quality) {
-    case 100: return "UltraPerformance";
-    case 101: return "Performance";
-    case 102: return "Balanced";
-    case 103: return "Quality";
-    case 104: return "UltraQuality";
-    case 105: return "UltraQualityPlus";
-    case 106: return "Native";
-    default: return "Unknown";
-    }
+    return osr::interop::xess_bridge::XessQualityName(quality);
 }
 
 float QualityScale(unsigned int quality) noexcept {
-    switch (quality) {
-    case 100: return 1.0f / 3.0f;
-    case 101: return 1.0f / 2.3f;
-    case 102: return 1.0f / 2.0f;
-    case 103: return 1.0f / 1.7f;
-    case 104: return 1.0f / 1.5f;
-    case 105: return 1.0f / 1.3f;
-    case 106: return 1.0f;
-    default: return 0.0f;
-    }
+    return osr::interop::xess_bridge::XessQualityScale(quality);
 }
 
 std::string ResolutionString(const void* value) {
@@ -98,6 +85,29 @@ std::string ExecuteThrottleSuffix(uint64_t count) {
         out << " throttling=enabled interval=" << kExecuteLogInterval;
     }
     return out.str();
+}
+
+osr::interop::xess_bridge::XessVkRuntimeState VkRuntimeFor(void* context) {
+    auto& state = State();
+    std::lock_guard lock(state.contexts_mutex);
+    const auto it = state.vk_contexts.find(context);
+    if (it != state.vk_contexts.end()) {
+        return it->second;
+    }
+    return {};
+}
+
+void UpdateVkRuntime(void* context, const osr::interop::xess_bridge::XessVkRuntimeState& runtime) {
+    auto& state = State();
+    std::lock_guard lock(state.contexts_mutex);
+    state.vk_contexts[context] = runtime;
+}
+
+template <typename Mutator>
+void MutateVkRuntime(void* context, Mutator mutator) {
+    auto& state = State();
+    std::lock_guard lock(state.contexts_mutex);
+    mutator(state.vk_contexts[context]);
 }
 
 std::filesystem::path ThisModulePath() {
@@ -258,6 +268,9 @@ __declspec(dllexport) XessResult xessSetJitterScale(void* context, float x, floa
     std::ostringstream out;
     out << "xessSetJitterScale context=" << context << " x=" << x << " y=" << y;
     Log(osr::core::LogLevel::Info, out.str());
+    MutateVkRuntime(context, [x, y](auto& runtime) {
+        runtime.jitter_scale = {x, y};
+    });
     using Fn = XessResult (*)(void*, float, float);
     return ForwardResult<Fn>("xessSetJitterScale", context, x, y);
 }
@@ -272,6 +285,9 @@ __declspec(dllexport) XessResult xessSetVelocityScale(void* context, float x, fl
     std::ostringstream out;
     out << "xessSetVelocityScale context=" << context << " x=" << x << " y=" << y;
     Log(osr::core::LogLevel::Info, out.str());
+    MutateVkRuntime(context, [x, y](auto& runtime) {
+        runtime.velocity_scale = {x, y};
+    });
     using Fn = XessResult (*)(void*, float, float);
     return ForwardResult<Fn>("xessSetVelocityScale", context, x, y);
 }
@@ -280,6 +296,9 @@ __declspec(dllexport) XessResult xessSetExposureMultiplier(void* context, float 
     std::ostringstream out;
     out << "xessSetExposureMultiplier context=" << context << " value=" << value;
     Log(osr::core::LogLevel::Info, out.str());
+    MutateVkRuntime(context, [value](auto& runtime) {
+        runtime.exposure_multiplier = value;
+    });
     using Fn = XessResult (*)(void*, float);
     return ForwardResult<Fn>("xessSetExposureMultiplier", context, value);
 }
@@ -358,28 +377,98 @@ __declspec(dllexport) XessResult xessGetPipelineBuildStatus(void* context, void*
     return ForwardResult<Fn>("xessGetPipelineBuildStatus", context, status);
 }
 
+__declspec(dllexport) XessResult xessVKGetRequiredInstanceExtensions(uint32_t* count,
+                                                                      const char* const** extensions,
+                                                                      uint32_t* min_vk_api_version) {
+    Log(osr::core::LogLevel::Debug, "xessVKGetRequiredInstanceExtensions count=" + Ptr(count) +
+                                    " extensions=" + Ptr(extensions) +
+                                    " min_vk_api_version=" + Ptr(min_vk_api_version));
+    using Fn = XessResult (*)(uint32_t*, const char* const**, uint32_t*);
+    return ForwardResult<Fn>("xessVKGetRequiredInstanceExtensions", count, extensions, min_vk_api_version);
+}
+
+__declspec(dllexport) XessResult xessVKGetRequiredDeviceExtensions(void* instance,
+                                                                    void* physical_device,
+                                                                    uint32_t* count,
+                                                                    const char* const** extensions) {
+    Log(osr::core::LogLevel::Debug, "xessVKGetRequiredDeviceExtensions instance=" + Ptr(instance) +
+                                    " physical_device=" + Ptr(physical_device) +
+                                    " count=" + Ptr(count) +
+                                    " extensions=" + Ptr(extensions));
+    using Fn = XessResult (*)(void*, void*, uint32_t*, const char* const**);
+    return ForwardResult<Fn>("xessVKGetRequiredDeviceExtensions", instance, physical_device, count, extensions);
+}
+
+__declspec(dllexport) XessResult xessVKGetRequiredDeviceFeatures(void* instance,
+                                                                 void* physical_device,
+                                                                 void** features) {
+    Log(osr::core::LogLevel::Debug, "xessVKGetRequiredDeviceFeatures instance=" + Ptr(instance) +
+                                    " physical_device=" + Ptr(physical_device) +
+                                    " features=" + Ptr(features));
+    using Fn = XessResult (*)(void*, void*, void**);
+    return ForwardResult<Fn>("xessVKGetRequiredDeviceFeatures", instance, physical_device, features);
+}
+
 __declspec(dllexport) XessResult xessVKCreateContext(void* instance, void* physical_device, void* device, void* out_context) {
     Log(osr::core::LogLevel::Info, "xessVKCreateContext instance=" + Ptr(instance) + " physical_device=" + Ptr(physical_device) + " device=" + Ptr(device) + " out_context=" + Ptr(out_context));
     using Fn = XessResult (*)(void*, void*, void*, void*);
-    return ForwardResult<Fn>("xessVKCreateContext", instance, physical_device, device, out_context);
+    const XessResult result = ForwardResult<Fn>("xessVKCreateContext", instance, physical_device, device, out_context);
+    if (result == 0 && out_context != nullptr) {
+        void* created_context = *static_cast<void**>(out_context);
+        MutateVkRuntime(created_context, [](auto&) {});
+        Log(osr::core::LogLevel::Info, "registered XeSS Vulkan context=" + Ptr(created_context));
+    }
+    return result;
 }
 
 __declspec(dllexport) XessResult xessVKInit(void* context, const void* init_params) {
-    Log(osr::core::LogLevel::Info, "xessVKInit context=" + Ptr(context) + " init_params=" + Ptr(init_params));
+    if (init_params != nullptr) {
+        const auto* params = static_cast<const osr::interop::xess_bridge::XessVkInitParams*>(init_params);
+        auto runtime = VkRuntimeFor(context);
+        runtime.has_init = true;
+        runtime.init = *params;
+        UpdateVkRuntime(context, runtime);
+
+        std::ostringstream out;
+        out << "xessVKInit context=" << context
+            << " output=" << params->output_resolution.x << "x" << params->output_resolution.y
+            << " quality=" << params->quality_setting << "("
+            << osr::interop::xess_bridge::XessQualityName(params->quality_setting) << ")"
+            << " scale=" << osr::interop::xess_bridge::XessQualityScale(params->quality_setting)
+            << " init_flags=0x" << std::hex << params->init_flags << std::dec
+            << "(" << osr::interop::xess_bridge::DescribeXessInitFlags(params->init_flags) << ")"
+            << " init_params=" << init_params;
+        Log(osr::core::LogLevel::Info, out.str());
+    } else {
+        Log(osr::core::LogLevel::Info, "xessVKInit context=" + Ptr(context) + " init_params=<null>");
+    }
     using Fn = XessResult (*)(void*, const void*);
     return ForwardResult<Fn>("xessVKInit", context, init_params);
+}
+
+__declspec(dllexport) XessResult xessVKGetInitParams(void* context, void* init_params) {
+    Log(osr::core::LogLevel::Debug, "xessVKGetInitParams context=" + Ptr(context) + " init_params=" + Ptr(init_params));
+    using Fn = XessResult (*)(void*, void*);
+    return ForwardResult<Fn>("xessVKGetInitParams", context, init_params);
 }
 
 __declspec(dllexport) XessResult xessVKExecute(void* context, void* command_buffer, const void* execute_params) {
     EnsureInitialized();
     const uint64_t execute_count = State().vk_execute_count.fetch_add(1) + 1;
     if (ShouldLogExecute(execute_count) || execute_count == kUnthrottledExecuteLogs + 1) {
-        LogFrame(osr::core::LogLevel::Info,
-                 execute_count,
-                 "xessVKExecute context=" + Ptr(context) +
-                     " command_buffer=" + Ptr(command_buffer) +
-                     " execute_params=" + Ptr(execute_params) +
-                     ExecuteThrottleSuffix(execute_count));
+        std::string message = "xessVKExecute context=" + Ptr(context) +
+                              " command_buffer=" + Ptr(command_buffer) +
+                              " execute_params=" + Ptr(execute_params) +
+                              ExecuteThrottleSuffix(execute_count);
+        if (execute_params != nullptr) {
+            const auto* params = static_cast<const osr::interop::xess_bridge::XessVkExecuteParams*>(execute_params);
+            const auto frame = osr::interop::xess_bridge::NormalizeVkFrameContext(execute_count,
+                                                                                  VkRuntimeFor(context),
+                                                                                  *params);
+            message += " ";
+            message += osr::interop::xess_bridge::DescribeVkFrameContext(frame);
+        }
+        LogFrame(osr::core::LogLevel::Info, execute_count, message);
     }
     using Fn = XessResult (*)(void*, void*, const void*);
     return ForwardResult<Fn>("xessVKExecute", context, command_buffer, execute_params);

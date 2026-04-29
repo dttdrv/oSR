@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(oSR VERSION 0.1.0 LANGUAGES CXX)
+project(oSR VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,6 +56,7 @@ target_link_libraries(osr_fsr_bridge PUBLIC osr_core osr_dx12)
 add_library(osr_vendor_stubs STATIC
     src/interop/dlss_bridge/dlss_bridge.cpp
     src/interop/xess_bridge/xess_bridge.cpp
+    src/interop/xess_bridge/xess_vk_frame_context.cpp
 )
 target_include_directories(osr_vendor_stubs PUBLIC src)
 target_link_libraries(osr_vendor_stubs PUBLIC osr_core)
@@ -63,6 +64,7 @@ target_link_libraries(osr_vendor_stubs PUBLIC osr_core)
 if(WIN32 AND OSR_BUILD_XESS_PROXY)
     add_library(osr_xess_proxy SHARED
         src/interop/xess_bridge/xess_proxy.cpp
+        src/interop/xess_bridge/xess_vk_frame_context.cpp
     )
     target_include_directories(osr_xess_proxy PUBLIC src)
     target_link_libraries(osr_xess_proxy PRIVATE osr_core)
@@ -199,6 +201,12 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_quality_mode_tests PRIVATE osr_core)
     add_test(NAME quality_mode COMMAND osr_quality_mode_tests)
+
+    add_executable(osr_xess_vk_frame_context_tests
+        src/tests/xess_vk_frame_context_tests.cpp
+    )
+    target_link_libraries(osr_xess_vk_frame_context_tests PRIVATE osr_vendor_stubs)
+    add_test(NAME xess_vk_frame_context COMMAND osr_xess_vk_frame_context_tests)
 
     add_executable(osr_wind_tunnel_synthetic_frame_tests
         src/tests/wind_tunnel_synthetic_frame_tests.cpp

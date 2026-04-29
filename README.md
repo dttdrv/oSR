@@ -1,8 +1,8 @@
 # oSR
 
-oSR is an early clean-room prototype for a DX12 temporal super-resolution replacement layer. V0 targets SDK/sample applications that already provide FSR/DLSS/XeSS-style temporal upscaler inputs.
+oSR is an early clean-room prototype for a DX12 temporal super-resolution replacement layer. The current repository version is `v0.2.0`: the lab SR path exists, the XeSS-style quality ladder is implemented, and the No Man's Sky XeSS proxy can load, forward to the real runtime, and decode Vulkan init/execute metadata into oSR's normalized `FrameContext` contract.
 
-Current phase: `phase_0`. See `ARCHITECTURE.md`, `ROADMAP.md`, `STATE.yaml`, and `LOG.md`.
+Current phase: `phase_4`. This is not a `v1.0` release yet; `v1.0` should mean a real game frame reaches oSR-owned reconstruction instead of pass-through forwarding. See `ARCHITECTURE.md`, `ROADMAP.md`, `STATE.yaml`, and `LOG.md`.
 
 Harness plan: see `HARNESS.md` for the dual-mode eye-test plus logging/capture design.
 
@@ -54,6 +54,8 @@ tools\osr_nms_xess_tool.bat install
 tools\osr_nms_xess_tool.bat log
 tools\osr_nms_xess_tool.bat restore
 ```
+
+The proxy currently installs as `libxess.dll`, preserves the original Intel runtime as `libxess_real.dll`, and logs to the game's `Binaries\osr_logs\osr_xess_proxy.log`. It is still an opt-in diagnostic bridge: it observes and normalizes the XeSS boundary, then forwards to the real XeSS runtime.
 
 For a visual 3D edge and render-scale check:
 
