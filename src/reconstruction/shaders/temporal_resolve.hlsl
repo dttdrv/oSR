@@ -24,6 +24,13 @@ cbuffer TemporalConstants : register(b0)
     float g_sharpening_reactive_scale;
     float g_history_clip_margin;
     float g_feature_lock_sharpening_boost;
+    float g_feature_lock_min_edge_strength;
+    float g_feature_lock_min_history_trust;
+    float g_feature_lock_max_luma_delta;
+    float g_feature_lock_max_luma_variance;
+    float g_feature_lock_max_motion_pixels;
+    float g_feature_lock_reactive_unlock_threshold;
+    float g_feature_lock_acquire_rate;
     float2 g_jitter_offset;
 };
 
@@ -72,14 +79,14 @@ float LocalEdgeStrength(float2 display_px)
 
 float FeatureLockStrength(float2 display_px, float history_weight, float color_residual, float motion_len, float reactive, bool disoccluded)
 {
-    bool stable = LocalEdgeStrength(display_px) >= 0.18f &&
-                  history_weight >= 0.70f &&
-                  color_residual <= 0.045f &&
-                  (color_residual * color_residual) <= 0.0008f &&
-                  motion_len <= 1.5f &&
-                  reactive < 0.20f &&
+    bool stable = LocalEdgeStrength(display_px) >= g_feature_lock_min_edge_strength &&
+                  history_weight >= g_feature_lock_min_history_trust &&
+                  color_residual <= g_feature_lock_max_luma_delta &&
+                  (color_residual * color_residual) <= g_feature_lock_max_luma_variance &&
+                  motion_len <= g_feature_lock_max_motion_pixels &&
+                  reactive < g_feature_lock_reactive_unlock_threshold &&
                   !disoccluded;
-    return stable ? 0.22f : 0.0f;
+    return stable ? saturate(g_feature_lock_acquire_rate) : 0.0f;
 }
 
 float4 ApplyDetailRecovery(float4 resolved, float2 display_px, float history_weight, float feature_lock_strength, float reactive, bool disoccluded)

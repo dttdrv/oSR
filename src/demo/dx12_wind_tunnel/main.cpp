@@ -345,6 +345,13 @@ void ApplyTemporalSettings(osr::backends::dx12::TemporalResolveConstants& consta
     constants.sharpening_reactive_scale = settings.sharpening_reactive_scale;
     constants.history_clip_margin = settings.history_clip_margin;
     constants.feature_lock_sharpening_boost = settings.feature_lock_sharpening_boost;
+    constants.feature_lock_min_edge_strength = settings.feature_lock_min_edge_strength;
+    constants.feature_lock_min_history_trust = settings.feature_lock_min_history_trust;
+    constants.feature_lock_max_luma_delta = settings.feature_lock_max_luma_delta;
+    constants.feature_lock_max_luma_variance = settings.feature_lock_max_luma_variance;
+    constants.feature_lock_max_motion_pixels = settings.feature_lock_max_motion_pixels;
+    constants.feature_lock_reactive_unlock_threshold = settings.feature_lock_reactive_unlock_threshold;
+    constants.feature_lock_acquire_rate = settings.feature_lock_acquire_rate;
 }
 
 bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult& result,
@@ -693,6 +700,20 @@ int main(int argc, char** argv) {
             temporal_settings.sharpening_reactive_scale = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
         } else if (std::string(argv[i]) == "--history-clip-margin" && i + 1 < argc) {
             temporal_settings.history_clip_margin = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--feature-lock-min-edge" && i + 1 < argc) {
+            temporal_settings.feature_lock_min_edge_strength = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--feature-lock-min-history" && i + 1 < argc) {
+            temporal_settings.feature_lock_min_history_trust = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--feature-lock-max-luma-delta" && i + 1 < argc) {
+            temporal_settings.feature_lock_max_luma_delta = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--feature-lock-max-luma-variance" && i + 1 < argc) {
+            temporal_settings.feature_lock_max_luma_variance = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--feature-lock-max-motion" && i + 1 < argc) {
+            temporal_settings.feature_lock_max_motion_pixels = ParseClampedFloat(argv[++i], 0.0f, 1000000.0f);
+        } else if (std::string(argv[i]) == "--feature-lock-reactive-unlock" && i + 1 < argc) {
+            temporal_settings.feature_lock_reactive_unlock_threshold = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
+        } else if (std::string(argv[i]) == "--feature-lock-acquire-rate" && i + 1 < argc) {
+            temporal_settings.feature_lock_acquire_rate = ParseClampedFloat(argv[++i], 0.0f, 1.0f);
         } else if (std::string(argv[i]) == "--capture-gate-thresholds" && i + 1 < argc) {
             capture_gate_thresholds_path = argv[++i];
             capture_gate_thresholds = osr::debug::LoadCaptureAnalysisGateThresholds(capture_gate_thresholds_path);

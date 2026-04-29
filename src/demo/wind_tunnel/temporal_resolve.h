@@ -19,6 +19,13 @@ struct TemporalResolveSettings {
     float sharpening_reactive_scale = 0.25f;
     float history_clip_margin = 0.015f;
     float feature_lock_sharpening_boost = 0.35f;
+    float feature_lock_min_edge_strength = 0.18f;
+    float feature_lock_min_history_trust = 0.70f;
+    float feature_lock_max_luma_delta = 0.045f;
+    float feature_lock_max_luma_variance = 0.0008f;
+    float feature_lock_max_motion_pixels = 1.5f;
+    float feature_lock_reactive_unlock_threshold = 0.20f;
+    float feature_lock_acquire_rate = 0.22f;
 };
 
 struct TemporalResolveStats {

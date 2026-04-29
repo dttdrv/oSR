@@ -292,7 +292,14 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
     double depth_residual_sum = 0.0;
     double sharpening_amount_sum = 0.0;
     double feature_lock_sum = 0.0;
-    const reconstruction::FeatureLockSettings feature_lock_settings;
+    reconstruction::FeatureLockSettings feature_lock_settings;
+    feature_lock_settings.min_edge_strength = settings.feature_lock_min_edge_strength;
+    feature_lock_settings.min_history_trust = settings.feature_lock_min_history_trust;
+    feature_lock_settings.max_luma_delta = settings.feature_lock_max_luma_delta;
+    feature_lock_settings.max_luma_variance = settings.feature_lock_max_luma_variance;
+    feature_lock_settings.max_motion_pixels = settings.feature_lock_max_motion_pixels;
+    feature_lock_settings.reactive_unlock_threshold = settings.feature_lock_reactive_unlock_threshold;
+    feature_lock_settings.acquire_rate = settings.feature_lock_acquire_rate;
     const float display_per_render_x = static_cast<float>(display_size.width) / static_cast<float>(render_size.width);
     const float display_per_render_y = static_cast<float>(display_size.height) / static_cast<float>(render_size.height);
     const bool has_previous_depth = previous_frame &&

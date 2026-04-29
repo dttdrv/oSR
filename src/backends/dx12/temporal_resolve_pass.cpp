@@ -51,6 +51,13 @@ cbuffer TemporalConstants : register(b0)
     float g_sharpening_reactive_scale;
     float g_history_clip_margin;
     float g_feature_lock_sharpening_boost;
+    float g_feature_lock_min_edge_strength;
+    float g_feature_lock_min_history_trust;
+    float g_feature_lock_max_luma_delta;
+    float g_feature_lock_max_luma_variance;
+    float g_feature_lock_max_motion_pixels;
+    float g_feature_lock_reactive_unlock_threshold;
+    float g_feature_lock_acquire_rate;
     float2 g_jitter_offset;
 };
 
@@ -99,14 +106,14 @@ float LocalEdgeStrength(float2 display_px)
 
 float FeatureLockStrength(float2 display_px, float history_weight, float color_residual, float motion_len, float reactive, bool disoccluded)
 {
-    bool stable = LocalEdgeStrength(display_px) >= 0.18f &&
-                  history_weight >= 0.70f &&
-                  color_residual <= 0.045f &&
-                  (color_residual * color_residual) <= 0.0008f &&
-                  motion_len <= 1.5f &&
-                  reactive < 0.20f &&
+    bool stable = LocalEdgeStrength(display_px) >= g_feature_lock_min_edge_strength &&
+                  history_weight >= g_feature_lock_min_history_trust &&
+                  color_residual <= g_feature_lock_max_luma_delta &&
+                  (color_residual * color_residual) <= g_feature_lock_max_luma_variance &&
+                  motion_len <= g_feature_lock_max_motion_pixels &&
+                  reactive < g_feature_lock_reactive_unlock_threshold &&
                   !disoccluded;
-    return stable ? 0.22f : 0.0f;
+    return stable ? saturate(g_feature_lock_acquire_rate) : 0.0f;
 }
 
 float4 ApplyDetailRecovery(float4 resolved, float2 display_px, float history_weight, float feature_lock_strength, float reactive, bool disoccluded)
@@ -337,7 +344,7 @@ bool TemporalResolvePass::Initialize(void* native_device) {
     root_params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     root_params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     root_params[1].Constants.ShaderRegister = 0;
-    root_params[1].Constants.Num32BitValues = 16;
+    root_params[1].Constants.Num32BitValues = 23;
     root_params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
     D3D12_ROOT_SIGNATURE_DESC root_desc {};
@@ -499,6 +506,13 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         float sharpening_reactive_scale;
         float history_clip_margin;
         float feature_lock_sharpening_boost;
+        float feature_lock_min_edge_strength;
+        float feature_lock_min_history_trust;
+        float feature_lock_max_luma_delta;
+        float feature_lock_max_luma_variance;
+        float feature_lock_max_motion_pixels;
+        float feature_lock_reactive_unlock_threshold;
+        float feature_lock_acquire_rate;
         float jitter_x;
         float jitter_y;
     };
@@ -517,10 +531,17 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         constants.sharpening_reactive_scale,
         constants.history_clip_margin,
         constants.feature_lock_sharpening_boost,
+        constants.feature_lock_min_edge_strength,
+        constants.feature_lock_min_history_trust,
+        constants.feature_lock_max_luma_delta,
+        constants.feature_lock_max_luma_variance,
+        constants.feature_lock_max_motion_pixels,
+        constants.feature_lock_reactive_unlock_threshold,
+        constants.feature_lock_acquire_rate,
         constants.jitter_offset.x,
         constants.jitter_offset.y
     };
-    command_list->SetComputeRoot32BitConstants(1, 16, &c, 0);
+    command_list->SetComputeRoot32BitConstants(1, 23, &c, 0);
     command_list->Dispatch((constants.display_size.width + 7u) / 8u,
                            (constants.display_size.height + 7u) / 8u,
                            1);

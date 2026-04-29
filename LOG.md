@@ -813,3 +813,12 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Initial default threshold is `0.13`, above the current default capture's `bad_lock_signal=0.102451`.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name bad_lock_gate_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture gate passed and wrote threshold/value evidence to `capture_analysis.json`.
+
+### Feature-Lock Threshold CLI Plumbing
+
+- Added feature-lock acquisition thresholds to temporal settings and DX12 temporal constants: min edge strength, min history trust, max luma delta, max luma variance, max motion pixels, reactive unlock threshold, and acquire rate.
+- Added DX12 wind-tunnel CLI overrides: `--feature-lock-min-edge`, `--feature-lock-min-history`, `--feature-lock-max-luma-delta`, `--feature-lock-max-luma-variance`, `--feature-lock-max-motion`, `--feature-lock-reactive-unlock`, and `--feature-lock-acquire-rate`.
+- Updated CPU temporal resolve, embedded DX12 HLSL, and external HLSL to use the shared threshold settings instead of hardcoded feature-lock constants.
+- Updated the DX12 temporal root constants from 16 to 23 DWORDs to carry the new threshold values.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name feature_lock_cli_defaults_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; default metrics matched the previous tuned default.
