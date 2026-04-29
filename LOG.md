@@ -757,3 +757,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name feature_lock_sharpening_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed.
 - Comparison: `tools/run_capture_compare.bat build/manual/captures/feature_lock_metrics_v1 build/manual/captures/feature_lock_sharpening_v1` exited `0`; both captures passed gates, with existing score effectively unchanged (`80.5975` before, `80.5953` after) because the current score does not reward locked-detail sharpness.
+
+### GPU Feature Lock Debug UAV
+
+- Added `debug_feature_lock_strength` as a fourth temporal debug UAV in the DX12 temporal resolve backend.
+- The temporal shader now writes feature-lock strength to `u4`, and the DX12 wind tunnel reads the map back into normal temporal debug maps.
+- Selected-frame debug parity now includes `feature_lock_strength`, and `debug_parity.json` includes the feature-lock map diff.
+- Capture-pack metrics now include feature-lock debug-map max/mean parity columns.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name feature_lock_uav_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed and reported `feature_lock_mean=0.000415937`, `text_feature_lock_mean=0.0165235`, and `reactive_feature_lock_mean=0`.
+- Comparison: `tools/run_capture_compare.bat build/manual/captures/feature_lock_sharpening_v1 build/manual/captures/feature_lock_uav_v1` exited `0`; both captures passed with the same current ROI/history score.

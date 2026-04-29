@@ -8,6 +8,7 @@ RWTexture2D<float4> g_output_color : register(u0);
 RWTexture2D<float> g_debug_history_weight : register(u1);
 RWTexture2D<float> g_debug_color_residual : register(u2);
 RWTexture2D<float> g_debug_depth_residual : register(u3);
+RWTexture2D<float> g_debug_feature_lock_strength : register(u4);
 
 cbuffer TemporalConstants : register(b0)
 {
@@ -265,4 +266,5 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
     g_debug_history_weight[out_px] = history_weight;
     g_debug_color_residual[out_px] = color_residual;
     g_debug_depth_residual[out_px] = depth_residual;
+    g_debug_feature_lock_strength[out_px] = feature_lock_strength;
 }

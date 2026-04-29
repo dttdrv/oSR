@@ -35,6 +35,7 @@ RWTexture2D<float4> g_output_color : register(u0);
 RWTexture2D<float> g_debug_history_weight : register(u1);
 RWTexture2D<float> g_debug_color_residual : register(u2);
 RWTexture2D<float> g_debug_depth_residual : register(u3);
+RWTexture2D<float> g_debug_feature_lock_strength : register(u4);
 
 cbuffer TemporalConstants : register(b0)
 {
@@ -292,6 +293,7 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
     g_debug_history_weight[out_px] = history_weight;
     g_debug_color_residual[out_px] = color_residual;
     g_debug_depth_residual[out_px] = depth_residual;
+    g_debug_feature_lock_strength[out_px] = feature_lock_strength;
 }
 )";
 
@@ -324,7 +326,7 @@ bool TemporalResolvePass::Initialize(void* native_device) {
     ranges[0].BaseShaderRegister = 0;
     ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    ranges[1].NumDescriptors = 4;
+    ranges[1].NumDescriptors = 5;
     ranges[1].BaseShaderRegister = 0;
     ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
@@ -395,7 +397,7 @@ bool TemporalResolvePass::Initialize(void* native_device) {
 
     D3D12_DESCRIPTOR_HEAP_DESC heap_desc {};
     heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    heap_desc.NumDescriptors = 10;
+    heap_desc.NumDescriptors = 11;
     heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     if (Failed(native_device_->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&descriptor_heap_)))) {
         core::Logger::Instance().Log(core::LogLevel::Error, 0, "dx12.temporal_resolve", "Failed to create descriptor heap.");
@@ -417,7 +419,8 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         !resources.output_color ||
         !resources.debug_history_weight ||
         !resources.debug_color_residual ||
-        !resources.debug_depth_residual) {
+        !resources.debug_depth_residual ||
+        !resources.debug_feature_lock_strength) {
         core::Logger::Instance().Log(core::LogLevel::Error, frame.frame_id, "dx12.temporal_resolve", "Missing temporal resolve resource.");
         return false;
     }
@@ -453,6 +456,7 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
     write_uav(resources.debug_history_weight, DXGI_FORMAT_R32_FLOAT, 1);
     write_uav(resources.debug_color_residual, DXGI_FORMAT_R32_FLOAT, 2);
     write_uav(resources.debug_depth_residual, DXGI_FORMAT_R32_FLOAT, 3);
+    write_uav(resources.debug_feature_lock_strength, DXGI_FORMAT_R32_FLOAT, 4);
 
     std::vector<D3D12_RESOURCE_BARRIER> to_uav;
     auto push_transition = [&](ID3D12Resource* resource) {
@@ -471,6 +475,7 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
     push_transition(resources.debug_history_weight);
     push_transition(resources.debug_color_residual);
     push_transition(resources.debug_depth_residual);
+    push_transition(resources.debug_feature_lock_strength);
     command_list->ResourceBarrier(static_cast<UINT>(to_uav.size()), to_uav.data());
 
     ID3D12DescriptorHeap* heaps[] = {descriptor_heap_};
@@ -534,6 +539,7 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
     push_uav_barrier(resources.debug_history_weight);
     push_uav_barrier(resources.debug_color_residual);
     push_uav_barrier(resources.debug_depth_residual);
+    push_uav_barrier(resources.debug_feature_lock_strength);
     for (auto barrier : to_uav) {
         std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
         barriers.push_back(barrier);

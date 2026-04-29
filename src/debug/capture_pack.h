@@ -54,6 +54,8 @@ struct HarnessMetricRow {
     double debug_color_residual_mean_abs = 0.0;
     double debug_depth_residual_max_abs = 0.0;
     double debug_depth_residual_mean_abs = 0.0;
+    double debug_feature_lock_max_abs = 0.0;
+    double debug_feature_lock_mean_abs = 0.0;
     double history_reject_pct = 0.0;
     double residual_search_pct = 0.0;
     double mv_luma_residual_mean = 0.0;

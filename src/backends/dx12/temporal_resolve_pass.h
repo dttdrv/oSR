@@ -17,6 +17,7 @@ struct TemporalResolveResources {
     ID3D12Resource* debug_history_weight = nullptr;
     ID3D12Resource* debug_color_residual = nullptr;
     ID3D12Resource* debug_depth_residual = nullptr;
+    ID3D12Resource* debug_feature_lock_strength = nullptr;
 };
 
 struct TemporalResolveConstants {
