@@ -805,3 +805,11 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Folded `bad_lock_signal` into the capture comparison score with a small direct penalty, while keeping the existing locked-detail score as the main detail metric.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_capture_compare.bat build/manual/captures/split_default_s040 build/manual/captures/split_guarded_s040_clip015 build/manual/captures/split_default_s040_clip015` exited `0`; output now reports `text_contrast_ratio=1.01617`, `bad_lock_signal=0.102451`, and `locked_detail_score=83.4721` for the current default capture.
+
+### Bad-Lock Capture Gate
+
+- Added `max_bad_lock_signal` to capture-analysis thresholds and `profiles/capture_gate.cfg`.
+- Capture analysis now fails selected-frame gates when feature locks leak into bad regions above the configured threshold.
+- Initial default threshold is `0.13`, above the current default capture's `bad_lock_signal=0.102451`.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name bad_lock_gate_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture gate passed and wrote threshold/value evidence to `capture_analysis.json`.

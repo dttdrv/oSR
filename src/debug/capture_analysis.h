@@ -72,6 +72,7 @@ struct CaptureAnalysisGateThresholds {
     double max_reactive_history_trusted_pct = 1.0;
     double max_color_reject_candidate_pct = 3.0;
     double min_locked_detail_score = 50.0;
+    double max_bad_lock_signal = 0.13;
 };
 
 [[nodiscard]] CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir);

@@ -626,6 +626,8 @@ CaptureAnalysisGateThresholds LoadCaptureAnalysisGateThresholds(const std::files
             thresholds.max_color_reject_candidate_pct = std::stod(value);
         } else if (key == "min_locked_detail_score") {
             thresholds.min_locked_detail_score = std::stod(value);
+        } else if (key == "max_bad_lock_signal") {
+            thresholds.max_bad_lock_signal = std::stod(value);
         }
     }
     return thresholds;
@@ -672,6 +674,10 @@ CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis
         analysis.text_region.samples > 0 &&
         analysis.locked_detail.score < thresholds.min_locked_detail_score) {
         return fail("locked detail score below threshold");
+    }
+    if (analysis.feature_lock_strength.samples > 0 &&
+        analysis.locked_detail.bad_lock_signal > thresholds.max_bad_lock_signal) {
+        return fail("bad lock signal above threshold");
     }
     gate.passed = true;
     gate.reason = "ok";
@@ -726,7 +732,8 @@ bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
         << "\"max_transparent_history_trusted_pct\":" << thresholds.max_transparent_history_trusted_pct << ","
         << "\"max_reactive_history_trusted_pct\":" << thresholds.max_reactive_history_trusted_pct << ","
         << "\"max_color_reject_candidate_pct\":" << thresholds.max_color_reject_candidate_pct << ","
-        << "\"min_locked_detail_score\":" << thresholds.min_locked_detail_score
+        << "\"min_locked_detail_score\":" << thresholds.min_locked_detail_score << ","
+        << "\"max_bad_lock_signal\":" << thresholds.max_bad_lock_signal
         << "},\n";
     out << "  \"global\": {\n";
     write_value_stats("history_weight", analysis.history_weight, true);

@@ -96,6 +96,7 @@ build_status:
     - Default temporal sharpening is tuned to 0.40 after a split-text DX12 temporal sweep beat the previous 0.28 default without adding moving/reactive feature locks.
     - Default history_clip_margin is tuned to 0.015 after a guarded DX12 sweep beat the previous 0.02 aggregate capture score without lowering text trusted history.
     - Capture compare now reports text_contrast_ratio and bad_lock_signal directly, and ranking includes a small bad-lock penalty.
+    - Capture analysis now enforces max_bad_lock_signal; the default gate threshold is 0.13 and the current default capture reports 0.102451.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -151,8 +152,8 @@ next_actions:
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Tune feature-lock thresholds using locked_detail_score, text_contrast_ratio, and bad_lock_signal instead of the older ROI/history score alone.
-  - Add a max_bad_lock_signal capture gate threshold so transparent/specular lock leakage can fail captures directly, not only reduce ranking.
-  - Run a guarded feature-lock threshold sweep after max_bad_lock_signal is enforced.
+  - Run a guarded feature-lock threshold sweep now that max_bad_lock_signal is enforced.
+  - Expose feature-lock acquisition thresholds as CLI/settings knobs before sweeping them.
   - Add a saved high-resolution reference or supersampled oracle artifact so future detail scoring can move beyond spatial-baseline comparisons.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
