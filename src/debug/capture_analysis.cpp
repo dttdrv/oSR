@@ -232,7 +232,8 @@ void ComputeMotionSplitHistory(const std::vector<float>& history,
 CaptureRegionStats FinalizeRegion(uint64_t samples,
                                    uint64_t trusted,
                                    double history_sum,
-                                   double color_residual_sum) {
+                                   double color_residual_sum,
+                                   double feature_lock_sum) {
     CaptureRegionStats stats;
     stats.samples = samples;
     if (samples == 0) {
@@ -240,19 +241,23 @@ CaptureRegionStats FinalizeRegion(uint64_t samples,
     }
     stats.mean_history = history_sum / static_cast<double>(samples);
     stats.mean_color_residual = color_residual_sum / static_cast<double>(samples);
+    stats.mean_feature_lock = feature_lock_sum / static_cast<double>(samples);
     stats.history_trusted_pct = static_cast<double>(trusted) * 100.0 / static_cast<double>(samples);
     return stats;
 }
 
 void AccumulateRegionSample(float history_weight,
                             float color_residual,
+                            float feature_lock,
                             uint64_t& samples,
                             uint64_t& trusted,
                             double& history_sum,
-                            double& color_residual_sum) {
+                            double& color_residual_sum,
+                            double& feature_lock_sum) {
     ++samples;
     history_sum += history_weight;
     color_residual_sum += color_residual;
+    feature_lock_sum += feature_lock;
     if (history_weight > 0.5f) {
         ++trusted;
     }
@@ -260,6 +265,7 @@ void AccumulateRegionSample(float history_weight,
 
 void ComputeSyntheticRoiStats(const std::vector<float>& history,
                               const std::vector<float>& color_residual,
+                              const std::vector<float>& feature_lock,
                               core::Dimensions display_size,
                               const std::vector<float>& reactive_mask,
                               core::Dimensions render_size,
@@ -272,6 +278,7 @@ void ComputeSyntheticRoiStats(const std::vector<float>& history,
     }
     const bool has_reactive = reactive_mask.size() == static_cast<size_t>(render_size.width) * render_size.height &&
                               render_size.IsValid();
+    const bool has_feature_lock = feature_lock.size() == history.size();
     uint64_t text_samples = 0;
     uint64_t specular_samples = 0;
     uint64_t transparent_samples = 0;
@@ -288,6 +295,10 @@ void ComputeSyntheticRoiStats(const std::vector<float>& history,
     double specular_color_sum = 0.0;
     double transparent_color_sum = 0.0;
     double reactive_color_sum = 0.0;
+    double text_lock_sum = 0.0;
+    double specular_lock_sum = 0.0;
+    double transparent_lock_sum = 0.0;
+    double reactive_lock_sum = 0.0;
 
     for (uint32_t y = 0; y < display_size.height; ++y) {
         const uint32_t ry = has_reactive
@@ -300,31 +311,32 @@ void ComputeSyntheticRoiStats(const std::vector<float>& history,
             const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(display_size.height);
             const float history_weight = history[display_index];
             const float color = color_residual[display_index];
+            const float lock = has_feature_lock ? feature_lock[display_index] : 0.0f;
             const auto text = ::osr::demo::wind_tunnel::EvaluateSyntheticTextCoverage(u, v, frame_id, true);
             const auto material = ::osr::demo::wind_tunnel::EvaluateSyntheticMaterialCoverage(u, v, frame_id, true);
             if (text.glyph) {
-                AccumulateRegionSample(history_weight, color, text_samples, text_trusted, text_history_sum, text_color_sum);
+                AccumulateRegionSample(history_weight, color, lock, text_samples, text_trusted, text_history_sum, text_color_sum, text_lock_sum);
             }
             if (material.specular) {
-                AccumulateRegionSample(history_weight, color, specular_samples, specular_trusted, specular_history_sum, specular_color_sum);
+                AccumulateRegionSample(history_weight, color, lock, specular_samples, specular_trusted, specular_history_sum, specular_color_sum, specular_lock_sum);
             }
             if (material.transparent) {
-                AccumulateRegionSample(history_weight, color, transparent_samples, transparent_trusted, transparent_history_sum, transparent_color_sum);
+                AccumulateRegionSample(history_weight, color, lock, transparent_samples, transparent_trusted, transparent_history_sum, transparent_color_sum, transparent_lock_sum);
             }
             if (has_reactive) {
                 const uint32_t rx = std::min(render_size.width - 1,
                                              static_cast<uint32_t>((static_cast<uint64_t>(x) * render_size.width) / display_size.width));
                 if (reactive_mask[static_cast<size_t>(ry) * render_size.width + rx] > 0.5f) {
-                    AccumulateRegionSample(history_weight, color, reactive_samples, reactive_trusted, reactive_history_sum, reactive_color_sum);
+                    AccumulateRegionSample(history_weight, color, lock, reactive_samples, reactive_trusted, reactive_history_sum, reactive_color_sum, reactive_lock_sum);
                 }
             }
         }
     }
 
-    analysis.text_region = FinalizeRegion(text_samples, text_trusted, text_history_sum, text_color_sum);
-    analysis.specular_region = FinalizeRegion(specular_samples, specular_trusted, specular_history_sum, specular_color_sum);
-    analysis.transparent_region = FinalizeRegion(transparent_samples, transparent_trusted, transparent_history_sum, transparent_color_sum);
-    analysis.reactive_region = FinalizeRegion(reactive_samples, reactive_trusted, reactive_history_sum, reactive_color_sum);
+    analysis.text_region = FinalizeRegion(text_samples, text_trusted, text_history_sum, text_color_sum, text_lock_sum);
+    analysis.specular_region = FinalizeRegion(specular_samples, specular_trusted, specular_history_sum, specular_color_sum, specular_lock_sum);
+    analysis.transparent_region = FinalizeRegion(transparent_samples, transparent_trusted, transparent_history_sum, transparent_color_sum, transparent_lock_sum);
+    analysis.reactive_region = FinalizeRegion(reactive_samples, reactive_trusted, reactive_history_sum, reactive_color_sum, reactive_lock_sum);
 }
 
 bool LoadFloatResource(const std::string& manifest,
@@ -405,6 +417,17 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
     }
     analysis.depth_residual = ComputeStats(depth_values, 0.035);
 
+    std::vector<float> feature_lock_values;
+    if (const auto feature_lock = FindResource(manifest, frame_dir, "feature_lock_strength")) {
+        feature_lock_values = ReadFloatRaw(feature_lock->raw,
+                                           static_cast<uint64_t>(feature_lock->size.width) * feature_lock->size.height);
+        if (feature_lock_values.empty()) {
+            analysis.error = "failed to read raw resource: " + feature_lock->raw.string();
+            return analysis;
+        }
+        analysis.feature_lock_strength = ComputeStats(feature_lock_values, 0.5);
+    }
+
     const auto motion = FindResource(manifest, frame_dir, "motion_vectors");
     if (!motion) {
         analysis.error = "missing resource: motion_vectors";
@@ -427,6 +450,7 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
     }
     ComputeSyntheticRoiStats(history_values,
                              color_values,
+                             feature_lock_values,
                              analysis.display_size,
                              reactive_values,
                              reactive_size,
@@ -540,7 +564,8 @@ bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
             << "\"samples\":" << stats.samples << ","
             << "\"mean_history\":" << stats.mean_history << ","
             << "\"history_trusted_pct\":" << stats.history_trusted_pct << ","
-            << "\"mean_color_residual\":" << stats.mean_color_residual
+            << "\"mean_color_residual\":" << stats.mean_color_residual << ","
+            << "\"mean_feature_lock\":" << stats.mean_feature_lock
             << "}" << (trailing_comma ? "," : "") << "\n";
     };
 
@@ -568,6 +593,7 @@ bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
     write_value_stats("history_weight", analysis.history_weight, true);
     write_value_stats("color_residual", analysis.color_residual, true);
     write_value_stats("depth_residual", analysis.depth_residual, true);
+    write_value_stats("feature_lock_strength", analysis.feature_lock_strength, true);
     write_value_stats("motion_magnitude", analysis.motion_magnitude, false);
     out << "  },\n";
     out << "  \"motion_static_split\": {"
@@ -601,6 +627,8 @@ std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis) {
         << " color_reject_candidate_pct=" << analysis.color_residual.over_threshold_pct
         << " depth_residual_mean=" << analysis.depth_residual.mean
         << " depth_reject_candidate_pct=" << analysis.depth_residual.over_threshold_pct
+        << " feature_lock_mean=" << analysis.feature_lock_strength.mean
+        << " feature_lock_active_pct=" << analysis.feature_lock_strength.over_threshold_pct
         << " motion_mean=" << analysis.motion_magnitude.mean
         << " motion_active_pct=" << analysis.motion_magnitude.over_threshold_pct
         << " motion_history_mean=" << analysis.motion_region_mean_history
@@ -610,6 +638,7 @@ std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis) {
         << " text_samples=" << analysis.text_region.samples
         << " text_history_mean=" << analysis.text_region.mean_history
         << " text_history_trusted_pct=" << analysis.text_region.history_trusted_pct
+        << " text_feature_lock_mean=" << analysis.text_region.mean_feature_lock
         << " specular_samples=" << analysis.specular_region.samples
         << " specular_history_mean=" << analysis.specular_region.mean_history
         << " specular_history_trusted_pct=" << analysis.specular_region.history_trusted_pct
@@ -618,7 +647,8 @@ std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis) {
         << " transparent_history_trusted_pct=" << analysis.transparent_region.history_trusted_pct
         << " reactive_samples=" << analysis.reactive_region.samples
         << " reactive_history_mean=" << analysis.reactive_region.mean_history
-        << " reactive_history_trusted_pct=" << analysis.reactive_region.history_trusted_pct;
+        << " reactive_history_trusted_pct=" << analysis.reactive_region.history_trusted_pct
+        << " reactive_feature_lock_mean=" << analysis.reactive_region.mean_feature_lock;
     return out.str();
 }
 

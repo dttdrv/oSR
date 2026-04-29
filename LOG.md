@@ -737,3 +737,12 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Added `feature_lock_strength` to `artifacts.json` so offline tooling can locate the map later.
 - Updated debug-dump tests to require the new feature-lock artifact.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
+
+### Feature Lock Capture Analysis Metrics
+
+- Added optional `feature_lock_strength` parsing to capture analysis.
+- Added global feature-lock stats plus ROI `mean_feature_lock` metrics for text, specular, transparent, and reactive regions.
+- Updated capture analysis JSON and console summaries to report feature-lock metrics.
+- Kept the feature-lock artifact optional so GPU temporal captures that only expose history/color/depth maps still analyze correctly until the shader writes a feature-lock UAV.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name feature_lock_metrics_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed and reported `feature_lock_mean=0` as expected for the current GPU path.

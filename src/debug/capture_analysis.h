@@ -22,6 +22,7 @@ struct CaptureRegionStats {
     double mean_history = 0.0;
     double history_trusted_pct = 0.0;
     double mean_color_residual = 0.0;
+    double mean_feature_lock = 0.0;
 };
 
 struct CaptureFrameAnalysis {
@@ -32,6 +33,7 @@ struct CaptureFrameAnalysis {
     CaptureValueStats history_weight;
     CaptureValueStats color_residual;
     CaptureValueStats depth_residual;
+    CaptureValueStats feature_lock_strength;
     CaptureValueStats motion_magnitude;
     uint64_t frame_id = 0;
     double motion_region_history_trusted_pct = 0.0;

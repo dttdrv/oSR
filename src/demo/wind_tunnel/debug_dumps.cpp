@@ -137,8 +137,9 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
                                    temporal_debug_maps->display_size.height == display_size.height &&
                                    temporal_debug_maps->history_weight.size() == static_cast<size_t>(display_size.width) * display_size.height &&
                                    temporal_debug_maps->color_residual.size() == temporal_debug_maps->history_weight.size() &&
-                                   temporal_debug_maps->depth_residual.size() == temporal_debug_maps->history_weight.size() &&
-                                   temporal_debug_maps->feature_lock_strength.size() == temporal_debug_maps->history_weight.size();
+                                   temporal_debug_maps->depth_residual.size() == temporal_debug_maps->history_weight.size();
+    const bool has_feature_lock_map = has_temporal_maps &&
+                                      temporal_debug_maps->feature_lock_strength.size() == temporal_debug_maps->history_weight.size();
     if (has_temporal_maps) {
         result.history_weight_pgm = WriteFloatPgm(frame_dir / "history_weight.pgm",
                                                   temporal_debug_maps->history_weight,
@@ -155,11 +156,13 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
                                                   display_size,
                                                   0.0f,
                                                   0.1f);
-        result.feature_lock_strength_pgm = WriteFloatPgm(frame_dir / "feature_lock_strength.pgm",
-                                                         temporal_debug_maps->feature_lock_strength,
-                                                         display_size,
-                                                         0.0f,
-                                                         1.0f);
+        if (has_feature_lock_map) {
+            result.feature_lock_strength_pgm = WriteFloatPgm(frame_dir / "feature_lock_strength.pgm",
+                                                             temporal_debug_maps->feature_lock_strength,
+                                                             display_size,
+                                                             0.0f,
+                                                             1.0f);
+        }
         result.history_weight_raw = WriteRawBytes(frame_dir / "history_weight.r32f.raw",
                                                   temporal_debug_maps->history_weight.data(),
                                                   temporal_debug_maps->history_weight.size() * sizeof(float));
@@ -169,9 +172,11 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
         result.depth_residual_raw = WriteRawBytes(frame_dir / "depth_residual.r32f.raw",
                                                   temporal_debug_maps->depth_residual.data(),
                                                   temporal_debug_maps->depth_residual.size() * sizeof(float));
-        result.feature_lock_strength_raw = WriteRawBytes(frame_dir / "feature_lock_strength.r32f.raw",
-                                                         temporal_debug_maps->feature_lock_strength.data(),
-                                                         temporal_debug_maps->feature_lock_strength.size() * sizeof(float));
+        if (has_feature_lock_map) {
+            result.feature_lock_strength_raw = WriteRawBytes(frame_dir / "feature_lock_strength.r32f.raw",
+                                                             temporal_debug_maps->feature_lock_strength.data(),
+                                                             temporal_debug_maps->feature_lock_strength.size() * sizeof(float));
+        }
     }
 
     result.color_input_raw = WriteRawBytes(frame_dir / "color_input.rgba8.raw", frame.color.data(), frame.color.size() * sizeof(uint32_t));
@@ -194,8 +199,13 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
             manifest << ",\n";
             manifest << "    {\"name\":\"history_weight\",\"view\":\"history_weight.pgm\",\"raw\":\"history_weight.r32f.raw\",\"format\":\"r32f\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << ",\"view_min\":0,\"view_max\":1},\n";
             manifest << "    {\"name\":\"color_residual\",\"view\":\"color_residual.pgm\",\"raw\":\"color_residual.r32f.raw\",\"format\":\"r32f\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << ",\"view_min\":0,\"view_max\":1},\n";
-            manifest << "    {\"name\":\"depth_residual\",\"view\":\"depth_residual.pgm\",\"raw\":\"depth_residual.r32f.raw\",\"format\":\"r32f\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << ",\"view_min\":0,\"view_max\":0.1},\n";
-            manifest << "    {\"name\":\"feature_lock_strength\",\"view\":\"feature_lock_strength.pgm\",\"raw\":\"feature_lock_strength.r32f.raw\",\"format\":\"r32f\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << ",\"view_min\":0,\"view_max\":1}\n";
+            manifest << "    {\"name\":\"depth_residual\",\"view\":\"depth_residual.pgm\",\"raw\":\"depth_residual.r32f.raw\",\"format\":\"r32f\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << ",\"view_min\":0,\"view_max\":0.1}";
+            if (has_feature_lock_map) {
+                manifest << ",\n";
+                manifest << "    {\"name\":\"feature_lock_strength\",\"view\":\"feature_lock_strength.pgm\",\"raw\":\"feature_lock_strength.r32f.raw\",\"format\":\"r32f\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << ",\"view_min\":0,\"view_max\":1}\n";
+            } else {
+                manifest << "\n";
+            }
         } else {
             manifest << "\n";
         }

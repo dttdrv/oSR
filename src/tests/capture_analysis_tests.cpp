@@ -46,6 +46,7 @@ int main() {
         manifest << "    {\"name\":\"history_weight\",\"raw\":\"history_weight.r32f.raw\",\"format\":\"r32f\",\"width\":4,\"height\":2},\n";
         manifest << "    {\"name\":\"color_residual\",\"raw\":\"color_residual.r32f.raw\",\"format\":\"r32f\",\"width\":4,\"height\":2},\n";
         manifest << "    {\"name\":\"depth_residual\",\"raw\":\"depth_residual.r32f.raw\",\"format\":\"r32f\",\"width\":4,\"height\":2},\n";
+        manifest << "    {\"name\":\"feature_lock_strength\",\"raw\":\"feature_lock_strength.r32f.raw\",\"format\":\"r32f\",\"width\":4,\"height\":2},\n";
         manifest << "    {\"name\":\"reactive_mask\",\"raw\":\"reactive_mask.r32f.raw\",\"format\":\"r32f\",\"width\":2,\"height\":2}\n";
         manifest << "  ]\n";
         manifest << "}\n";
@@ -58,6 +59,7 @@ int main() {
     WriteRaw(dir / "history_weight.r32f.raw", std::vector<float> {0.0f, 0.25f, 0.5f, 0.75f, 1.0f, 0.1f, 0.2f, 0.3f});
     WriteRaw(dir / "color_residual.r32f.raw", std::vector<float> {0.0f, 0.2f, 0.1f, 0.3f, 0.0f, 0.0f, 0.17f, 0.01f});
     WriteRaw(dir / "depth_residual.r32f.raw", std::vector<float> {0.0f, 0.01f, 0.02f, 0.04f, 0.0f, 0.05f, 0.0f, 0.01f});
+    WriteRaw(dir / "feature_lock_strength.r32f.raw", std::vector<float> {0.0f, 0.6f, 0.4f, 0.8f, 0.9f, 0.0f, 0.0f, 0.1f});
     WriteRaw(dir / "motion_vectors.rg32f.raw", std::vector<Float2> {{0.0f, 0.0f}, {3.0f, 4.0f}, {0.0f, 0.02f}, {0.0f, 0.0f}});
     WriteRaw(dir / "reactive_mask.r32f.raw", std::vector<float> {0.0f, 1.0f, 0.0f, 0.0f});
 
@@ -81,6 +83,9 @@ int main() {
     if (analysis.depth_residual.over_threshold_pct != 25.0) {
         return Fail("depth residual threshold percentage mismatch");
     }
+    if (analysis.feature_lock_strength.over_threshold_pct != 37.5) {
+        return Fail("feature lock active percentage mismatch");
+    }
     if (analysis.motion_magnitude.max < 4.99 || analysis.motion_magnitude.max > 5.01) {
         return Fail("motion magnitude max mismatch");
     }
@@ -94,7 +99,8 @@ int main() {
     const std::string summary = osr::debug::SummarizeCaptureAnalysis(analysis);
     if (summary.find("history_trusted_pct=25") == std::string::npos ||
         summary.find("motion_active_pct=50") == std::string::npos ||
-        summary.find("motion_history_trusted_pct=50") == std::string::npos) {
+        summary.find("motion_history_trusted_pct=50") == std::string::npos ||
+        summary.find("feature_lock_active_pct=37.5") == std::string::npos) {
         return Fail("capture analysis summary missing expected metrics");
     }
 
@@ -108,6 +114,7 @@ int main() {
         manifest << "    {\"name\":\"history_weight\",\"raw\":\"history_weight.r32f.raw\",\"format\":\"r32f\",\"width\":100,\"height\":100},\n";
         manifest << "    {\"name\":\"color_residual\",\"raw\":\"color_residual.r32f.raw\",\"format\":\"r32f\",\"width\":100,\"height\":100},\n";
         manifest << "    {\"name\":\"depth_residual\",\"raw\":\"depth_residual.r32f.raw\",\"format\":\"r32f\",\"width\":100,\"height\":100},\n";
+        manifest << "    {\"name\":\"feature_lock_strength\",\"raw\":\"feature_lock_strength.r32f.raw\",\"format\":\"r32f\",\"width\":100,\"height\":100},\n";
         manifest << "    {\"name\":\"reactive_mask\",\"raw\":\"reactive_mask.r32f.raw\",\"format\":\"r32f\",\"width\":50,\"height\":50}\n";
         manifest << "  ]\n";
         manifest << "}\n";
@@ -117,11 +124,16 @@ int main() {
         context << "{\n  \"frame_id\": 12\n}\n";
     }
     std::vector<float> roi_history(10000, 0.8f);
+    std::vector<float> roi_locks(10000, 0.0f);
     for (uint32_t y = 0; y < 100; ++y) {
         for (uint32_t x = 0; x < 100; ++x) {
             const float u = (static_cast<float>(x) + 0.5f) / 100.0f;
             const float v = (static_cast<float>(y) + 0.5f) / 100.0f;
+            const auto text = osr::demo::wind_tunnel::EvaluateSyntheticTextCoverage(u, v, 12, true);
             const auto material = osr::demo::wind_tunnel::EvaluateSyntheticMaterialCoverage(u, v, 12, true);
+            if (text.glyph) {
+                roi_locks[static_cast<size_t>(y) * 100 + x] = 0.75f;
+            }
             if (material.specular || material.transparent) {
                 roi_history[static_cast<size_t>(y) * 100 + x] = 0.0f;
             }
@@ -130,6 +142,7 @@ int main() {
     WriteRaw(roi_dir / "history_weight.r32f.raw", roi_history);
     WriteRaw(roi_dir / "color_residual.r32f.raw", std::vector<float>(10000, 0.05f));
     WriteRaw(roi_dir / "depth_residual.r32f.raw", std::vector<float>(10000, 0.01f));
+    WriteRaw(roi_dir / "feature_lock_strength.r32f.raw", roi_locks);
     WriteRaw(roi_dir / "motion_vectors.rg32f.raw", std::vector<Float2>(2500, {0.0f, 0.0f}));
     WriteRaw(roi_dir / "reactive_mask.r32f.raw", std::vector<float>(2500, 0.0f));
     const auto roi_analysis = osr::debug::AnalyzeCaptureFrame(roi_dir);
@@ -147,6 +160,11 @@ int main() {
         roi_analysis.transparent_region.history_trusted_pct != 0.0 ||
         roi_analysis.reactive_region.history_trusted_pct != 0.0) {
         return Fail("synthetic ROI trusted history percentages mismatch");
+    }
+    if (roi_analysis.text_region.mean_feature_lock < 0.7 ||
+        roi_analysis.specular_region.mean_feature_lock != 0.0 ||
+        roi_analysis.transparent_region.mean_feature_lock != 0.0) {
+        return Fail("synthetic ROI feature-lock metrics mismatch");
     }
     const auto passing_gate = osr::debug::EvaluateCaptureAnalysisGate(roi_analysis);
     if (!passing_gate.passed) {
@@ -179,6 +197,8 @@ int main() {
     }
     if (!Contains(analysis_json, "\"schema\": \"osr.capture.analysis.v1\"") ||
         !Contains(analysis_json, "\"text\": {") ||
+        !Contains(analysis_json, "\"feature_lock_strength\": {") ||
+        !Contains(analysis_json, "\"mean_feature_lock\"") ||
         !Contains(analysis_json, "\"max_reactive_history_trusted_pct\":30")) {
         return Fail("capture analysis JSON export missing expected fields");
     }
