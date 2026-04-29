@@ -26,9 +26,11 @@ struct DebugDumpResult {
     bool history_weight_pgm = false;
     bool color_residual_pgm = false;
     bool depth_residual_pgm = false;
+    bool feature_lock_strength_pgm = false;
     bool history_weight_raw = false;
     bool color_residual_raw = false;
     bool depth_residual_raw = false;
+    bool feature_lock_strength_raw = false;
     bool artifacts_json = false;
 
     [[nodiscard]] bool AllRequired() const noexcept;

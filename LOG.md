@@ -730,3 +730,10 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - The diagnostic uses local edge strength plus temporal residual evidence; luma variance is currently a temporal residual proxy until multi-frame luma moments are available.
 - Added a temporal resolve regression test that requires stable high-trust edges to produce feature-lock diagnostics.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
+
+### Feature Lock Capture Export
+
+- Added `feature_lock_strength.pgm` and `feature_lock_strength.r32f.raw` to wind-tunnel capture dumps when temporal debug maps are present.
+- Added `feature_lock_strength` to `artifacts.json` so offline tooling can locate the map later.
+- Updated debug-dump tests to require the new feature-lock artifact.
+- Verification: `tools/run_manual_tests.bat` exited `0`.

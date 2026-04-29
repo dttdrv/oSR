@@ -41,6 +41,7 @@ int main() {
     temporal_maps.history_weight.assign(static_cast<size_t>(settings.display_size.width) * settings.display_size.height, 0.5f);
     temporal_maps.color_residual.assign(temporal_maps.history_weight.size(), 0.25f);
     temporal_maps.depth_residual.assign(temporal_maps.history_weight.size(), 0.01f);
+    temporal_maps.feature_lock_strength.assign(temporal_maps.history_weight.size(), 0.75f);
 
     const std::filesystem::path dir = "build/manual/debug_dump_tests/frame_000002";
     std::filesystem::remove_all(dir.parent_path());
@@ -69,7 +70,9 @@ int main() {
         return Fail("missing artifacts manifest");
     }
     if (!result.history_weight_pgm || !result.color_residual_pgm || !result.depth_residual_pgm ||
-        !result.history_weight_raw || !result.color_residual_raw || !result.depth_residual_raw) {
+        !result.feature_lock_strength_pgm ||
+        !result.history_weight_raw || !result.color_residual_raw || !result.depth_residual_raw ||
+        !result.feature_lock_strength_raw) {
         return Fail("expected temporal resolve debug maps to be written");
     }
     if (!HeaderIs(dir / "history_weight.pgm", "P5\n64 40\n255\n")) {
@@ -82,7 +85,8 @@ int main() {
         return Fail("history weight raw size mismatch");
     }
     if (!FileContains(dir / "artifacts.json", "\"raw\":\"history_weight.r32f.raw\"") ||
-        !FileContains(dir / "artifacts.json", "\"view_x\":\"motion_vectors_x.pgm\"")) {
+        !FileContains(dir / "artifacts.json", "\"view_x\":\"motion_vectors_x.pgm\"") ||
+        !FileContains(dir / "artifacts.json", "\"name\":\"feature_lock_strength\"")) {
         return Fail("artifacts manifest should reference raw temporal maps and MV component views");
     }
 

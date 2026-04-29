@@ -87,6 +87,7 @@ build_status:
     - CPU oracle and DX12 temporal shader now use matching YCoCg history clipping instead of independent RGB channel clipping.
     - Trust Field v2 feature-lock groundwork exists as a standalone tested reconstruction module.
     - CPU temporal resolve now emits feature_lock_strength diagnostics, but feature locks are not yet allowed to change final output color.
+    - Wind-tunnel capture dumps now export feature_lock_strength PGM/raw artifacts in artifacts.json when temporal debug maps are available.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -141,7 +142,7 @@ next_actions:
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
-  - Export feature_lock_strength in capture packs and capture analysis, then wire it into confidence-gated sharpening once metrics prove it helps text/thin-feature stability.
+  - Add feature_lock_strength to capture analysis ROI metrics, then wire it into confidence-gated sharpening once metrics prove it helps text/thin-feature stability.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
   - Add throttled XeSS execute-parameter metadata decoding for No Man's Sky once the exact SDK header version is identified, without dereferencing unknown resources unsafely.
