@@ -91,6 +91,67 @@ std::optional<uint64_t> JsonUint64Value(const std::string& object, const std::st
     return static_cast<uint64_t>(std::stoull(object.substr(value_begin, value_end - value_begin)));
 }
 
+std::optional<bool> JsonBoolValue(const std::string& object, const std::string& key) {
+    const std::string needle = "\"" + key + "\":";
+    const size_t begin = object.find(needle);
+    if (begin == std::string::npos) {
+        return std::nullopt;
+    }
+    size_t value_begin = begin + needle.size();
+    while (value_begin < object.size() && (object[value_begin] == ' ' || object[value_begin] == '\t')) {
+        ++value_begin;
+    }
+    if (object.compare(value_begin, 4, "true") == 0) {
+        return true;
+    }
+    if (object.compare(value_begin, 5, "false") == 0) {
+        return false;
+    }
+    return std::nullopt;
+}
+
+uint32_t CountNeedle(const std::string& text, const std::string& needle) {
+    uint32_t count = 0;
+    size_t pos = 0;
+    while ((pos = text.find(needle, pos)) != std::string::npos) {
+        ++count;
+        pos += needle.size();
+    }
+    return count;
+}
+
+std::string SummarizeReadinessCodes(const std::string& text) {
+    std::ostringstream out;
+    size_t pos = 0;
+    bool first = true;
+    while ((pos = text.find("\"code\":\"", pos)) != std::string::npos) {
+        const size_t begin = pos + 8;
+        const size_t end = text.find('"', begin);
+        if (end == std::string::npos) {
+            break;
+        }
+        if (!first) {
+            out << "|";
+        }
+        first = false;
+        out << text.substr(begin, end - begin);
+        pos = end + 1;
+    }
+    return out.str();
+}
+
+void ParseSrReadiness(const std::string& frame_context, CaptureFrameAnalysis& analysis) {
+    const size_t begin = frame_context.find("\"sr_readiness\"");
+    if (begin == std::string::npos) {
+        return;
+    }
+    const std::string readiness = frame_context.substr(begin);
+    analysis.sr_readiness_present = true;
+    analysis.sr_readiness_ready = JsonBoolValue(readiness, "ready").value_or(false);
+    analysis.sr_readiness_error_count = CountNeedle(readiness, "\"severity\":\"error\"");
+    analysis.sr_readiness_summary = SummarizeReadinessCodes(readiness);
+}
+
 std::optional<uint32_t> JsonUintValue(const std::string& object, const std::string& key) {
     const auto value = JsonUint64Value(object, key);
     if (!value) {
@@ -501,6 +562,7 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
     const std::string frame_context = ReadText(frame_dir / "frame_context.json");
     if (!frame_context.empty()) {
         analysis.frame_id = JsonUint64Value(frame_context, "frame_id").value_or(0);
+        ParseSrReadiness(frame_context, analysis);
     }
 
     const auto history_artifact = FindResource(manifest, frame_dir, "history_weight");
@@ -738,6 +800,12 @@ bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
     out << "  \"frame_id\": " << analysis.frame_id << ",\n";
     out << "  \"display_size\": [" << analysis.display_size.width << ", " << analysis.display_size.height << "],\n";
     out << "  \"render_size\": [" << analysis.render_size.width << ", " << analysis.render_size.height << "],\n";
+    out << "  \"sr_readiness\": {"
+        << "\"present\":" << (analysis.sr_readiness_present ? "true" : "false") << ","
+        << "\"ready\":" << (analysis.sr_readiness_ready ? "true" : "false") << ","
+        << "\"error_count\":" << analysis.sr_readiness_error_count << ","
+        << "\"summary\":\"" << JsonEscape(analysis.sr_readiness_summary) << "\""
+        << "},\n";
     out << "  \"gate\": {"
         << "\"passed\":" << (gate.passed ? "true" : "false") << ","
         << "\"reason\":\"" << JsonEscape(gate.reason) << "\""
@@ -796,6 +864,8 @@ std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis) {
     std::ostringstream out;
     out << "capture_analysis"
         << " frame_id=" << analysis.frame_id
+        << " sr_ready=" << (analysis.sr_readiness_ready ? 1 : 0)
+        << " sr_readiness_errors=" << analysis.sr_readiness_error_count
         << " display=" << analysis.display_size.width << "x" << analysis.display_size.height
         << " render=" << analysis.render_size.width << "x" << analysis.render_size.height
         << " history_mean=" << analysis.history_weight.mean

@@ -58,6 +58,10 @@ struct CaptureFrameAnalysis {
     CaptureRegionStats transparent_region;
     CaptureRegionStats reactive_region;
     CaptureLockedDetailStats locked_detail;
+    bool sr_readiness_present = false;
+    bool sr_readiness_ready = false;
+    uint32_t sr_readiness_error_count = 0;
+    std::string sr_readiness_summary;
 };
 
 struct CaptureAnalysisGateResult {

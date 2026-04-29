@@ -57,7 +57,11 @@ int main() {
     }
     {
         std::ofstream context(dir / "frame_context.json", std::ios::trunc);
-        context << "{\n  \"frame_id\": 12,\n  \"source_api\": \"test\"\n}\n";
+        context << "{\n";
+        context << "  \"frame_id\": 12,\n";
+        context << "  \"source_api\": \"test\",\n";
+        context << "  \"sr_readiness\": {\"ready\":false,\"items\":[{\"severity\":\"error\",\"code\":\"missing_reactive_mask\",\"message\":\"fixture\"}]}\n";
+        context << "}\n";
     }
 
     WriteRaw(dir / "history_weight.r32f.raw", std::vector<float> {0.0f, 0.25f, 0.5f, 0.75f, 1.0f, 0.1f, 0.2f, 0.3f});
@@ -80,6 +84,10 @@ int main() {
     }
     if (analysis.frame_id != 12) {
         return Fail("capture analysis frame id mismatch");
+    }
+    if (analysis.sr_readiness_ready || analysis.sr_readiness_error_count != 1 ||
+        analysis.sr_readiness_summary.find("missing_reactive_mask") == std::string::npos) {
+        return Fail("capture analysis should parse SR readiness from frame context");
     }
     if (analysis.history_weight.over_threshold_pct != 25.0) {
         return Fail("history trusted percentage mismatch");
@@ -107,7 +115,8 @@ int main() {
     if (summary.find("history_trusted_pct=25") == std::string::npos ||
         summary.find("motion_active_pct=50") == std::string::npos ||
         summary.find("motion_history_trusted_pct=50") == std::string::npos ||
-        summary.find("feature_lock_active_pct=37.5") == std::string::npos) {
+        summary.find("feature_lock_active_pct=37.5") == std::string::npos ||
+        summary.find("sr_ready=0") == std::string::npos) {
         return Fail("capture analysis summary missing expected metrics");
     }
 
@@ -131,7 +140,10 @@ int main() {
     }
     {
         std::ofstream context(roi_dir / "frame_context.json", std::ios::trunc);
-        context << "{\n  \"frame_id\": 12\n}\n";
+        context << "{\n";
+        context << "  \"frame_id\": 12,\n";
+        context << "  \"sr_readiness\": {\"ready\":true,\"items\":[{\"severity\":\"info\",\"code\":\"ready\",\"message\":\"fixture\"}]}\n";
+        context << "}\n";
     }
     std::vector<float> roi_history(10000, 0.8f);
     std::vector<float> roi_locks(10000, 0.0f);
@@ -246,6 +258,9 @@ int main() {
         return Fail("capture analysis JSON export should succeed");
     }
     if (!Contains(analysis_json, "\"schema\": \"osr.capture.analysis.v1\"") ||
+        !Contains(analysis_json, "\"sr_readiness\": {") ||
+        !Contains(analysis_json, "\"ready\":true") ||
+        !Contains(analysis_json, "\"error_count\":0") ||
         !Contains(analysis_json, "\"text\": {") ||
         !Contains(analysis_json, "\"static_text\": {") ||
         !Contains(analysis_json, "\"moving_text\": {") ||

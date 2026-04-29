@@ -949,3 +949,19 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Added `src/debug/frame_context_readiness.*`, a stricter SR lab-frame readiness contract distinct from basic `FrameContext` validation.
 - Added `src/tests/frame_context_readiness_tests.cpp`; the test was first observed failing because the readiness module did not exist, then passed after implementation.
 - Updated `HARNESS.md` to define the readiness distinction: harness frames should include complete controlled SR evidence, while game captures may be bridge-valid but not harness-ready.
+
+### Capture-Pack Readiness Verdicts
+
+- Added SR readiness serialization to capture packs:
+  - `session.json` now includes `sr_readiness`.
+  - Per-frame `frame_context.json` now includes `sr_readiness`.
+  - `frame_context.json` now serializes `exposure_texture` resources when present.
+- Added offline analyzer support for readiness verdicts:
+  - `AnalyzeCaptureFrame` parses `sr_readiness` from `frame_context.json`.
+  - `SummarizeCaptureAnalysis` reports `sr_ready` and `sr_readiness_errors`.
+  - `capture_analysis.json` exports the readiness block.
+- Added explicit synthetic exposure coverage via a 1x1 unit-scale exposure resource so controlled harness frames include all mandatory SR input classes.
+- Verification: `tools/run_manual_tests.bat` initially failed after `capture_pack.cpp` began depending on readiness; fixed all manual compile paths that link capture packs.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name readiness_capture_v2 --metric-gate --capture-gate-thresholds profiles\capture_gate.cfg` exited `0`.
+- Result: `readiness_capture_v2` reported `sr_ready=1` and `sr_readiness_errors=0`, while also passing the existing capture-analysis gate.

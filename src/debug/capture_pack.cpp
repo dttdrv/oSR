@@ -1,5 +1,7 @@
 #include "debug/capture_pack.h"
 
+#include "debug/frame_context_readiness.h"
+
 #include <chrono>
 #include <cstdint>
 #include <fstream>
@@ -86,6 +88,28 @@ std::string ResourceJson(const char* label, const core::ResourceDesc& resource) 
         << "\"debug_name\":\"" << JsonEscape(resource.debug_name) << "\","
         << "\"provenance\":\"" << JsonEscape(resource.provenance) << "\""
         << "}";
+    return out.str();
+}
+
+std::string ReadinessJson(const ReadinessReport& report, uint32_t indent_spaces) {
+    const std::string indent(indent_spaces, ' ');
+    const std::string item_indent(indent_spaces + 4, ' ');
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << "{\"ready\":" << (report.ready ? "true" : "false") << ",\"items\":[";
+    for (size_t i = 0; i < report.items.size(); ++i) {
+        const auto& item = report.items[i];
+        out << (i == 0 ? "\n" : ",\n")
+            << item_indent << "{"
+            << "\"severity\":\"" << ToString(item.severity) << "\","
+            << "\"code\":\"" << JsonEscape(item.code) << "\","
+            << "\"message\":\"" << JsonEscape(item.message) << "\""
+            << "}";
+    }
+    if (!report.items.empty()) {
+        out << "\n" << indent;
+    }
+    out << "]}";
     return out.str();
 }
 
@@ -201,6 +225,7 @@ bool CapturePackWriter::WriteSessionManifest(const core::FrameContext& first_fra
     out << "  \"frame_time_delta_ms\": " << first_frame.frame_time_delta_ms << ",\n";
     out << "  \"color_space\": \"" << core::ToString(first_frame.color_space) << "\",\n";
     out << "  \"motion_vector_space\": \"" << core::ToString(first_frame.motion_vector_space) << "\",\n";
+    out << "  \"sr_readiness\": " << ReadinessJson(EvaluateSrHarnessReadiness(first_frame), 2) << ",\n";
     out << "  \"created_utc\": \"" << TimestampUtc() << "\",\n";
     out << "  \"analysis_gate_thresholds_path\": \"" << JsonEscape(config_.analysis_gate_thresholds_path) << "\",\n";
     out << "  \"analysis_gate_thresholds_snapshot\": \"" << JsonEscape(config_.analysis_gate_thresholds_snapshot) << "\",\n";
@@ -335,6 +360,7 @@ bool CapturePackWriter::WriteFrameContextJson(const core::FrameContext& frame) {
     out << "  \"motion_vector_scale\": [" << frame.motion_vector_scale.x << ", " << frame.motion_vector_scale.y << "],\n";
     out << "  \"motion_vector_space\": \"" << core::ToString(frame.motion_vector_space) << "\",\n";
     out << "  \"color_space\": \"" << core::ToString(frame.color_space) << "\",\n";
+    out << "  \"sr_readiness\": " << ReadinessJson(EvaluateSrHarnessReadiness(frame), 2) << ",\n";
     out << "  \"flags\": {"
         << "\"reset_history\":" << (frame.flags.reset_history ? "true" : "false") << ","
         << "\"high_dynamic_range\":" << (frame.flags.high_dynamic_range ? "true" : "false") << ","
@@ -350,6 +376,9 @@ bool CapturePackWriter::WriteFrameContextJson(const core::FrameContext& frame) {
     out << ResourceJson("motion_vectors", frame.motion_vectors);
     if (frame.reactive_mask.has_value()) {
         out << ",\n" << ResourceJson("reactive_mask", *frame.reactive_mask);
+    }
+    if (frame.exposure.exposure_texture.has_value()) {
+        out << ",\n" << ResourceJson("exposure_texture", *frame.exposure.exposure_texture);
     }
     out << "\n  },\n";
     out << "  \"notes\": [";

@@ -236,7 +236,10 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
     frame.context.depth = Resource(core::ResourceKind::Depth, frame.depth.data(), 0x1002, render_size, "synthetic_depth_f32");
     frame.context.motion_vectors = Resource(core::ResourceKind::MotionVectors, frame.motion_vectors.data(), 0x1003, render_size, "synthetic_motion_vectors_pixel_f32x2");
     frame.context.reactive_mask = Resource(core::ResourceKind::ReactiveMask, frame.reactive_mask.data(), 0x1004, render_size, "synthetic_reactive_mask_f32");
+    frame.context.exposure.exposure_texture =
+        Resource(core::ResourceKind::Exposure, nullptr, 0x1005, {1, 1}, "synthetic_exposure_scale_1x1");
     frame.context.notes.push_back("Synthetic wind-tunnel frame emits color/depth/MV/reactive/reset for SR validation.");
+    frame.context.notes.push_back("Synthetic exposure coverage is a 1x1 unit-scale placeholder for SR readiness.");
     frame.context.notes.push_back("Motion vectors are current-to-previous in pixel units and exclude jitter.");
     frame.context.notes.push_back(settings.text_enabled
         ? "Synthetic text targets are enabled for readability/edge-preservation metrics."

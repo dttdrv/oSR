@@ -51,6 +51,12 @@ int main() {
     if (!frame.context.flags.reset_history) {
         return Fail("reset flag was not propagated into FrameContext");
     }
+    if (!frame.context.exposure.exposure_texture.has_value() ||
+        frame.context.exposure.exposure_texture->debug_id == 0 ||
+        frame.context.exposure.exposure_texture->extent.width != 1 ||
+        frame.context.exposure.exposure_texture->extent.height != 1) {
+        return Fail("synthetic frame should expose a 1x1 exposure resource for SR readiness");
+    }
 
     const auto report = osr::core::ValidateFrameContext(frame.context);
     if (report.HasErrors()) {

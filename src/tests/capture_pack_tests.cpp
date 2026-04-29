@@ -50,6 +50,7 @@ osr::core::FrameContext Frame() {
     frame.color_output = Resource(osr::core::ResourceKind::ColorOutput, 2);
     frame.depth = Resource(osr::core::ResourceKind::Depth, 3);
     frame.motion_vectors = Resource(osr::core::ResourceKind::MotionVectors, 4);
+    frame.exposure.exposure_texture = {osr::core::ResourceKind::Exposure, nullptr, 5, {1, 1}, 41, "unit_exposure_1x1"};
     frame.notes.push_back("quoted \"note\"\nnext");
     return frame;
 }
@@ -147,6 +148,12 @@ int main() {
     if (!Contains(root / "session.json", "\"upscale_size\": [1920, 1200]")) {
         return Fail("session manifest missing explicit upscale size");
     }
+    if (!Contains(root / "session.json", "\"sr_readiness\": {\"ready\":false")) {
+        return Fail("session manifest missing SR readiness verdict");
+    }
+    if (!Contains(root / "session.json", "\"missing_reactive_mask\"")) {
+        return Fail("session manifest missing SR readiness diagnostics");
+    }
     if (!Contains(root / "frames.csv", "frame_id,scenario_time_ms,render_w")) {
         return Fail("frames.csv missing header");
     }
@@ -182,6 +189,16 @@ int main() {
     }
     if (!Contains(root / "frame_000001" / "frame_context.json", "\"provenance\":\"synthetic_renderer\"")) {
         return Fail("frame_context.json missing resource provenance");
+    }
+    if (!Contains(root / "frame_000001" / "frame_context.json", "\"exposure_texture\": {")) {
+        return Fail("frame_context.json missing exposure resource");
+    }
+    if (!Contains(root / "frame_000001" / "frame_context.json", "\"sr_readiness\": {\"ready\":false")) {
+        return Fail("frame_context.json missing SR readiness verdict");
+    }
+    if (!Contains(root / "frame_000001" / "frame_context.json", "\"zero_motion_vector_scale\"") &&
+        !Contains(root / "frame_000001" / "frame_context.json", "\"missing_reactive_mask\"")) {
+        return Fail("frame_context.json missing SR readiness items");
     }
 
     CapturePackConfig duplicate = config;

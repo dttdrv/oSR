@@ -122,6 +122,10 @@ build_status:
     - The observed No Man's Sky XeSS Balanced execute path renders 960x544 into 1920x1080, uses inverted depth and auto-exposure, provides live jitter, does not set HIGH_RES_MV, and did not expose responsive-mask or exposure textures in the captured execute params.
     - No Man's Sky did not call xessSetVelocityScale in the captured session, so proxy-normalized MV scale remains (0,0); oSR must continue refusing to infer MV scale silently.
     - src/debug/frame_context_readiness.* now evaluates whether a frame is complete enough for controlled SR harness use, separate from basic FrameContext validity and game bridge observation.
+    - Capture packs now serialize SR readiness into session.json and per-frame frame_context.json.
+    - Capture analysis now reports sr_ready and sr_readiness_errors and writes readiness into capture_analysis.json.
+    - Synthetic wind-tunnel frames now include a 1x1 unit-scale exposure resource so controlled lab frames cover every mandatory SR input class.
+    - DX12 temporal-gpu capture readiness_capture_v2 passed the metric gate and reported sr_ready=1 with zero readiness errors.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -156,7 +160,6 @@ target_games_for_initial_testing:
 next_actions:
   - Keep docs/wiki/source-index.md updated before adding new research-backed implementation claims.
   - Build an Inspector-style DX12 wind tunnel diagnostics layer with MV, exposure, responsive-mask, jitter, depth, and capture-around-frame controls.
-  - Add hard validation/gate checks that selected captures include complete FrameContext vendor-parity metadata before real-game bridge replacement work.
   - Replace runtime HLSL compilation with embedded shader bytecode.
   - Add GPU timestamp queries for upload, reconstruct, readback, and present.
   - Use tools/run_3d_wind_tunnel.bat as the primary manual visual harness.
@@ -185,5 +188,5 @@ next_actions:
   - Promote sequence_gate_metrics.csv into a hard selected-capture gate after thresholds are calibrated across more captures.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
-  - Add readiness verdicts to DX12 capture packs and surface them in the manual harness diagnostics panel.
+  - Surface SR readiness verdicts in the manual harness diagnostics panel, not only capture files and analyzer output.
   - Add a proxy mode that can block real XeSS execute and route the decoded FrameContext into an oSR-controlled output path after Vulkan backend ownership is designed.

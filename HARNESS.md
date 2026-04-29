@@ -388,6 +388,13 @@ sizes, motion-vector convention and scale, frame time, camera range, and
 matching resource extents. Game captures may fail this readiness check while
 still being useful bridge evidence; that distinction is intentional.
 
+Readiness is now serialized into capture packs:
+
+- `session.json`: first-frame `sr_readiness`.
+- `frame_XXXXXX/frame_context.json`: per-frame `sr_readiness` plus exposure resource metadata when present.
+- `capture_analysis.json`: parsed readiness verdict for offline inspection.
+- `tools/run_capture_analyzer.bat`: console summary includes `sr_ready` and `sr_readiness_errors`.
+
 ## Implementation Phases
 
 ### H0: Harness Contract
@@ -395,7 +402,7 @@ still being useful bridge evidence; that distinction is intentional.
 - Add shared `HarnessRunConfig`, `HarnessFrameMetrics`, `HarnessBookmark`, and `HarnessSessionManifest` types.
 - Write JSON/CSV helpers.
 - Store git/build/scenario/reconstruction metadata.
-- Current status: `FrameContext` SR readiness evaluation is implemented and covered by direct tests. The next H0 work is to write readiness verdicts into every capture pack and surface them in the interactive diagnostics panel.
+- Current status: `FrameContext` SR readiness evaluation is implemented, covered by direct tests, serialized into capture packs, and reported by offline capture analysis. The next H0 work is to surface readiness in the interactive diagnostics panel.
 
 ### H1: DX12 Buffer Truth
 
