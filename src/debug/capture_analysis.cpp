@@ -249,16 +249,22 @@ double TextOutputContrast(const std::vector<uint32_t>& output,
 
 CaptureLockedDetailStats ComputeLockedDetailStats(const CaptureFrameAnalysis& analysis,
                                                   const std::vector<uint32_t>& output,
-                                                  const std::vector<uint32_t>& spatial_baseline) noexcept {
+                                                  const std::vector<uint32_t>& spatial_baseline,
+                                                  const std::vector<uint32_t>& native_reference) noexcept {
     CaptureLockedDetailStats stats;
     stats.text_output_contrast = TextOutputContrast(output, analysis.display_size, analysis.frame_id);
     stats.text_spatial_contrast = TextOutputContrast(spatial_baseline, analysis.display_size, analysis.frame_id);
+    stats.text_native_contrast = TextOutputContrast(native_reference, analysis.display_size, analysis.frame_id);
     if (analysis.static_text_region.samples > 0) {
         stats.text_output_contrast = TextOutputContrast(output, analysis.display_size, analysis.frame_id, false);
         stats.text_spatial_contrast = TextOutputContrast(spatial_baseline, analysis.display_size, analysis.frame_id, false);
+        stats.text_native_contrast = TextOutputContrast(native_reference, analysis.display_size, analysis.frame_id, false);
     }
     if (stats.text_spatial_contrast > 0.0001) {
         stats.text_contrast_ratio = stats.text_output_contrast / stats.text_spatial_contrast;
+    }
+    if (stats.text_native_contrast > 0.0001) {
+        stats.text_native_contrast_ratio = stats.text_output_contrast / stats.text_native_contrast;
     }
     const auto& detail_region = analysis.static_text_region.samples > 0
         ? analysis.static_text_region
@@ -586,7 +592,12 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
         spatial_values = ReadRgba8Raw(spatial->raw,
                                       static_cast<uint64_t>(spatial->size.width) * spatial->size.height);
     }
-    analysis.locked_detail = ComputeLockedDetailStats(analysis, output_values, spatial_values);
+    std::vector<uint32_t> native_values;
+    if (const auto native = FindResource(manifest, frame_dir, "native_reference")) {
+        native_values = ReadRgba8Raw(native->raw,
+                                     static_cast<uint64_t>(native->size.width) * native->size.height);
+    }
+    analysis.locked_detail = ComputeLockedDetailStats(analysis, output_values, spatial_values, native_values);
     analysis.ok = true;
     return analysis;
 }
@@ -752,6 +763,8 @@ bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
         << "\"text_output_contrast\":" << analysis.locked_detail.text_output_contrast << ","
         << "\"text_spatial_contrast\":" << analysis.locked_detail.text_spatial_contrast << ","
         << "\"text_contrast_ratio\":" << analysis.locked_detail.text_contrast_ratio << ","
+        << "\"text_native_contrast\":" << analysis.locked_detail.text_native_contrast << ","
+        << "\"text_native_contrast_ratio\":" << analysis.locked_detail.text_native_contrast_ratio << ","
         << "\"text_lock_signal\":" << analysis.locked_detail.text_lock_signal << ","
         << "\"bad_lock_signal\":" << analysis.locked_detail.bad_lock_signal << ","
         << "\"score\":" << analysis.locked_detail.score
@@ -803,6 +816,7 @@ std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis) {
         << " moving_text_feature_lock_mean=" << analysis.moving_text_region.mean_feature_lock
         << " text_output_contrast=" << analysis.locked_detail.text_output_contrast
         << " text_contrast_ratio=" << analysis.locked_detail.text_contrast_ratio
+        << " text_native_contrast_ratio=" << analysis.locked_detail.text_native_contrast_ratio
         << " locked_detail_score=" << analysis.locked_detail.score
         << " specular_samples=" << analysis.specular_region.samples
         << " specular_history_mean=" << analysis.specular_region.mean_history

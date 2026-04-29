@@ -834,3 +834,12 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Decision: no feature-lock threshold promotion from this sweep; keep defaults at min edge `0.18` and max luma delta `0.045`.
 - Verification: each sweep run exited `0` with capture gates passing.
 - Comparison: `tools/run_capture_compare.bat build/manual/captures/split_default_s040_clip015 build/manual/captures/fl_edge020_v1 build/manual/captures/fl_edge022_v1 build/manual/captures/fl_luma035_v1` exited `0`; default tied `fl_luma035_v1` and outranked edge-tightened variants.
+
+### Native Reference Capture Artifact
+
+- Added optional `native_reference` PPM/raw artifacts to wind-tunnel capture dumps.
+- DX12 selected-frame captures now build a same-frame native-scale synthetic reference and save it beside `spatial_baseline`.
+- Capture analysis now reports `text_native_contrast` and `text_native_contrast_ratio` in the `locked_detail` block and console summary.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name native_reference_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture gate passed and reported `text_native_contrast_ratio=0.934855`.
+- Verified `native_reference.ppm` and `native_reference.rgba8.raw` exist in `build/manual/captures/native_reference_v1/frame_000012/artifacts.json`.

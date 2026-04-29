@@ -120,7 +120,8 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
                                               uint64_t motion_vectors_hash,
                                               uint64_t reactive_mask_hash,
                                               const TemporalResolveDebugMaps* temporal_debug_maps,
-                                              const std::vector<uint32_t>* spatial_baseline) {
+                                              const std::vector<uint32_t>* spatial_baseline,
+                                              const std::vector<uint32_t>* native_reference) {
     std::filesystem::create_directories(frame_dir);
     DebugDumpResult result;
     const auto render_size = frame.context.render_size;
@@ -135,8 +136,13 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
     result.output_ppm = WriteRgbaPpm(frame_dir / "color_output.ppm", display_output, display_size);
     const bool has_spatial_baseline = spatial_baseline &&
                                       spatial_baseline->size() == static_cast<size_t>(display_size.width) * display_size.height;
+    const bool has_native_reference = native_reference &&
+                                      native_reference->size() == static_cast<size_t>(display_size.width) * display_size.height;
     if (has_spatial_baseline) {
         result.spatial_baseline_ppm = WriteRgbaPpm(frame_dir / "spatial_baseline.ppm", *spatial_baseline, display_size);
+    }
+    if (has_native_reference) {
+        result.native_reference_ppm = WriteRgbaPpm(frame_dir / "native_reference.ppm", *native_reference, display_size);
     }
     const bool has_temporal_maps = temporal_debug_maps &&
                                    temporal_debug_maps->display_size.width == display_size.width &&
@@ -195,6 +201,11 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
                                                     spatial_baseline->data(),
                                                     spatial_baseline->size() * sizeof(uint32_t));
     }
+    if (has_native_reference) {
+        result.native_reference_raw = WriteRawBytes(frame_dir / "native_reference.rgba8.raw",
+                                                    native_reference->data(),
+                                                    native_reference->size() * sizeof(uint32_t));
+    }
 
     std::ofstream manifest(frame_dir / "artifacts.json", std::ios::trunc);
     if (manifest) {
@@ -206,6 +217,10 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
         if (has_spatial_baseline) {
             manifest << ",\n";
             manifest << "    {\"name\":\"spatial_baseline\",\"view\":\"spatial_baseline.ppm\",\"raw\":\"spatial_baseline.rgba8.raw\",\"format\":\"rgba8\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << "}";
+        }
+        if (has_native_reference) {
+            manifest << ",\n";
+            manifest << "    {\"name\":\"native_reference\",\"view\":\"native_reference.ppm\",\"raw\":\"native_reference.rgba8.raw\",\"format\":\"rgba8\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << "}";
         }
         manifest << ",\n";
         manifest << "    {\"name\":\"depth\",\"view\":\"depth.pgm\",\"raw\":\"depth.r32f.raw\",\"format\":\"r32f\",\"width\":" << render_size.width << ",\"height\":" << render_size.height << ",\"hash\":" << depth_hash << ",\"view_min\":0,\"view_max\":1},\n";

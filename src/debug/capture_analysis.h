@@ -29,6 +29,8 @@ struct CaptureLockedDetailStats {
     double text_output_contrast = 0.0;
     double text_spatial_contrast = 0.0;
     double text_contrast_ratio = 0.0;
+    double text_native_contrast = 0.0;
+    double text_native_contrast_ratio = 0.0;
     double text_lock_signal = 0.0;
     double bad_lock_signal = 0.0;
     double score = 0.0;

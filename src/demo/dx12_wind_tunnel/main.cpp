@@ -1051,6 +1051,9 @@ int main(int argc, char** argv) {
                         sequence_capture_path = sequence_capture.SessionPath();
                         osr::demo::wind_tunnel::DebugDumpResult dump;
                         if (sequence_ok) {
+                            auto native_settings = frame_settings;
+                            native_settings.render_scale = 1.0f;
+                            const auto native_reference = osr::demo::wind_tunnel::BuildSyntheticFrame(native_settings).color;
                             dump = osr::demo::wind_tunnel::WriteSyntheticFrameDebugDumps(sequence_capture.SessionPath() / frame_dir_name.str(),
                                                                                          frame,
                                                                                          cpu_temporal,
@@ -1060,7 +1063,8 @@ int main(int argc, char** argv) {
                                                                                          0,
                                                                                          0,
                                                                                          &gpu_debug_maps,
-                                                                                         &spatial);
+                                                                                         &spatial,
+                                                                                         &native_reference);
                         }
                         sequence_capture_written = dump.AllRequired();
                         bool selected_capture_analysis_ok = true;
@@ -1125,6 +1129,9 @@ int main(int argc, char** argv) {
     settings.reset_history = requested_reset_history;
     settings.motion_vector_mode = mv_mode;
     auto synthetic = osr::demo::wind_tunnel::BuildSyntheticFrame(settings);
+    auto native_settings = settings;
+    native_settings.render_scale = 1.0f;
+    const auto native_reference = osr::demo::wind_tunnel::BuildSyntheticFrame(native_settings).color;
     synthetic.context.notes.push_back(std::string("Reconstruction mode: ") + ToString(reconstruction_mode));
     auto previous_settings = settings;
     previous_settings.frame_id = settings.frame_id > 0 ? settings.frame_id - 1 : 0;
@@ -1478,7 +1485,8 @@ int main(int argc, char** argv) {
                                                                                        motion_vectors_hash,
                                                                                        reactive_mask_hash,
                                                                                        temporal_mode ? &temporal_debug_maps : nullptr,
-                                                                                       &spatial_output);
+                                                                                       &spatial_output,
+                                                                                       &native_reference);
         if (!dump_result.AllRequired()) {
             osr::core::ValidationReport dump_report;
             dump_report.messages.push_back({

@@ -46,6 +46,7 @@ int main() {
         manifest << "    {\"name\":\"motion_vectors\",\"raw\":\"motion_vectors.rg32f.raw\",\"format\":\"rg32f\",\"width\":2,\"height\":2},\n";
         manifest << "    {\"name\":\"color_output\",\"raw\":\"color_output.rgba8.raw\",\"format\":\"rgba8\",\"width\":4,\"height\":2},\n";
         manifest << "    {\"name\":\"spatial_baseline\",\"raw\":\"spatial_baseline.rgba8.raw\",\"format\":\"rgba8\",\"width\":4,\"height\":2},\n";
+        manifest << "    {\"name\":\"native_reference\",\"raw\":\"native_reference.rgba8.raw\",\"format\":\"rgba8\",\"width\":4,\"height\":2},\n";
         manifest << "    {\"name\":\"history_weight\",\"raw\":\"history_weight.r32f.raw\",\"format\":\"r32f\",\"width\":4,\"height\":2},\n";
         manifest << "    {\"name\":\"color_residual\",\"raw\":\"color_residual.r32f.raw\",\"format\":\"r32f\",\"width\":4,\"height\":2},\n";
         manifest << "    {\"name\":\"depth_residual\",\"raw\":\"depth_residual.r32f.raw\",\"format\":\"r32f\",\"width\":4,\"height\":2},\n";
@@ -65,6 +66,7 @@ int main() {
     WriteRaw(dir / "feature_lock_strength.r32f.raw", std::vector<float> {0.0f, 0.6f, 0.4f, 0.8f, 0.9f, 0.0f, 0.0f, 0.1f});
     WriteRaw(dir / "color_output.rgba8.raw", std::vector<uint32_t>(8, 0xff404040u));
     WriteRaw(dir / "spatial_baseline.rgba8.raw", std::vector<uint32_t>(8, 0xff404040u));
+    WriteRaw(dir / "native_reference.rgba8.raw", std::vector<uint32_t>(8, 0xff404040u));
     WriteRaw(dir / "motion_vectors.rg32f.raw", std::vector<Float2> {{0.0f, 0.0f}, {3.0f, 4.0f}, {0.0f, 0.02f}, {0.0f, 0.0f}});
     WriteRaw(dir / "reactive_mask.r32f.raw", std::vector<float> {0.0f, 1.0f, 0.0f, 0.0f});
 
@@ -118,6 +120,7 @@ int main() {
         manifest << "    {\"name\":\"motion_vectors\",\"raw\":\"motion_vectors.rg32f.raw\",\"format\":\"rg32f\",\"width\":50,\"height\":50},\n";
         manifest << "    {\"name\":\"color_output\",\"raw\":\"color_output.rgba8.raw\",\"format\":\"rgba8\",\"width\":100,\"height\":100},\n";
         manifest << "    {\"name\":\"spatial_baseline\",\"raw\":\"spatial_baseline.rgba8.raw\",\"format\":\"rgba8\",\"width\":100,\"height\":100},\n";
+        manifest << "    {\"name\":\"native_reference\",\"raw\":\"native_reference.rgba8.raw\",\"format\":\"rgba8\",\"width\":100,\"height\":100},\n";
         manifest << "    {\"name\":\"history_weight\",\"raw\":\"history_weight.r32f.raw\",\"format\":\"r32f\",\"width\":100,\"height\":100},\n";
         manifest << "    {\"name\":\"color_residual\",\"raw\":\"color_residual.r32f.raw\",\"format\":\"r32f\",\"width\":100,\"height\":100},\n";
         manifest << "    {\"name\":\"depth_residual\",\"raw\":\"depth_residual.r32f.raw\",\"format\":\"r32f\",\"width\":100,\"height\":100},\n";
@@ -134,6 +137,7 @@ int main() {
     std::vector<float> roi_locks(10000, 0.0f);
     std::vector<uint32_t> roi_output(10000, 0xff404040u);
     std::vector<uint32_t> roi_spatial(10000, 0xff404040u);
+    std::vector<uint32_t> roi_native(10000, 0xff404040u);
     for (uint32_t y = 0; y < 100; ++y) {
         for (uint32_t x = 0; x < 100; ++x) {
             const float u = (static_cast<float>(x) + 0.5f) / 100.0f;
@@ -144,6 +148,7 @@ int main() {
                 roi_locks[static_cast<size_t>(y) * 100 + x] = 0.75f;
                 roi_output[static_cast<size_t>(y) * 100 + x] = 0xffffffffu;
                 roi_spatial[static_cast<size_t>(y) * 100 + x] = 0xffc0c0c0u;
+                roi_native[static_cast<size_t>(y) * 100 + x] = 0xffffffffu;
             }
             if (material.specular || material.transparent) {
                 roi_history[static_cast<size_t>(y) * 100 + x] = 0.0f;
@@ -156,6 +161,7 @@ int main() {
     WriteRaw(roi_dir / "feature_lock_strength.r32f.raw", roi_locks);
     WriteRaw(roi_dir / "color_output.rgba8.raw", roi_output);
     WriteRaw(roi_dir / "spatial_baseline.rgba8.raw", roi_spatial);
+    WriteRaw(roi_dir / "native_reference.rgba8.raw", roi_native);
     WriteRaw(roi_dir / "motion_vectors.rg32f.raw", std::vector<Float2>(2500, {0.0f, 0.0f}));
     WriteRaw(roi_dir / "reactive_mask.r32f.raw", std::vector<float>(2500, 0.0f));
     const auto roi_analysis = osr::debug::AnalyzeCaptureFrame(roi_dir);
@@ -188,6 +194,7 @@ int main() {
     if (roi_analysis.locked_detail.score < 95.0 ||
         roi_analysis.locked_detail.text_output_contrast < 0.7 ||
         roi_analysis.locked_detail.text_contrast_ratio < 1.25 ||
+        roi_analysis.locked_detail.text_native_contrast_ratio < 0.95 ||
         roi_analysis.locked_detail.bad_lock_signal != 0.0) {
         return Fail("locked-detail metric should reward stable text without bad locks");
     }
@@ -235,6 +242,7 @@ int main() {
         !Contains(analysis_json, "\"moving_text\": {") ||
         !Contains(analysis_json, "\"locked_detail\": {") ||
         !Contains(analysis_json, "\"text_contrast_ratio\"") ||
+        !Contains(analysis_json, "\"text_native_contrast_ratio\"") ||
         !Contains(analysis_json, "\"min_locked_detail_score\":10") ||
         !Contains(analysis_json, "\"max_bad_lock_signal\":0.3") ||
         !Contains(analysis_json, "\"feature_lock_strength\": {") ||
