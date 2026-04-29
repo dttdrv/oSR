@@ -33,7 +33,7 @@ tools\run_manual_console.bat
 
 That launcher builds `build\manual\osr_manual_console.exe`, opens an interactive menu, and pauses before closing. The menu lets you:
 
-- list DLSS-style quality modes
+- list XeSS-style quality modes
 - enter a custom render-scale slider value
 - change display resolution
 - run trust oracle scenarios
@@ -43,6 +43,16 @@ For a quick non-interactive quality-mode printout:
 
 ```text
 tools\run_quality_mode_demo.bat
+```
+
+No Man's Sky XeSS proxy helper:
+
+```bat
+tools\osr_nms_xess_tool.bat status
+tools\osr_nms_xess_tool.bat build
+tools\osr_nms_xess_tool.bat install
+tools\osr_nms_xess_tool.bat log
+tools\osr_nms_xess_tool.bat restore
 ```
 
 For a visual 3D edge and render-scale check:
@@ -129,4 +139,4 @@ tools\run_manual_tests.bat
 build\manual\osr_quality_mode_demo.exe
 ```
 
-The quality-mode demo prints DLSS-style render sizes for a 1920x1200 output, including `Quality`, `Balanced`, `Performance`, and a custom slider value.
+The quality-mode demo prints XeSS-style render sizes for a 1920x1200 output, including `Native`, `UltraQualityPlus`, `UltraQuality`, `Quality`, `Balanced`, `Performance`, `UltraPerformance`, and a custom slider value.

@@ -8,6 +8,7 @@ namespace osr::core {
 const char* ToString(QualityMode mode) noexcept {
     switch (mode) {
     case QualityMode::Native: return "Native";
+    case QualityMode::UltraQualityPlus: return "UltraQualityPlus";
     case QualityMode::UltraQuality: return "UltraQuality";
     case QualityMode::Quality: return "Quality";
     case QualityMode::Balanced: return "Balanced";
@@ -21,18 +22,23 @@ const char* ToString(QualityMode mode) noexcept {
 float DefaultRenderScale(QualityMode mode) noexcept {
     switch (mode) {
     case QualityMode::Native: return 1.0f;
-    case QualityMode::UltraQuality: return 0.77f;
-    case QualityMode::Quality: return 0.66f;
-    case QualityMode::Balanced: return 0.58f;
-    case QualityMode::Performance: return 0.5f;
+    case QualityMode::UltraQualityPlus: return 1.0f / 1.3f;
+    case QualityMode::UltraQuality: return 1.0f / 1.5f;
+    case QualityMode::Quality: return 1.0f / 1.7f;
+    case QualityMode::Balanced: return 1.0f / 2.0f;
+    case QualityMode::Performance: return 1.0f / 2.3f;
     case QualityMode::UltraPerformance: return 1.0f / 3.0f;
     case QualityMode::Custom:
-    default: return 0.66f;
+    default: return 1.0f / 1.7f;
     }
 }
 
 QualityMode ParseQualityMode(std::string_view value) noexcept {
     if (value == "native" || value == "Native") return QualityMode::Native;
+    if (value == "ultra_quality_plus" || value == "ultra-quality-plus" ||
+        value == "UltraQualityPlus" || value == "Ultra Quality Plus") {
+        return QualityMode::UltraQualityPlus;
+    }
     if (value == "ultra_quality" || value == "UltraQuality") return QualityMode::UltraQuality;
     if (value == "quality" || value == "Quality") return QualityMode::Quality;
     if (value == "balanced" || value == "Balanced") return QualityMode::Balanced;

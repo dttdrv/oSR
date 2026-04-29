@@ -4,6 +4,7 @@
 #include "core/logging.h"
 
 #include <atomic>
+#include <cstdint>
 #include <filesystem>
 #include <mutex>
 #include <sstream>
@@ -16,6 +17,11 @@ using XessResult = int;
 constexpr XessResult kXessProxyError = -1;
 constexpr uint64_t kUnthrottledExecuteLogs = 16;
 constexpr uint64_t kExecuteLogInterval = 120;
+
+struct Xess2D {
+    uint32_t x = 0;
+    uint32_t y = 0;
+};
 
 struct ProxyState {
     std::once_flag init_once;
@@ -34,6 +40,42 @@ ProxyState& State() {
 std::string Ptr(const void* value) {
     std::ostringstream out;
     out << value;
+    return out.str();
+}
+
+const char* QualityName(unsigned int quality) noexcept {
+    switch (quality) {
+    case 100: return "UltraPerformance";
+    case 101: return "Performance";
+    case 102: return "Balanced";
+    case 103: return "Quality";
+    case 104: return "UltraQuality";
+    case 105: return "UltraQualityPlus";
+    case 106: return "Native";
+    default: return "Unknown";
+    }
+}
+
+float QualityScale(unsigned int quality) noexcept {
+    switch (quality) {
+    case 100: return 1.0f / 3.0f;
+    case 101: return 1.0f / 2.3f;
+    case 102: return 1.0f / 2.0f;
+    case 103: return 1.0f / 1.7f;
+    case 104: return 1.0f / 1.5f;
+    case 105: return 1.0f / 1.3f;
+    case 106: return 1.0f;
+    default: return 0.0f;
+    }
+}
+
+std::string ResolutionString(const void* value) {
+    if (!value) {
+        return "<null>";
+    }
+    const auto* resolution = static_cast<const Xess2D*>(value);
+    std::ostringstream out;
+    out << resolution->x << "x" << resolution->y;
     return out.str();
 }
 
@@ -163,7 +205,9 @@ __declspec(dllexport) XessResult xessGetInputResolution(void* context, const voi
     std::ostringstream out;
     out << "xessGetInputResolution context=" << context
         << " output_resolution=" << output_resolution
-        << " quality=" << quality
+        << " output=" << ResolutionString(output_resolution)
+        << " quality=" << quality << "(" << QualityName(quality) << ")"
+        << " scale=" << QualityScale(quality)
         << " input_resolution=" << input_resolution;
     Log(osr::core::LogLevel::Debug, out.str());
     using Fn = XessResult (*)(void*, const void*, unsigned int, void*);
@@ -179,7 +223,9 @@ __declspec(dllexport) XessResult xessGetOptimalInputResolution(void* context,
     std::ostringstream out;
     out << "xessGetOptimalInputResolution context=" << context
         << " output_resolution=" << output_resolution
-        << " quality=" << quality
+        << " output=" << ResolutionString(output_resolution)
+        << " quality=" << quality << "(" << QualityName(quality) << ")"
+        << " scale=" << QualityScale(quality)
         << " optimal=" << input_resolution_optimal
         << " min=" << input_resolution_min
         << " max=" << input_resolution_max;

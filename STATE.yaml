@@ -77,7 +77,7 @@ build_status:
     - The default CPU and DX12 temporal resolve settings now use the sweep_conservative values: history 0.92, reactive penalty 0.95, motion 1.25, color 0.12, depth 0.025, clip 0.02.
     - tools/run_temporal_frame_sweep.bat ranks default temporal-GPU captures for frames 10/12/14; selected frame captures at 16/18 currently fail the debug-map parity gate.
     - Selected temporal-GPU captures write debug_parity.json; frame 16's current failure is a localized history-weight drift at display pixel 928,342.
-    - Quality/Balanced/Performance render-scale presets are now exact 0.66/0.58/0.50 across core, DX12, native 3D, and WebGL harness defaults.
+    - Quality/Balanced/Performance render-scale presets were previously exact 0.66/0.58/0.50; the current core/default harness presets now mirror the XeSS-style quality ladder including Ultra Quality Plus.
     - tools/run_xess_proxy_smoke.bat builds an opt-in diagnostic libxess.dll proxy, verifies it loads, and verifies safe missing-libxess_real.dll logging.
     - Installed Steam No Man's Sky imports libxess.dll and references xessGetInputResolution, xessVKCreateContext, xessVKInit, xessVKExecute, and xessGetProperties; current settings select XESS Balanced.
     - tools/install_xess_proxy_nms.bat and tools/restore_xess_proxy_nms.bat provide controlled install/restore for the No Man's Sky XeSS proxy proof.
@@ -108,6 +108,11 @@ build_status:
     - FrameContext now carries explicit upscale size, frame time delta, camera near/far/FOV/view-space scale, reconstruction sharpness/debug controls, nonlinear input/output color flags, and resource API state/provenance.
     - Capture packs now serialize the new vendor-parity FrameContext fields into session.json and frame_context.json.
     - The FSR-style bridge skeleton and synthetic/DX12 wind tunnel populate the new FrameContext contract fields where known.
+    - Core, demo, native 3D, WebGL, and DX12 default quality presets now mirror the XeSS-style quality ladder including Ultra Quality Plus.
+    - tools/osr_nms_xess_tool.bat now provides one command surface for No Man's Sky proxy status, build, install, restore, and log inspection.
+    - The rebuilt oSR XeSS proxy is installed into the local No Man's Sky Binaries folder as libxess.dll, with the original Intel runtime preserved as libxess_real.dll.
+    - A fresh No Man's Sky launch loaded the rebuilt proxy and logged xessGetInputResolution, xessGetProperties, and xessVKInit; the observed quality enum was 102, which maps to XeSS Balanced in the official 100..106 enum.
+    - After correcting the proxy quality mapper to the official Intel enum values, a second No Man's Sky launch verified quality=102(Balanced) scale=0.5 in the installed proxy log; the test process was closed afterward.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -122,7 +127,7 @@ known_working_assumptions:
   - Reference projects are clean-room references only unless license review changes that.
   - SDK/sample apps are the first validation targets.
   - oSR's research differentiator is trust-field temporal reconstruction with explainable confidence-driven history selection.
-  - Manual quality control uses DLSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
+  - Manual quality control uses XeSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
   - oSR's knowledge base lives under docs/wiki; RESEARCH.md is now an index/front door.
 unknowns:
   - Final exported DLL names for bridge packaging beyond the XeSS diagnostic proxy.
@@ -172,3 +177,4 @@ next_actions:
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
   - Add throttled XeSS execute-parameter metadata decoding for No Man's Sky once the exact SDK header version is identified, without dereferencing unknown resources unsafely.
+  - Decode XeSS Vulkan init/execute parameter metadata from public SDK headers so the NMS proxy can normalize real game buffers into oSR FrameContext without unsafe dereferencing.

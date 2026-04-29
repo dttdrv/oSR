@@ -6,6 +6,7 @@ int main() {
     const osr::core::Dimensions display {1920, 1200};
     const osr::core::QualityMode modes[] = {
         osr::core::QualityMode::Native,
+        osr::core::QualityMode::UltraQualityPlus,
         osr::core::QualityMode::UltraQuality,
         osr::core::QualityMode::Quality,
         osr::core::QualityMode::Balanced,
@@ -31,4 +32,3 @@ int main() {
 
     return 0;
 }
-

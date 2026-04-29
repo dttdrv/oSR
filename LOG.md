@@ -4,6 +4,24 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 
 ## 2026-04-29
 
+### XeSS Quality Ladder And NMS Injection Tool
+
+- Updated shared quality presets to match the XeSS-style ladder: Native `1.0x`, Ultra Quality Plus `1/1.3`, Ultra Quality `1/1.5`, Quality `1/1.7`, Balanced `1/2.0`, Performance `1/2.3`, Ultra Performance `1/3.0`.
+- Added `UltraQualityPlus` to core quality parsing, demos, manual console output, native 3D wind-tunnel preset UI, and the WebGL wind-tunnel preset list.
+- Updated the XeSS proxy smoke test and proxy logging so `xessGetInputResolution`/`xessGetOptimalInputResolution` report quality names, scale factors, and output resolution metadata at the call boundary. The official Intel XeSS quality enum values are `100..106`; the fresh No Man's Sky launch logged `quality=102`, which maps to Balanced.
+- Added `tools/osr_nms_xess_tool.bat` as the single No Man's Sky helper for `status`, `build`, `install`, `restore`, and `log`.
+- Fixed the NMS log helper path quoting for the apostrophe in `No Man's Sky`.
+- Installed the rebuilt oSR XeSS proxy into `C:\Program Files (x86)\Steam\steamapps\common\No Man's Sky\Binaries\libxess.dll`; the original runtime remains preserved as `libxess_real.dll`.
+- Current NMS state: `libxess.dll` size matches the rebuilt proxy (`174,322` bytes), and `libxess_real.dll` is present (`77,795,704` bytes).
+- Runtime verification: launched No Man's Sky after proxy install. The proxy log recorded the rebuilt proxy loading from the game `Binaries` folder, loading `libxess_real.dll`, `xessGetInputResolution` with output `1920x1080`, `xessGetProperties`, and `xessVKInit`.
+- Runtime verification after correcting the official enum mapping: relaunched No Man's Sky and confirmed `quality=102(Balanced) scale=0.5` in the proxy log. The temporary test process was closed after verification.
+- Verification: quality-mode test passed.
+- Verification: `tools/run_xess_proxy_smoke.bat` exited `0` and checked quality-aware proxy logging.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: native 3D wind-tunnel executable compiled after preset propagation.
+- Verification: WebGL wind-tunnel embedded script parsed successfully with Node.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name xess_quality_ladder_v1 --metric-gate --capture-gate-thresholds profiles\capture_gate.cfg` exited `0`; capture gate passed at the new default XeSS Quality render size (`753x471` for `1280x800` output).
+
 ### FrameContext Vendor-Parity Fields
 
 - Added vendor-parity `FrameContext` fields identified by the SR wiki: explicit `upscale_size`, `frame_time_delta_ms`, camera near/far/FOV/view-space scale, reconstruction sharpness/debug controls, nonlinear input/output color flags, and resource API state/provenance.

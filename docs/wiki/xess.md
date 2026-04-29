@@ -71,7 +71,7 @@ Local evidence that oSR is heading there:
 Safe to borrow:
 
 - Public integration contract.
-- Quality-mode mapping, including Ultra Quality Plus as a future parity gap.
+- Quality-mode mapping, including Ultra Quality Plus. oSR core modes now mirror the XeSS-style ladder: Native 1.0x, Ultra Quality Plus 1.3x, Ultra Quality 1.5x, Quality 1.7x, Balanced 2.0x, Performance 2.3x, Ultra Performance 3.0x.
 - Input validation/debugging checklist.
 - Inspector-style controls and capture ergonomics.
 - Responsive-mask semantics.

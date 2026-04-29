@@ -46,7 +46,20 @@ int main(int argc, char** argv) {
         FreeLibrary(module);
         return Fail("xessVKExecute export missing");
     }
+    using GetInputResolutionFn = int (*)(void*, const void*, unsigned int, void*);
+    auto* get_input_resolution = reinterpret_cast<GetInputResolutionFn>(GetProcAddress(module, "xessGetInputResolution"));
+    if (!get_input_resolution) {
+        FreeLibrary(module);
+        return Fail("xessGetInputResolution export missing");
+    }
     const int result = get_version(nullptr);
+    struct Xess2D {
+        unsigned int x = 0;
+        unsigned int y = 0;
+    };
+    const Xess2D output {1920, 1200};
+    Xess2D input {};
+    (void)get_input_resolution(nullptr, &output, 105, &input);
     for (int i = 0; i < 18; ++i) {
         (void)vk_execute(nullptr, nullptr, nullptr);
     }
@@ -56,6 +69,8 @@ int main(int argc, char** argv) {
     }
     if (!Contains(log_path, "oSR XeSS proxy loaded") ||
         !Contains(log_path, "xessGetVersion") ||
+        !Contains(log_path, "quality=105(UltraQualityPlus)") ||
+        !Contains(log_path, "output=1920x1200") ||
         !Contains(log_path, "xessVKExecute") ||
         !Contains(log_path, "throttling=enabled") ||
         !Contains(log_path, "libxess_real.dll")) {

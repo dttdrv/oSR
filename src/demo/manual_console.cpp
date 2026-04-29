@@ -32,6 +32,7 @@ void ShowQualityModes(osr::core::Dimensions display) {
     PrintHeader("Resolution Modes");
     const osr::core::QualityMode modes[] = {
         osr::core::QualityMode::Native,
+        osr::core::QualityMode::UltraQualityPlus,
         osr::core::QualityMode::UltraQuality,
         osr::core::QualityMode::Quality,
         osr::core::QualityMode::Balanced,
@@ -183,7 +184,7 @@ int main() {
         std::cout << "\n";
         std::cout << "oSR Manual Console\n";
         std::cout << "Display: " << display.width << "x" << display.height << "\n";
-        std::cout << "1. Show DLSS-style quality modes\n";
+        std::cout << "1. Show XeSS-style quality modes\n";
         std::cout << "2. Enter custom render-scale slider value\n";
         std::cout << "3. Change display resolution\n";
         std::cout << "4. Run trust oracle scenarios\n";

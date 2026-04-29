@@ -8,6 +8,7 @@ namespace osr::core {
 
 enum class QualityMode {
     Native,
+    UltraQualityPlus,
     UltraQuality,
     Quality,
     Balanced,
@@ -20,7 +21,7 @@ struct ResolutionPlan {
     QualityMode mode = QualityMode::Quality;
     Dimensions display_size = {};
     Dimensions render_size = {};
-    float render_scale = 0.66f;
+    float render_scale = 1.0f / 1.7f;
 };
 
 [[nodiscard]] const char* ToString(QualityMode mode) noexcept;

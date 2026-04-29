@@ -66,6 +66,7 @@ enum class ViewMode {
 
 enum class QualityPreset {
     Native,
+    UltraQualityPlus,
     UltraQuality,
     Quality,
     Balanced,
@@ -113,7 +114,7 @@ struct AppState {
     bool overlay = true;
     bool mouse_look = false;
     POINT last_mouse {};
-    float custom_scale = 0.66f;
+    float custom_scale = 1.0f / 1.7f;
     QualityPreset preset = QualityPreset::Quality;
     ViewMode view = ViewMode::Color;
     Camera camera;
@@ -158,6 +159,7 @@ float Halton(int index, int base) {
 const char* ToString(QualityPreset preset) {
     switch (preset) {
         case QualityPreset::Native: return "Native";
+        case QualityPreset::UltraQualityPlus: return "Ultra Quality Plus";
         case QualityPreset::UltraQuality: return "Ultra Quality";
         case QualityPreset::Quality: return "Quality";
         case QualityPreset::Balanced: return "Balanced";
@@ -183,11 +185,12 @@ const char* ToString(ViewMode view) {
 float PresetScale(const AppState& app) {
     switch (app.preset) {
         case QualityPreset::Native: return 1.0f;
-        case QualityPreset::UltraQuality: return 0.77f;
-        case QualityPreset::Quality: return 0.66f;
-        case QualityPreset::Balanced: return 0.58f;
-        case QualityPreset::Performance: return 0.5f;
-        case QualityPreset::UltraPerformance: return 0.333f;
+        case QualityPreset::UltraQualityPlus: return 1.0f / 1.3f;
+        case QualityPreset::UltraQuality: return 1.0f / 1.5f;
+        case QualityPreset::Quality: return 1.0f / 1.7f;
+        case QualityPreset::Balanced: return 1.0f / 2.0f;
+        case QualityPreset::Performance: return 1.0f / 2.3f;
+        case QualityPreset::UltraPerformance: return 1.0f / 3.0f;
         case QualityPreset::Custom: return app.custom_scale;
     }
     return app.custom_scale;
@@ -753,6 +756,7 @@ void CreateControls(HWND hwnd, AppState& app) {
     app.preset_label = MakeControl(hwnd, "STATIC", "Quality preset", 0, 2001);
     app.preset_combo = MakeControl(hwnd, "COMBOBOX", "", CBS_DROPDOWNLIST | WS_VSCROLL, kPresetCombo);
     AddComboItem(app.preset_combo, "Native");
+    AddComboItem(app.preset_combo, "Ultra Quality Plus");
     AddComboItem(app.preset_combo, "Ultra Quality");
     AddComboItem(app.preset_combo, "Quality");
     AddComboItem(app.preset_combo, "Balanced");
@@ -844,7 +848,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
                 case kPresetCombo:
                     if (HIWORD(wparam) == CBN_SELCHANGE) {
                         const auto sel = static_cast<int>(SendMessageA(app->preset_combo, CB_GETCURSEL, 0, 0));
-                        SetPreset(*app, static_cast<QualityPreset>(std::clamp(sel, 0, 6)));
+                        SetPreset(*app, static_cast<QualityPreset>(std::clamp(sel, 0, 7)));
                     }
                     return 0;
                 case kViewCombo:
@@ -912,11 +916,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
             switch (wparam) {
                 case VK_ESCAPE: PostQuitMessage(0); return 0;
                 case '1': SetPreset(*app, QualityPreset::Native); return 0;
-                case '2': SetPreset(*app, QualityPreset::UltraQuality); return 0;
-                case '3': SetPreset(*app, QualityPreset::Quality); return 0;
-                case '4': SetPreset(*app, QualityPreset::Balanced); return 0;
-                case '5': SetPreset(*app, QualityPreset::Performance); return 0;
-                case '6': SetPreset(*app, QualityPreset::UltraPerformance); return 0;
+                case '2': SetPreset(*app, QualityPreset::UltraQualityPlus); return 0;
+                case '3': SetPreset(*app, QualityPreset::UltraQuality); return 0;
+                case '4': SetPreset(*app, QualityPreset::Quality); return 0;
+                case '5': SetPreset(*app, QualityPreset::Balanced); return 0;
+                case '6': SetPreset(*app, QualityPreset::Performance); return 0;
+                case '7': SetPreset(*app, QualityPreset::UltraPerformance); return 0;
                 case 'V': CycleView(*app); return 0;
                 case 'J': app->jitter = !app->jitter; SyncControls(*app); return 0;
                 case 'K': app->jitter_length = (app->jitter_length >= 96) ? 8 : app->jitter_length + 8; return 0;
