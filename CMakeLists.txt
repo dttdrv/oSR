@@ -90,6 +90,7 @@ add_library(osr_debug STATIC
     src/debug/capture_compare.cpp
     src/debug/capture_analysis.cpp
     src/debug/capture_dump.cpp
+    src/debug/frame_context_readiness.cpp
     src/debug/capture_pack.cpp
     src/debug/overlay.cpp
     src/debug/validation.cpp
@@ -159,6 +160,12 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_frame_context_tests PRIVATE osr_core osr_debug)
     add_test(NAME frame_context_validation COMMAND osr_frame_context_tests)
+
+    add_executable(osr_frame_context_readiness_tests
+        src/tests/frame_context_readiness_tests.cpp
+    )
+    target_link_libraries(osr_frame_context_readiness_tests PRIVATE osr_core osr_debug)
+    add_test(NAME frame_context_readiness COMMAND osr_frame_context_readiness_tests)
 
     add_executable(osr_trust_field_tests
         src/tests/trust_field_tests.cpp

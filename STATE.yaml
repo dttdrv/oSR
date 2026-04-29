@@ -118,7 +118,10 @@ build_status:
     - The XeSS proxy now stores Vulkan init flags, output resolution, quality, velocity scale, jitter scale, and exposure multiplier per context.
     - The XeSS proxy now normalizes xessVKExecute parameters into oSR FrameContext summaries when execute parameters are observed.
     - A live No Man's Sky launch with the rebuilt proxy decoded xessVKInit as output=1920x1080, quality=102(Balanced), init_flags=0x102(INVERTED_DEPTH|ENABLE_AUTOEXPOSURE).
-    - The short hidden No Man's Sky launch did not capture a fresh xessVKExecute after the decoder landed; the next manual test must enter a rendered scene with XeSS enabled and inspect osr_xess_proxy.log for FrameContext source=xess_vk_proxy.
+    - A visible No Man's Sky world-load session captured real xessVKExecute frames and normalized them as FrameContext source=xess_vk_proxy.
+    - The observed No Man's Sky XeSS Balanced execute path renders 960x544 into 1920x1080, uses inverted depth and auto-exposure, provides live jitter, does not set HIGH_RES_MV, and did not expose responsive-mask or exposure textures in the captured execute params.
+    - No Man's Sky did not call xessSetVelocityScale in the captured session, so proxy-normalized MV scale remains (0,0); oSR must continue refusing to infer MV scale silently.
+    - src/debug/frame_context_readiness.* now evaluates whether a frame is complete enough for controlled SR harness use, separate from basic FrameContext validity and game bridge observation.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -137,7 +140,8 @@ known_working_assumptions:
   - oSR's knowledge base lives under docs/wiki; RESEARCH.md is now an index/front door.
 unknowns:
   - Final exported DLL names for bridge packaging beyond the XeSS diagnostic proxy.
-  - Motion-vector convention, exposure behavior, and responsive-mask availability for the first real-game target.
+  - No Man's Sky motion-vector scale/convention source, because the captured session did not call xessSetVelocityScale.
+  - Whether No Man's Sky ever supplies responsive mask or exposure texture paths under other settings/scenes.
 target_games_for_initial_testing:
   samples:
     - AMD FidelityFX SDK FSR3 upscaler sample
@@ -181,5 +185,5 @@ next_actions:
   - Promote sequence_gate_metrics.csv into a hard selected-capture gate after thresholds are calibrated across more captures.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
-  - Manually run No Man's Sky into an actual rendered scene with XeSS enabled and verify the proxy log contains FrameContext source=xess_vk_proxy from xessVKExecute.
+  - Add readiness verdicts to DX12 capture packs and surface them in the manual harness diagnostics panel.
   - Add a proxy mode that can block real XeSS execute and route the decoded FrameContext into an oSR-controlled output path after Vulkan backend ownership is designed.

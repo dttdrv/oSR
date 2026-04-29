@@ -932,3 +932,20 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - No Man's Sky install: `tools/osr_nms_xess_tool.bat install` exited `0` and installed the rebuilt proxy into the local Steam No Man's Sky `Binaries` folder.
 - No Man's Sky live check: a short hidden launch loaded oSR `libxess.dll`, loaded `libxess_real.dll`, registered a XeSS Vulkan context, and decoded `xessVKInit` as output `1920x1080`, `quality=102(Balanced)`, `scale=0.5`, flags `0x102(INVERTED_DEPTH|ENABLE_AUTOEXPOSURE)`.
 - Limitation: the short launch did not reach a fresh rendered `xessVKExecute` after the decoder landed. Next manual gate is to enter a real scene with XeSS enabled and verify `FrameContext source=xess_vk_proxy` in `osr_xess_proxy.log`.
+
+### Real No Man's Sky Execute Capture And Harness Readiness
+
+- Launched No Man's Sky visibly with the installed oSR XeSS proxy so a real world load could generate actual `xessVKExecute` traffic.
+- Result: the proxy captured real `xessVKExecute` frames and normalized them to `FrameContext source=xess_vk_proxy`.
+- Observed NMS XeSS settings from the log:
+  - Output/display: `1920x1080`.
+  - XeSS quality: `102(Balanced)`, scale `0.5`.
+  - Render/input size supplied to execute: `960x544`.
+  - Init flags: `INVERTED_DEPTH|ENABLE_AUTOEXPOSURE`.
+  - Jitter sequence is live and inside expected subpixel range.
+  - `HIGH_RES_MV` is not set.
+  - Exposure texture and responsive mask are absent in the execute params seen so far.
+  - Velocity scale remains `(0,0)` because the game/runtime has not called `xessSetVelocityScale`; oSR must not infer MV scale silently.
+- Added `src/debug/frame_context_readiness.*`, a stricter SR lab-frame readiness contract distinct from basic `FrameContext` validation.
+- Added `src/tests/frame_context_readiness_tests.cpp`; the test was first observed failing because the readiness module did not exist, then passed after implementation.
+- Updated `HARNESS.md` to define the readiness distinction: harness frames should include complete controlled SR evidence, while game captures may be bridge-valid but not harness-ready.

@@ -373,6 +373,21 @@ Every bookmark and metric spike should write a compact diagnosis block into `war
 
 The DX12 wind tunnel now supports `--metric-gate`. When enabled, severe temporal diagnostic findings return exit code `3` after the capture pack is written. This keeps exploratory corrupted-input sweeps usable while allowing regression jobs to fail on metric verdicts.
 
+The repo also has a shared SR readiness contract:
+
+```text
+src/debug/frame_context_readiness.*
+src/tests/frame_context_readiness_tests.cpp
+```
+
+This is stricter than basic `FrameContext` validation. It is meant to answer:
+"does this frame contain enough controlled SR evidence to be useful as a lab
+frame?" A ready harness frame must include color input, output, depth, motion
+vectors, reactive mask, exposure coverage, explicit render/output/display
+sizes, motion-vector convention and scale, frame time, camera range, and
+matching resource extents. Game captures may fail this readiness check while
+still being useful bridge evidence; that distinction is intentional.
+
 ## Implementation Phases
 
 ### H0: Harness Contract
@@ -380,6 +395,7 @@ The DX12 wind tunnel now supports `--metric-gate`. When enabled, severe temporal
 - Add shared `HarnessRunConfig`, `HarnessFrameMetrics`, `HarnessBookmark`, and `HarnessSessionManifest` types.
 - Write JSON/CSV helpers.
 - Store git/build/scenario/reconstruction metadata.
+- Current status: `FrameContext` SR readiness evaluation is implemented and covered by direct tests. The next H0 work is to write readiness verdicts into every capture pack and surface them in the interactive diagnostics panel.
 
 ### H1: DX12 Buffer Truth
 

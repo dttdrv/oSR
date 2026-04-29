@@ -7,6 +7,9 @@ if not exist build\manual mkdir build\manual
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/frame_context_validation_tests.cpp src/core/frame_context.cpp src/debug/validation.cpp -o build\manual\osr_frame_context_tests.exe && build\manual\osr_frame_context_tests.exe
 if errorlevel 1 goto fail
 
+"%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/frame_context_readiness_tests.cpp src/debug/frame_context_readiness.cpp src/core/frame_context.cpp -o build\manual\osr_frame_context_readiness_tests.exe && build\manual\osr_frame_context_readiness_tests.exe
+if errorlevel 1 goto fail
+
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/quality_mode_tests.cpp src/core/quality_mode.cpp -o build\manual\osr_quality_mode_tests.exe && build\manual\osr_quality_mode_tests.exe
 if errorlevel 1 goto fail
 
