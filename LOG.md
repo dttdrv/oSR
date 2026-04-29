@@ -822,3 +822,15 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Updated the DX12 temporal root constants from 16 to 23 DWORDs to carry the new threshold values.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name feature_lock_cli_defaults_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; default metrics matched the previous tuned default.
+
+### Guarded Feature-Lock Threshold Sweep
+
+- Ran a guarded DX12 temporal feature-lock sweep with the new CLI knobs:
+  - `fl_edge020_v1`: `--feature-lock-min-edge 0.20`
+  - `fl_edge022_v1`: `--feature-lock-min-edge 0.22`
+  - `fl_luma035_v1`: `--feature-lock-max-luma-delta 0.035`
+- Result: tighter edge thresholds reduced static text feature-lock strength and slightly lowered locked-detail score, without reducing `bad_lock_signal`.
+- Result: tighter luma delta at `0.035` was identical to the default, which indicates the current accepted locks already fall below that residual.
+- Decision: no feature-lock threshold promotion from this sweep; keep defaults at min edge `0.18` and max luma delta `0.045`.
+- Verification: each sweep run exited `0` with capture gates passing.
+- Comparison: `tools/run_capture_compare.bat build/manual/captures/split_default_s040_clip015 build/manual/captures/fl_edge020_v1 build/manual/captures/fl_edge022_v1 build/manual/captures/fl_luma035_v1` exited `0`; default tied `fl_luma035_v1` and outranked edge-tightened variants.

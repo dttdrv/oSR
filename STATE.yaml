@@ -98,6 +98,7 @@ build_status:
     - Capture compare now reports text_contrast_ratio and bad_lock_signal directly, and ranking includes a small bad-lock penalty.
     - Capture analysis now enforces max_bad_lock_signal; the default gate threshold is 0.13 and the current default capture reports 0.102451.
     - Feature-lock acquisition thresholds are now exposed through temporal settings, DX12 constants, and DX12 wind-tunnel CLI overrides.
+    - First guarded feature-lock threshold sweep did not beat defaults; edge tightening lowered static text lock strength, and luma-delta 0.035 matched default output.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -153,7 +154,8 @@ next_actions:
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Tune feature-lock thresholds using locked_detail_score, text_contrast_ratio, and bad_lock_signal instead of the older ROI/history score alone.
-  - Run a guarded feature-lock threshold sweep now that max_bad_lock_signal is enforced and feature-lock thresholds are CLI-configurable.
+  - Add a saved high-resolution reference or supersampled oracle artifact so future detail scoring can move beyond spatial-baseline comparisons.
+  - Add a static-detail confidence map that can distinguish true stable text edges from transparent-pane stripe edges before loosening feature locks.
   - Add a saved high-resolution reference or supersampled oracle artifact so future detail scoring can move beyond spatial-baseline comparisons.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
