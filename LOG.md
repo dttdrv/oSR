@@ -2,6 +2,18 @@
 
 Append-only engineering changelog. New entries go at the top of the dated section or under a new date.
 
+## 2026-04-29
+
+### SR Research Wiki Migration
+
+- Created `docs/wiki/` as the project's LLM-oriented super-resolution knowledge base.
+- Migrated the monolithic `RESEARCH.md` into focused wiki pages: source index, temporal SR input contract, FSR, XeSS, DLSS/Streamline, temporal reconstruction theory, borrowable ideas, and research backlog.
+- Folded in subagent research on AMD FSR and Intel XeSS. Key conclusion: FSR/XeSS/Streamline/DirectSR all validate the same normalized temporal SR input contract, while oSR still needs to add frame time, camera parameters, explicit upscale size, sharpness/debug flags, nonlinear color flags, resource state/provenance, and richer inspector-style overrides.
+- Added DLSS/Streamline research notes based on NVIDIA's public DLSS 4 and DLSS 4.5 material. Decision: use the public transformer shift as evidence that temporal/context selection matters, but do not treat proprietary DLSS internals as borrowable implementation detail.
+- Research decision: the next credible breakthrough remains deterministic sparse temporal attention, not a heavy neural core. The immediate experiments are input-contract parity, inspector-style diagnostics, MV truth-table metrics, depth-dilated foreground MV, risk-tile GPU residual search, variance-guided trust, and static-detail confidence maps.
+- Source links recorded in `docs/wiki/source-index.md`, including AMD FSR SDK/docs, Intel XeSS-SR guide and SDK, NVIDIA Streamline/DLSS articles, Microsoft DirectSR, OptiScaler, TAA survey, SVGF, ReSTIR/Area ReSTIR, Unreal TSR, and SwinIR.
+- `RESEARCH.md` is now a short front door pointing to `docs/wiki/` instead of duplicating the knowledge base.
+
 ## 2026-04-27
 
 ### Phase 0 Bootstrap

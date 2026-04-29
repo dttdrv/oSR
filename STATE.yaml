@@ -104,6 +104,7 @@ build_status:
     - Default temporal sharpening is tuned to 0.50 after native-reference captures improved text_native_contrast_ratio to 0.937315 without failing bad-lock/reactive gates.
     - Sharpening 0.55/0.60 passed selected-frame native gates, but 0.55 failed the broader multi-frame sequence stability test when promoted; default remains 0.50.
     - Selected-frame captures now write sequence_gate_metrics.csv, and capture compare uses sequence_temporal_delta_ratio to penalize selected-frame winners that fail broader multi-frame stability.
+    - SR research has been migrated from one monolithic RESEARCH.md into docs/wiki, with separate source-backed pages for FSR, XeSS, DLSS/Streamline, the shared temporal SR input contract, temporal reconstruction theory, borrowable ideas, and the research backlog.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -119,6 +120,7 @@ known_working_assumptions:
   - SDK/sample apps are the first validation targets.
   - oSR's research differentiator is trust-field temporal reconstruction with explainable confidence-driven history selection.
   - Manual quality control uses DLSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
+  - oSR's knowledge base lives under docs/wiki; RESEARCH.md is now an index/front door.
 unknowns:
   - Final exported DLL names for bridge packaging beyond the XeSS diagnostic proxy.
   - Exact XeSS SDK header/ABI version and execute-parameter struct layout used by the installed No Man's Sky build.
@@ -135,6 +137,9 @@ target_games_for_initial_testing:
     - The Outer Worlds: Spacer's Choice Edition
     - RoboCop: Rogue City
 next_actions:
+  - Keep docs/wiki/source-index.md updated before adding new research-backed implementation claims.
+  - Add missing FrameContext parity fields identified by the wiki research: frame time, camera near/far/FOV/view-space scale, explicit upscale size, sharpness/debug flags, nonlinear color/HDR flags, and resource state/provenance.
+  - Build an Inspector-style DX12 wind tunnel diagnostics layer with MV, exposure, responsive-mask, jitter, depth, and capture-around-frame controls.
   - Replace runtime HLSL compilation with embedded shader bytecode.
   - Add GPU timestamp queries for upload, reconstruct, readback, and present.
   - Use tools/run_3d_wind_tunnel.bat as the primary manual visual harness.
