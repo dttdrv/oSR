@@ -788,3 +788,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name split_default_s040 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; default output matched the `--sharpening 0.40` capture metrics.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Comparison: `tools/run_capture_compare.bat build/manual/captures/split_baseline_s028 build/manual/captures/split_static_text_s040 build/manual/captures/split_default_s040` exited `0`; default `s040` ranked first/tied with the override run.
+
+### Guarded Clip-Margin Tuning
+
+- Ran a guarded history-clip sweep around the new sharpening `0.40` default using clip margins `0.015` and `0.025`.
+- Result: `0.025` raised raw `locked_detail_score` to `83.981`, but reduced text trusted history to `49.5927%`, so it lost the aggregate gate ranking.
+- Result: `0.015` preserved text trusted history at `50.2278%`, reduced color reject candidates slightly, and ranked above the previous `0.02` default.
+- Promoted default `history_clip_margin` from `0.02` to `0.015` in CPU temporal settings and DX12 temporal constants.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name split_default_s040_clip015 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture gate passed.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Comparison: `tools/run_capture_compare.bat build/manual/captures/split_default_s040 build/manual/captures/split_guarded_s040_clip015 build/manual/captures/split_default_s040_clip015` exited `0`; default `clip015` ranked first/tied with the override run (`81.6955` vs previous default `81.6895`).

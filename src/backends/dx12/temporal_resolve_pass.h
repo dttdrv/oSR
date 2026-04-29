@@ -31,7 +31,7 @@ struct TemporalResolveConstants {
     float sharpening_amount = 0.40f;
     float sharpening_low_trust_scale = 0.20f;
     float sharpening_reactive_scale = 0.25f;
-    float history_clip_margin = 0.02f;
+    float history_clip_margin = 0.015f;
     float feature_lock_sharpening_boost = 0.35f;
     core::Float2 jitter_offset {};
 };
