@@ -855,3 +855,12 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name native_default_s050_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture gate passed.
 - Comparison: `tools/run_capture_compare.bat build/manual/captures/native_gate_v1 build/manual/captures/native_s050_v1 build/manual/captures/native_default_s050_v1` exited `0`; default `0.50` tied the override run and outranked the previous default.
+
+### Sharpening Upper-Bound Check
+
+- Tested `--sharpening 0.55` and `--sharpening 0.60` against the selected-frame native-reference gate.
+- Result: both selected-frame captures passed, and `0.55` ranked highest on selected-frame compare output.
+- Root-cause check: promoting `0.55` as the default caused `tools/run_manual_tests.bat` to fail the low-resolution multi-frame sequence stability gate (`temporal_delta_ratio >= 0.80`).
+- Decision: do not promote `0.55` or `0.60` globally. Keep default sharpening at `0.50` until the score includes multi-frame stability alongside selected-frame native text contrast.
+- Verification after reverting the attempted default bump: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name native_default_s050_verify_v2 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`.
