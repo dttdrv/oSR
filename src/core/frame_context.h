@@ -41,6 +41,8 @@ struct ResourceDesc {
     Dimensions extent = {};
     uint32_t api_format = 0;
     std::string debug_name;
+    uint32_t api_state = 0;
+    std::string provenance;
 
     [[nodiscard]] bool IsPresent() const noexcept;
 };
@@ -66,9 +68,24 @@ struct ExposureInfo {
     std::optional<ResourceDesc> exposure_texture;
 };
 
+struct CameraInfo {
+    float near_plane = 0.0f;
+    float far_plane = 0.0f;
+    float vertical_fov_radians = 0.0f;
+    float view_space_to_meters = 1.0f;
+};
+
+struct ReconstructionControls {
+    float sharpness = 0.0f;
+    bool sharpening_enabled = false;
+    bool debug_view_enabled = false;
+};
+
 struct FrameFlags {
     bool reset_history = false;
     bool high_dynamic_range = false;
+    bool input_color_nonlinear = false;
+    bool output_color_nonlinear = false;
     bool depth_inverted = false;
     bool depth_infinite = false;
     bool motion_vectors_jittered = false;
@@ -87,7 +104,11 @@ struct FrameContext {
     std::optional<ResourceDesc> transparency_and_composition_mask;
 
     Dimensions render_size = {};
+    Dimensions upscale_size = {};
     Dimensions display_size = {};
+    float frame_time_delta_ms = 0.0f;
+    CameraInfo camera = {};
+    ReconstructionControls reconstruction = {};
     Float2 jitter_offset = {};
     Float2 motion_vector_scale = {};
     MotionVectorSpace motion_vector_space = MotionVectorSpace::Unknown;

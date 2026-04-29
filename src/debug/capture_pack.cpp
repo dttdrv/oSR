@@ -82,7 +82,9 @@ std::string ResourceJson(const char* label, const core::ResourceDesc& resource) 
         << "\"debug_id\":" << resource.debug_id << ","
         << "\"extent\":[" << resource.extent.width << "," << resource.extent.height << "],"
         << "\"api_format\":" << resource.api_format << ","
-        << "\"debug_name\":\"" << JsonEscape(resource.debug_name) << "\""
+        << "\"api_state\":" << resource.api_state << ","
+        << "\"debug_name\":\"" << JsonEscape(resource.debug_name) << "\","
+        << "\"provenance\":\"" << JsonEscape(resource.provenance) << "\""
         << "}";
     return out.str();
 }
@@ -194,7 +196,9 @@ bool CapturePackWriter::WriteSessionManifest(const core::FrameContext& first_fra
     out << "  \"algorithm\": \"" << JsonEscape(config_.algorithm) << "\",\n";
     out << "  \"source_api\": \"" << JsonEscape(first_frame.source_api) << "\",\n";
     out << "  \"render_size\": [" << first_frame.render_size.width << ", " << first_frame.render_size.height << "],\n";
+    out << "  \"upscale_size\": [" << first_frame.upscale_size.width << ", " << first_frame.upscale_size.height << "],\n";
     out << "  \"display_size\": [" << first_frame.display_size.width << ", " << first_frame.display_size.height << "],\n";
+    out << "  \"frame_time_delta_ms\": " << first_frame.frame_time_delta_ms << ",\n";
     out << "  \"color_space\": \"" << core::ToString(first_frame.color_space) << "\",\n";
     out << "  \"motion_vector_space\": \"" << core::ToString(first_frame.motion_vector_space) << "\",\n";
     out << "  \"created_utc\": \"" << TimestampUtc() << "\",\n";
@@ -313,13 +317,29 @@ bool CapturePackWriter::WriteFrameContextJson(const core::FrameContext& frame) {
     out << "  \"frame_id\": " << frame.frame_id << ",\n";
     out << "  \"source_api\": \"" << JsonEscape(frame.source_api) << "\",\n";
     out << "  \"render_size\": [" << frame.render_size.width << ", " << frame.render_size.height << "],\n";
+    out << "  \"upscale_size\": [" << frame.upscale_size.width << ", " << frame.upscale_size.height << "],\n";
     out << "  \"display_size\": [" << frame.display_size.width << ", " << frame.display_size.height << "],\n";
+    out << "  \"frame_time_delta_ms\": " << frame.frame_time_delta_ms << ",\n";
+    out << "  \"camera\": {"
+        << "\"near_plane\":" << frame.camera.near_plane << ","
+        << "\"far_plane\":" << frame.camera.far_plane << ","
+        << "\"vertical_fov_radians\":" << frame.camera.vertical_fov_radians << ","
+        << "\"view_space_to_meters\":" << frame.camera.view_space_to_meters
+        << "},\n";
+    out << "  \"reconstruction\": {"
+        << "\"sharpness\":" << frame.reconstruction.sharpness << ","
+        << "\"sharpening_enabled\":" << (frame.reconstruction.sharpening_enabled ? "true" : "false") << ","
+        << "\"debug_view_enabled\":" << (frame.reconstruction.debug_view_enabled ? "true" : "false")
+        << "},\n";
     out << "  \"jitter\": [" << frame.jitter_offset.x << ", " << frame.jitter_offset.y << "],\n";
     out << "  \"motion_vector_scale\": [" << frame.motion_vector_scale.x << ", " << frame.motion_vector_scale.y << "],\n";
     out << "  \"motion_vector_space\": \"" << core::ToString(frame.motion_vector_space) << "\",\n";
     out << "  \"color_space\": \"" << core::ToString(frame.color_space) << "\",\n";
     out << "  \"flags\": {"
         << "\"reset_history\":" << (frame.flags.reset_history ? "true" : "false") << ","
+        << "\"high_dynamic_range\":" << (frame.flags.high_dynamic_range ? "true" : "false") << ","
+        << "\"input_color_nonlinear\":" << (frame.flags.input_color_nonlinear ? "true" : "false") << ","
+        << "\"output_color_nonlinear\":" << (frame.flags.output_color_nonlinear ? "true" : "false") << ","
         << "\"depth_inverted\":" << (frame.flags.depth_inverted ? "true" : "false") << ","
         << "\"motion_vectors_jittered\":" << (frame.flags.motion_vectors_jittered ? "true" : "false")
         << "},\n";

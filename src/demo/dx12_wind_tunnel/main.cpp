@@ -165,7 +165,7 @@ osr::core::ResourceDesc D3DResource(osr::core::ResourceKind kind,
                                     osr::core::Dimensions extent,
                                     DXGI_FORMAT format,
                                     const char* name) {
-    return {kind, resource, debug_id, extent, static_cast<uint32_t>(format), name};
+    return {kind, resource, debug_id, extent, static_cast<uint32_t>(format), name, 0, "dx12_wind_tunnel"};
 }
 
 void ExportMetadata(const osr::core::FrameContext& frame,
@@ -182,7 +182,12 @@ void ExportMetadata(const osr::core::FrameContext& frame,
     out << "frame_id: " << frame.frame_id << "\n";
     out << "source_api: " << frame.source_api << "\n";
     out << "render_size: " << frame.render_size.width << "x" << frame.render_size.height << "\n";
+    out << "upscale_size: " << frame.upscale_size.width << "x" << frame.upscale_size.height << "\n";
     out << "display_size: " << frame.display_size.width << "x" << frame.display_size.height << "\n";
+    out << "frame_time_delta_ms: " << frame.frame_time_delta_ms << "\n";
+    out << "camera_near_far_fov: " << frame.camera.near_plane << ", "
+        << frame.camera.far_plane << ", " << frame.camera.vertical_fov_radians << "\n";
+    out << "sharpness: " << frame.reconstruction.sharpness << "\n";
     out << "jitter: " << frame.jitter_offset.x << ", " << frame.jitter_offset.y << "\n";
     out << "motion_vector_scale: " << frame.motion_vector_scale.x << ", " << frame.motion_vector_scale.y << "\n";
     out << "motion_vector_space: " << osr::core::ToString(frame.motion_vector_space) << "\n";

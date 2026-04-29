@@ -4,7 +4,7 @@ This backlog is ordered by leverage for making oSR better than a normal upscaler
 
 ## R1: Complete Input Contract Parity
 
-Add missing `FrameContext` fields:
+Initial implementation landed in `src/core/frame_context.h` and capture serialization. `FrameContext` now carries:
 
 - frame time delta;
 - camera near/far/FOV/view-space scale;
@@ -13,7 +13,7 @@ Add missing `FrameContext` fields:
 - nonlinear color/HDR flags;
 - resource state/provenance.
 
-Gate: bridge metadata dumps show all fields, and validation warns on missing/unknown data instead of guessing.
+Remaining gate: selected captures must fail or warn loudly when required bridge metadata is missing before real-game replacement work.
 
 ## R2: XeSS-Style Inspector Panel For DX12 Wind Tunnel
 

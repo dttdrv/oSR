@@ -28,7 +28,7 @@ core::ResourceDesc Resource(core::ResourceKind kind,
                             uint64_t debug_id,
                             core::Dimensions extent,
                             const char* name) {
-    return {kind, native_resource, debug_id, extent, 0, name};
+    return {kind, native_resource, debug_id, extent, 0, name, 0, "synthetic_wind_tunnel"};
 }
 
 Float2Buffer ApplyMotionVectorMode(Float2Buffer mv, MotionVectorMode mode, core::Float2 jitter_delta) noexcept {
@@ -210,7 +210,15 @@ SyntheticFrame BuildSyntheticFrame(const SyntheticFrameSettings& settings) {
     frame.context.frame_id = settings.frame_id;
     frame.context.source_api = "oSR.synthetic.wind_tunnel";
     frame.context.render_size = render_size;
+    frame.context.upscale_size = settings.display_size;
     frame.context.display_size = settings.display_size;
+    frame.context.frame_time_delta_ms = 16.667f;
+    frame.context.camera.near_plane = 0.1f;
+    frame.context.camera.far_plane = 1000.0f;
+    frame.context.camera.vertical_fov_radians = 1.0471976f;
+    frame.context.camera.view_space_to_meters = 1.0f;
+    frame.context.reconstruction.sharpness = 0.5f;
+    frame.context.reconstruction.sharpening_enabled = true;
     frame.context.jitter_offset = jitter;
     frame.context.motion_vector_scale = {
         static_cast<float>(render_size.width),

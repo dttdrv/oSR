@@ -40,7 +40,9 @@ core::ResourceDesc ToResourceDesc(const FfxBridgeResource& resource, core::Resou
         resource.debug_id,
         {resource.width, resource.height},
         resource.format,
-        core::ToString(kind)
+        core::ToString(kind),
+        resource.state,
+        resource.provenance != nullptr ? resource.provenance : ""
     };
 }
 
@@ -122,10 +124,22 @@ core::FrameContext FsrBridge::NormalizeFrame(ContextState& context, const FfxBri
     }
 
     frame.render_size = {desc.render_width, desc.render_height};
+    frame.upscale_size = {desc.output_width, desc.output_height};
     frame.display_size = {desc.output_width, desc.output_height};
     if (!frame.display_size.IsValid()) {
         frame.display_size = {create.display_width, create.display_height};
     }
+    if (!frame.upscale_size.IsValid()) {
+        frame.upscale_size = frame.display_size;
+    }
+    frame.frame_time_delta_ms = desc.frame_time_delta_ms;
+    frame.camera.near_plane = desc.camera_near;
+    frame.camera.far_plane = desc.camera_far;
+    frame.camera.vertical_fov_radians = desc.camera_fov_y_radians;
+    frame.camera.view_space_to_meters = desc.view_space_to_meters;
+    frame.reconstruction.sharpness = desc.sharpness;
+    frame.reconstruction.sharpening_enabled = desc.sharpening_enabled;
+    frame.reconstruction.debug_view_enabled = desc.debug_view_enabled;
 
     frame.jitter_offset = {desc.jitter_x, desc.jitter_y};
     frame.motion_vector_scale = {desc.motion_vector_scale_x, desc.motion_vector_scale_y};
@@ -138,6 +152,8 @@ core::FrameContext FsrBridge::NormalizeFrame(ContextState& context, const FfxBri
     frame.exposure.pre_exposure = desc.pre_exposure;
     frame.flags.reset_history = desc.reset;
     frame.flags.high_dynamic_range = HasFlag(create.flags, FfxBridgeCreateFlagHighDynamicRange);
+    frame.flags.input_color_nonlinear = frame.color_space == core::ColorSpace::NonLinearSrgb;
+    frame.flags.output_color_nonlinear = frame.color_space == core::ColorSpace::NonLinearSrgb;
     frame.flags.depth_inverted = HasFlag(create.flags, FfxBridgeCreateFlagDepthInverted);
     frame.flags.depth_infinite = HasFlag(create.flags, FfxBridgeCreateFlagDepthInfinite);
     frame.flags.motion_vectors_jittered = HasFlag(create.flags, FfxBridgeCreateFlagMotionVectorsJittered);

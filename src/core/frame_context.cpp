@@ -1,6 +1,7 @@
 #include "core/frame_context.h"
 
 #include <cmath>
+#include <numbers>
 #include <utility>
 
 namespace osr::core {
@@ -58,6 +59,39 @@ ValidationReport ValidateFrameContext(const FrameContext& frame) {
     }
     if (!frame.display_size.IsValid()) {
         Add(report, ValidationSeverity::Error, "invalid_display_size", "Display/output size must be non-zero.");
+    }
+    if (!frame.upscale_size.IsValid()) {
+        Add(report, ValidationSeverity::Warning, "invalid_upscale_size",
+            "Explicit upscale/output size is missing; bridge code should not assume display size without logging.");
+    }
+
+    if (frame.frame_time_delta_ms <= 0.0f || !std::isfinite(frame.frame_time_delta_ms)) {
+        Add(report, ValidationSeverity::Warning, "unknown_frame_time_delta",
+            "Frame time delta is missing or invalid; temporal responsiveness should remain conservative.");
+    }
+
+    if (frame.camera.near_plane <= 0.0f ||
+        frame.camera.far_plane <= frame.camera.near_plane ||
+        !std::isfinite(frame.camera.near_plane) ||
+        !std::isfinite(frame.camera.far_plane)) {
+        Add(report, ValidationSeverity::Warning, "invalid_camera_range",
+            "Camera near/far range is missing or invalid; depth-derived confidence must be conservative.");
+    }
+    if (frame.camera.vertical_fov_radians <= 0.0f ||
+        frame.camera.vertical_fov_radians >= std::numbers::pi_v<float> ||
+        !std::isfinite(frame.camera.vertical_fov_radians)) {
+        Add(report, ValidationSeverity::Warning, "invalid_camera_fov",
+            "Camera vertical FOV is missing or outside a plausible perspective range.");
+    }
+    if (frame.camera.view_space_to_meters <= 0.0f || !std::isfinite(frame.camera.view_space_to_meters)) {
+        Add(report, ValidationSeverity::Warning, "invalid_view_space_scale",
+            "View-space scale is missing or invalid; world-scale thresholds should not be inferred silently.");
+    }
+    if (frame.reconstruction.sharpness < 0.0f ||
+        frame.reconstruction.sharpness > 1.0f ||
+        !std::isfinite(frame.reconstruction.sharpness)) {
+        Add(report, ValidationSeverity::Warning, "sharpness_out_of_range",
+            "Sharpness should be normalized to [0, 1] before confidence-gated detail recovery.");
     }
 
     RequireResource(report, frame.color_input, ResourceKind::ColorInput);

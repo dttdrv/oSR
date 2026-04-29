@@ -4,6 +4,18 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 
 ## 2026-04-29
 
+### FrameContext Vendor-Parity Fields
+
+- Added vendor-parity `FrameContext` fields identified by the SR wiki: explicit `upscale_size`, `frame_time_delta_ms`, camera near/far/FOV/view-space scale, reconstruction sharpness/debug controls, nonlinear input/output color flags, and resource API state/provenance.
+- Extended frame-context validation with conservative warnings for missing/invalid upscale size, frame time, camera range/FOV/scale, and out-of-range sharpness. These are warnings rather than hard failures so bridge prototypes can log incomplete game data without crashing.
+- Extended capture-pack `session.json` and per-frame `frame_context.json` output with the new contract fields, plus resource state/provenance for every serialized resource.
+- Threaded the new fields through the FSR-style bridge skeleton and synthetic/DX12 wind-tunnel frame contexts.
+- Added test coverage for the new validation codes and capture serialization fields; `tools/run_manual_tests.bat` now includes the frame-context validation test.
+- Verification: targeted frame-context validation test passed.
+- Verification: targeted capture-pack test passed.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name frame_contract_parity_v1 --metric-gate --capture-gate-thresholds profiles\capture_gate.cfg` exited `0`; capture gate passed and the saved `frame_context.json` contains the new upscale/frame-time/camera/reconstruction/resource-provenance fields.
+
 ### SR Research Wiki Migration
 
 - Created `docs/wiki/` as the project's LLM-oriented super-resolution knowledge base.

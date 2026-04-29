@@ -21,6 +21,8 @@ struct FfxBridgeResource {
     uint32_t width = 0;
     uint32_t height = 0;
     uint32_t format = 0;
+    uint32_t state = 0;
+    const char* provenance = nullptr;
 };
 
 struct FfxBridgeCreateDesc {
@@ -51,10 +53,17 @@ struct FfxBridgeDispatchDesc {
     uint32_t output_height = 0;
     float exposure_scale = 1.0f;
     float pre_exposure = 1.0f;
+    float frame_time_delta_ms = 0.0f;
+    float sharpness = 0.0f;
+    float camera_near = 0.0f;
+    float camera_far = 0.0f;
+    float camera_fov_y_radians = 0.0f;
+    float view_space_to_meters = 1.0f;
     bool reset = false;
+    bool sharpening_enabled = false;
+    bool debug_view_enabled = false;
 };
 
 [[nodiscard]] core::ResourceDesc ToResourceDesc(const FfxBridgeResource& resource, core::ResourceKind kind);
 
 } // namespace osr::interop::fsr2_bridge
-

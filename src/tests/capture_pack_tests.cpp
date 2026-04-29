@@ -29,12 +29,24 @@ osr::core::FrameContext Frame() {
     frame.frame_id = 1;
     frame.source_api = "test_api";
     frame.render_size = {1280, 800};
+    frame.upscale_size = {1920, 1200};
     frame.display_size = {1920, 1200};
+    frame.frame_time_delta_ms = 16.667;
+    frame.camera.near_plane = 0.1f;
+    frame.camera.far_plane = 1000.0f;
+    frame.camera.vertical_fov_radians = 1.0471976f;
+    frame.camera.view_space_to_meters = 1.0f;
+    frame.reconstruction.sharpness = 0.5f;
+    frame.reconstruction.sharpening_enabled = true;
     frame.jitter_offset = {0.25f, -0.25f};
     frame.motion_vector_scale = {1280.0f, 800.0f};
     frame.motion_vector_space = osr::core::MotionVectorSpace::Pixel;
     frame.color_space = osr::core::ColorSpace::LinearSdr;
+    frame.flags.input_color_nonlinear = false;
+    frame.flags.output_color_nonlinear = false;
     frame.color_input = Resource(osr::core::ResourceKind::ColorInput, 1);
+    frame.color_input.provenance = "synthetic_renderer";
+    frame.color_input.api_state = 4096;
     frame.color_output = Resource(osr::core::ResourceKind::ColorOutput, 2);
     frame.depth = Resource(osr::core::ResourceKind::Depth, 3);
     frame.motion_vectors = Resource(osr::core::ResourceKind::MotionVectors, 4);
@@ -132,6 +144,9 @@ int main() {
     if (!Contains(root / "session.json", "\"analysis_gate_thresholds_snapshot\": \"capture_gate_thresholds.cfg\"")) {
         return Fail("session manifest missing gate threshold snapshot");
     }
+    if (!Contains(root / "session.json", "\"upscale_size\": [1920, 1200]")) {
+        return Fail("session manifest missing explicit upscale size");
+    }
     if (!Contains(root / "frames.csv", "frame_id,scenario_time_ms,render_w")) {
         return Fail("frames.csv missing header");
     }
@@ -152,6 +167,21 @@ int main() {
     }
     if (!Contains(root / "frame_000001" / "frame_context.json", "quoted \\\"note\\\"\\nnext")) {
         return Fail("frame_context.json missing escaped note");
+    }
+    if (!Contains(root / "frame_000001" / "frame_context.json", "\"frame_time_delta_ms\": 16.667")) {
+        return Fail("frame_context.json missing frame time delta");
+    }
+    if (!Contains(root / "frame_000001" / "frame_context.json", "\"camera\": {\"near_plane\":0.1")) {
+        return Fail("frame_context.json missing camera info");
+    }
+    if (!Contains(root / "frame_000001" / "frame_context.json", "\"sharpness\":0.5")) {
+        return Fail("frame_context.json missing reconstruction controls");
+    }
+    if (!Contains(root / "frame_000001" / "frame_context.json", "\"api_state\":4096")) {
+        return Fail("frame_context.json missing resource state");
+    }
+    if (!Contains(root / "frame_000001" / "frame_context.json", "\"provenance\":\"synthetic_renderer\"")) {
+        return Fail("frame_context.json missing resource provenance");
     }
 
     CapturePackConfig duplicate = config;
