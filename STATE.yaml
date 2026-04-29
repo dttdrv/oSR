@@ -126,6 +126,10 @@ build_status:
     - Capture analysis now reports sr_ready and sr_readiness_errors and writes readiness into capture_analysis.json.
     - Synthetic wind-tunnel frames now include a 1x1 unit-scale exposure resource so controlled lab frames cover every mandatory SR input class.
     - DX12 temporal-gpu capture readiness_capture_v2 passed the metric gate and reported sr_ready=1 with zero readiness errors.
+    - XeSS proxy supports OSR_XESS_MODE=passthrough|observe|osr.
+    - OSR_XESS_MODE=osr now evaluates an explicit replacement policy and logs replacement_decision on xessVKExecute.
+    - Replacement policy refuses takeover when required execute metadata is unsafe, when motion-vector scale is unknown/zero, or while the Vulkan writer backend is unavailable.
+    - The rebuilt replacement-policy proxy is installed into the local No Man's Sky Binaries folder; default mode remains pass-through.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -146,6 +150,7 @@ unknowns:
   - Final exported DLL names for bridge packaging beyond the XeSS diagnostic proxy.
   - No Man's Sky motion-vector scale/convention source, because the captured session did not call xessSetVelocityScale.
   - Whether No Man's Sky ever supplies responsive mask or exposure texture paths under other settings/scenes.
+  - Vulkan writer strategy for safely writing the XeSS output texture without breaking game image layout/synchronization expectations.
 target_games_for_initial_testing:
   samples:
     - AMD FidelityFX SDK FSR3 upscaler sample
@@ -189,4 +194,4 @@ next_actions:
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
   - Surface SR readiness verdicts in the manual harness diagnostics panel, not only capture files and analyzer output.
-  - Add a proxy mode that can block real XeSS execute and route the decoded FrameContext into an oSR-controlled output path after Vulkan backend ownership is designed.
+  - Implement the first Vulkan writer proof in a controlled harness/sample before enabling OSR_XESS_MODE=osr to stop forwarding in a real game.

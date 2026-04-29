@@ -31,6 +31,7 @@ int main(int argc, char** argv) {
     const std::filesystem::path dll_path = argv[1];
     const auto log_path = dll_path.parent_path() / "osr_logs" / "osr_xess_proxy.log";
     std::filesystem::remove(log_path);
+    SetEnvironmentVariableA("OSR_XESS_MODE", "osr");
 
     HMODULE module = LoadLibraryW(dll_path.wstring().c_str());
     if (!module) {
@@ -106,14 +107,16 @@ int main(int argc, char** argv) {
     exec.input_width = 1280;
     exec.input_height = 720;
     for (int i = 0; i < 18; ++i) {
-        (void)vk_execute(fake_context, nullptr, &exec);
+        (void)vk_execute(fake_context, reinterpret_cast<void*>(0x777), &exec);
     }
+    SetEnvironmentVariableA("OSR_XESS_MODE", nullptr);
     FreeLibrary(module);
     if (result == 0) {
         return Fail("xessGetVersion should fail without libxess_real.dll in smoke test");
     }
     if (!Contains(log_path, "oSR XeSS proxy loaded") ||
         !Contains(log_path, "xessGetVersion") ||
+        !Contains(log_path, "xess proxy mode=osr") ||
         !Contains(log_path, "quality=105(UltraQualityPlus)") ||
         !Contains(log_path, "output=1920x1200") ||
         !Contains(log_path, "xessVKInit context=") ||
@@ -121,6 +124,7 @@ int main(int argc, char** argv) {
         !Contains(log_path, "init_flags=0xb(HIGH_RES_MV|INVERTED_DEPTH|RESPONSIVE_PIXEL_MASK)") ||
         !Contains(log_path, "FrameContext source=xess_vk_proxy render=1280x720 display=1920x1080") ||
         !Contains(log_path, "mv_scale=(1920,-1080)") ||
+        !Contains(log_path, "replacement_decision={mode=osr run_osr=false forward=true reason=replacement_backend_unavailable}") ||
         !Contains(log_path, "xessVKExecute") ||
         !Contains(log_path, "throttling=enabled") ||
         !Contains(log_path, "libxess_real.dll")) {

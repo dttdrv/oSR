@@ -965,3 +965,20 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name readiness_capture_v2 --metric-gate --capture-gate-thresholds profiles\capture_gate.cfg` exited `0`.
 - Result: `readiness_capture_v2` reported `sr_ready=1` and `sr_readiness_errors=0`, while also passing the existing capture-analysis gate.
+
+### XeSS Replacement Policy Gate
+
+- Added `src/interop/xess_bridge/xess_replacement_policy.*`.
+- Added `src/tests/xess_replacement_policy_tests.cpp`; the test was first observed failing because the policy module did not exist, then passed after implementation.
+- Added `OSR_XESS_MODE` support to the XeSS proxy:
+  - unset / `passthrough`: decode and forward.
+  - `observe`: explicit diagnostic pass-through.
+  - `osr`: evaluate experimental replacement readiness.
+- Replacement policy refuses takeover when execute params, command buffer, required resources, sizes, motion-vector convention, motion-vector scale, or exposure scale are unsafe.
+- Replacement policy also refuses takeover while the Vulkan writer backend is unavailable; this is intentional until oSR can safely write the XeSS output texture.
+- Updated proxy logging so `xessVKExecute` includes `replacement_decision={mode=... run_osr=... forward=... reason=...}`.
+- Updated proxy smoke coverage to run with `OSR_XESS_MODE=osr` and verify fallback reason `replacement_backend_unavailable` for a complete synthetic execute call.
+- Verification: `tools/run_xess_proxy_smoke.bat` exited `0`.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name replacement_policy_readiness_v1 --metric-gate --capture-gate-thresholds profiles\capture_gate.cfg` exited `0`.
+- Installed the rebuilt proxy into the local No Man's Sky `Binaries` folder; default mode remains pass-through unless `OSR_XESS_MODE` is set.

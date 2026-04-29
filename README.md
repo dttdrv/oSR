@@ -57,6 +57,14 @@ tools\osr_nms_xess_tool.bat restore
 
 The proxy currently installs as `libxess.dll`, preserves the original Intel runtime as `libxess_real.dll`, and logs to the game's `Binaries\osr_logs\osr_xess_proxy.log`. It is still an opt-in diagnostic bridge: it observes and normalizes the XeSS boundary, then forwards to the real XeSS runtime.
 
+Proxy execution mode is controlled with `OSR_XESS_MODE`:
+
+- unset / `passthrough`: decode and forward to the real XeSS runtime
+- `observe`: explicit diagnostic pass-through
+- `osr`: experimental takeover policy; currently logs whether oSR replacement would be allowed, then forwards unless a safe Vulkan writer is available
+
+`OSR_XESS_MODE=osr` is not a finished in-game replacement yet. It is the guarded path that prevents us from silently guessing motion-vector scale or writing an output texture before the Vulkan backend exists.
+
 For a visual 3D edge and render-scale check:
 
 ```text

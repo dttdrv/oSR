@@ -56,6 +56,7 @@ target_link_libraries(osr_fsr_bridge PUBLIC osr_core osr_dx12)
 add_library(osr_vendor_stubs STATIC
     src/interop/dlss_bridge/dlss_bridge.cpp
     src/interop/xess_bridge/xess_bridge.cpp
+    src/interop/xess_bridge/xess_replacement_policy.cpp
     src/interop/xess_bridge/xess_vk_frame_context.cpp
 )
 target_include_directories(osr_vendor_stubs PUBLIC src)
@@ -64,6 +65,7 @@ target_link_libraries(osr_vendor_stubs PUBLIC osr_core)
 if(WIN32 AND OSR_BUILD_XESS_PROXY)
     add_library(osr_xess_proxy SHARED
         src/interop/xess_bridge/xess_proxy.cpp
+        src/interop/xess_bridge/xess_replacement_policy.cpp
         src/interop/xess_bridge/xess_vk_frame_context.cpp
     )
     target_include_directories(osr_xess_proxy PUBLIC src)
@@ -214,6 +216,12 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_xess_vk_frame_context_tests PRIVATE osr_vendor_stubs)
     add_test(NAME xess_vk_frame_context COMMAND osr_xess_vk_frame_context_tests)
+
+    add_executable(osr_xess_replacement_policy_tests
+        src/tests/xess_replacement_policy_tests.cpp
+    )
+    target_link_libraries(osr_xess_replacement_policy_tests PRIVATE osr_vendor_stubs)
+    add_test(NAME xess_replacement_policy COMMAND osr_xess_replacement_policy_tests)
 
     add_executable(osr_wind_tunnel_synthetic_frame_tests
         src/tests/wind_tunnel_synthetic_frame_tests.cpp

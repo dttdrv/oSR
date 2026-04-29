@@ -2,6 +2,8 @@
 #include <windows.h>
 
 #include "core/logging.h"
+#include "interop/xess_bridge/xess_replacement_policy.h"
+#include "interop/xess_bridge/xess_vk_frame_context.h"
 
 #include <atomic>
 #include <cstdint>
@@ -10,8 +12,6 @@
 #include <unordered_map>
 #include <sstream>
 #include <string>
-
-#include "interop/xess_bridge/xess_vk_frame_context.h"
 
 namespace {
 
@@ -33,6 +33,8 @@ struct ProxyState {
     bool attempted_load = false;
     std::atomic<uint64_t> d3d12_execute_count {0};
     std::atomic<uint64_t> vk_execute_count {0};
+    osr::interop::xess_bridge::XessProxyMode proxy_mode =
+        osr::interop::xess_bridge::XessProxyMode::Passthrough;
     std::mutex contexts_mutex;
     std::unordered_map<void*, osr::interop::xess_bridge::XessVkRuntimeState> vk_contexts;
 };
@@ -139,6 +141,12 @@ void Initialize() {
     osr::core::Logger::Instance().Configure(log_path,
                                             osr::core::LogLevel::Debug);
     Log(osr::core::LogLevel::Info, "oSR XeSS proxy loaded from " + module_path.string());
+    char mode_env[64] {};
+    const DWORD mode_count = GetEnvironmentVariableA("OSR_XESS_MODE", mode_env, static_cast<DWORD>(sizeof(mode_env)));
+    state.proxy_mode = osr::interop::xess_bridge::ParseXessProxyMode(
+        mode_count > 0 && mode_count < sizeof(mode_env) ? mode_env : nullptr);
+    Log(osr::core::LogLevel::Info,
+        std::string("xess proxy mode=") + osr::interop::xess_bridge::ToString(state.proxy_mode));
 
     const auto real_path = state.module_dir / "libxess_real.dll";
     state.attempted_load = true;
@@ -154,6 +162,10 @@ void Initialize() {
         out << "could not load " << real_path.string() << " GetLastError=" << GetLastError();
         Log(osr::core::LogLevel::Warning, out.str());
     }
+}
+
+bool ReplacementBackendAvailable() noexcept {
+    return false;
 }
 
 void EnsureInitialized() {
@@ -455,20 +467,53 @@ __declspec(dllexport) XessResult xessVKGetInitParams(void* context, void* init_p
 __declspec(dllexport) XessResult xessVKExecute(void* context, void* command_buffer, const void* execute_params) {
     EnsureInitialized();
     const uint64_t execute_count = State().vk_execute_count.fetch_add(1) + 1;
+    osr::interop::xess_bridge::XessReplacementDecision replacement_decision;
+    replacement_decision.reason = "not_evaluated";
+    bool has_decoded_frame = false;
+    osr::core::FrameContext decoded_frame;
+    if (execute_params != nullptr) {
+        const auto* params = static_cast<const osr::interop::xess_bridge::XessVkExecuteParams*>(execute_params);
+        decoded_frame = osr::interop::xess_bridge::NormalizeVkFrameContext(execute_count,
+                                                                           VkRuntimeFor(context),
+                                                                           *params);
+        has_decoded_frame = true;
+        replacement_decision = osr::interop::xess_bridge::EvaluateXessReplacementDecision(State().proxy_mode,
+                                                                                         decoded_frame,
+                                                                                         true,
+                                                                                         command_buffer != nullptr,
+                                                                                         ReplacementBackendAvailable());
+    } else {
+        replacement_decision = osr::interop::xess_bridge::EvaluateXessReplacementDecision(State().proxy_mode,
+                                                                                         {},
+                                                                                         false,
+                                                                                         command_buffer != nullptr,
+                                                                                         ReplacementBackendAvailable());
+    }
     if (ShouldLogExecute(execute_count) || execute_count == kUnthrottledExecuteLogs + 1) {
         std::string message = "xessVKExecute context=" + Ptr(context) +
                               " command_buffer=" + Ptr(command_buffer) +
                               " execute_params=" + Ptr(execute_params) +
                               ExecuteThrottleSuffix(execute_count);
-        if (execute_params != nullptr) {
-            const auto* params = static_cast<const osr::interop::xess_bridge::XessVkExecuteParams*>(execute_params);
-            const auto frame = osr::interop::xess_bridge::NormalizeVkFrameContext(execute_count,
-                                                                                  VkRuntimeFor(context),
-                                                                                  *params);
+        if (has_decoded_frame) {
             message += " ";
-            message += osr::interop::xess_bridge::DescribeVkFrameContext(frame);
+            message += osr::interop::xess_bridge::DescribeVkFrameContext(decoded_frame);
         }
+        message += " replacement_decision={mode=";
+        message += osr::interop::xess_bridge::ToString(State().proxy_mode);
+        message += " run_osr=";
+        message += replacement_decision.run_osr ? "true" : "false";
+        message += " forward=";
+        message += replacement_decision.forward_to_real_xess ? "true" : "false";
+        message += " reason=";
+        message += replacement_decision.reason;
+        message += "}";
         LogFrame(osr::core::LogLevel::Info, execute_count, message);
+    }
+    if (replacement_decision.run_osr && !replacement_decision.forward_to_real_xess) {
+        LogFrame(osr::core::LogLevel::Error,
+                 execute_count,
+                 "OSR replacement was selected but no Vulkan writer is linked; forwarding is disabled by policy error.");
+        return kXessProxyError;
     }
     using Fn = XessResult (*)(void*, void*, const void*);
     return ForwardResult<Fn>("xessVKExecute", context, command_buffer, execute_params);

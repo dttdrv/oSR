@@ -16,6 +16,9 @@ if errorlevel 1 goto fail
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/xess_vk_frame_context_tests.cpp src/interop/xess_bridge/xess_vk_frame_context.cpp src/core/frame_context.cpp -o build\manual\osr_xess_vk_frame_context_tests.exe && build\manual\osr_xess_vk_frame_context_tests.exe
 if errorlevel 1 goto fail
 
+"%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/xess_replacement_policy_tests.cpp src/interop/xess_bridge/xess_replacement_policy.cpp src/core/frame_context.cpp -o build\manual\osr_xess_replacement_policy_tests.exe && build\manual\osr_xess_replacement_policy_tests.exe
+if errorlevel 1 goto fail
+
 "%CXX%" -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/tests/temporal_oracle_tests.cpp src/reconstruction/temporal_oracle.cpp src/reconstruction/trust_field.cpp -o build\manual\osr_temporal_oracle_tests.exe && build\manual\osr_temporal_oracle_tests.exe
 if errorlevel 1 goto fail
 

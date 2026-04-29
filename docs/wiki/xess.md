@@ -16,6 +16,7 @@ Local oSR state:
 - `src/interop/xess_bridge/xess_bridge.h` marks XeSS replacement out of v0.
 - `src/interop/xess_bridge/xess_proxy.cpp` is a diagnostic proxy that forwards/logs entrypoints.
 - `src/interop/xess_bridge/xess_vk_frame_context.*` cleanly models the public Vulkan init/execute parameter layout without vendoring XeSS headers and normalizes it to oSR `FrameContext`.
+- `src/interop/xess_bridge/xess_replacement_policy.*` gates experimental replacement mode and refuses takeover when mandatory decoded state is missing.
 - No XeSS SDK headers are vendored into oSR.
 
 ## Inputs
@@ -41,6 +42,15 @@ No Man's Sky launch evidence from 2026-04-29:
 - The game registered a XeSS Vulkan context and called `xessGetInputResolution`, `xessGetProperties`, and `xessVKInit`.
 - Observed settings were output `1920x1080`, `quality=102(Balanced)`, `scale=0.5`, and init flags `0x102`, decoded as `INVERTED_DEPTH|ENABLE_AUTOEXPOSURE`.
 - The short hidden launch did not stay in a rendered scene long enough to capture a new `xessVKExecute` frame after the metadata decoder landed; that remains the next manual in-game test gate.
+
+Current replacement-mode behavior:
+
+- Default proxy behavior remains pass-through.
+- `OSR_XESS_MODE=observe` makes diagnostic pass-through explicit.
+- `OSR_XESS_MODE=osr` evaluates whether the decoded execute call could be taken over by oSR.
+- The policy still forwards if execute params, command buffer, resources, sizes, motion-vector convention, or motion-vector scale are unsafe.
+- The policy also forwards while the Vulkan writer is unavailable.
+- For the observed No Man's Sky path, replacement is refused because motion-vector scale remains `(0,0)`; this is intentional because oSR must not infer scale silently.
 
 ## Motion, Jitter, Responsive Mask
 
