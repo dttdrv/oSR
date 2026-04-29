@@ -91,6 +91,7 @@ build_status:
     - Capture analysis now reports optional global and ROI feature-lock metrics.
     - CPU and DX12 temporal resolve now use feature-lock evidence to conservatively boost detail recovery on stable high-trust edges.
     - DX12 temporal resolve now emits feature_lock_strength as a GPU debug UAV, and selected captures include CPU-vs-GPU feature-lock parity.
+    - Capture dumps now include an optional spatial_baseline artifact, and capture analysis gates a baseline-aware locked_detail score.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -145,8 +146,9 @@ next_actions:
   - Add CPU-vs-HLSL numeric parity tests once shader compilation is wired.
   - Use tile classification to gate the first motion-vector residual search prototype.
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
-  - Add a locked-detail metric that rewards stable text/thin-feature contrast without rewarding reactive/specular sharpening.
-  - Tune feature-lock thresholds after locked-detail metrics exist; current feature locks show nonzero text ROI signal and zero reactive ROI signal in feature_lock_uav_v1.
+  - Tune feature-lock thresholds using locked_detail_score, text_contrast_ratio, and bad_lock_signal instead of the older ROI/history score alone.
+  - Add static-only text ROI separation so the locked-detail gate can score static 760M separately from moving OSR.
+  - Add a saved high-resolution reference or supersampled oracle artifact so future detail scoring can move beyond spatial-baseline comparisons.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
   - Add throttled XeSS execute-parameter metadata decoding for No Man's Sky once the exact SDK header version is identified, without dereferencing unknown resources unsafely.

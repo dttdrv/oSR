@@ -138,6 +138,19 @@ std::vector<float> ReadFloatRaw(const std::filesystem::path& path, uint64_t expe
     return values;
 }
 
+std::vector<uint32_t> ReadRgba8Raw(const std::filesystem::path& path, uint64_t expected_count) {
+    std::vector<uint32_t> values(static_cast<size_t>(expected_count), 0u);
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        return {};
+    }
+    in.read(reinterpret_cast<char*>(values.data()), static_cast<std::streamsize>(values.size() * sizeof(uint32_t)));
+    if (static_cast<uint64_t>(in.gcount()) != expected_count * sizeof(uint32_t)) {
+        return {};
+    }
+    return values;
+}
+
 std::vector<float> ReadMotionMagnitudeRaw(const std::filesystem::path& path, uint64_t expected_count) {
     struct Float2 {
         float x;
@@ -157,6 +170,17 @@ std::vector<float> ReadMotionMagnitudeRaw(const std::filesystem::path& path, uin
         magnitudes[i] = std::hypot(values[i].x, values[i].y);
     }
     return magnitudes;
+}
+
+double Clamp01(double value) noexcept {
+    return std::clamp(value, 0.0, 1.0);
+}
+
+float LumaFromRgba8(uint32_t rgba) noexcept {
+    const float r = static_cast<float>((rgba >> 16) & 0xffu) / 255.0f;
+    const float g = static_cast<float>((rgba >> 8) & 0xffu) / 255.0f;
+    const float b = static_cast<float>(rgba & 0xffu) / 255.0f;
+    return r * 0.2126f + g * 0.7152f + b * 0.0722f;
 }
 
 CaptureValueStats ComputeStats(const std::vector<float>& values, double threshold) {
@@ -180,6 +204,66 @@ CaptureValueStats ComputeStats(const std::vector<float>& values, double threshol
     }
     stats.mean = sum / static_cast<double>(values.size());
     stats.over_threshold_pct = static_cast<double>(over) * 100.0 / static_cast<double>(values.size());
+    return stats;
+}
+
+double TextOutputContrast(const std::vector<uint32_t>& output,
+                          core::Dimensions display_size,
+                          uint64_t frame_id) noexcept {
+    if (output.size() != static_cast<size_t>(display_size.width) * display_size.height ||
+        !display_size.IsValid()) {
+        return 0.0;
+    }
+    double glyph_sum = 0.0;
+    double panel_sum = 0.0;
+    uint64_t glyph_samples = 0;
+    uint64_t panel_samples = 0;
+    for (uint32_t y = 0; y < display_size.height; ++y) {
+        for (uint32_t x = 0; x < display_size.width; ++x) {
+            const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(display_size.width);
+            const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(display_size.height);
+            const auto text = ::osr::demo::wind_tunnel::EvaluateSyntheticTextCoverage(u, v, frame_id, true);
+            if (!text.panel) {
+                continue;
+            }
+            const float luma = LumaFromRgba8(output[static_cast<size_t>(y) * display_size.width + x]);
+            if (text.glyph) {
+                glyph_sum += luma;
+                ++glyph_samples;
+            } else {
+                panel_sum += luma;
+                ++panel_samples;
+            }
+        }
+    }
+    if (glyph_samples == 0 || panel_samples == 0) {
+        return 0.0;
+    }
+    return std::abs(glyph_sum / static_cast<double>(glyph_samples) -
+                    panel_sum / static_cast<double>(panel_samples));
+}
+
+CaptureLockedDetailStats ComputeLockedDetailStats(const CaptureFrameAnalysis& analysis,
+                                                  const std::vector<uint32_t>& output,
+                                                  const std::vector<uint32_t>& spatial_baseline) noexcept {
+    CaptureLockedDetailStats stats;
+    stats.text_output_contrast = TextOutputContrast(output, analysis.display_size, analysis.frame_id);
+    stats.text_spatial_contrast = TextOutputContrast(spatial_baseline, analysis.display_size, analysis.frame_id);
+    if (stats.text_spatial_contrast > 0.0001) {
+        stats.text_contrast_ratio = stats.text_output_contrast / stats.text_spatial_contrast;
+    }
+    stats.text_lock_signal = Clamp01(analysis.text_region.mean_feature_lock / 0.015);
+    const double bad_lock = std::max({analysis.specular_region.mean_feature_lock,
+                                      analysis.transparent_region.mean_feature_lock,
+                                      analysis.reactive_region.mean_feature_lock});
+    stats.bad_lock_signal = Clamp01(bad_lock / 0.04);
+    const double contrast_signal = stats.text_contrast_ratio > 0.0
+        ? Clamp01((stats.text_contrast_ratio - 0.75) / 0.35)
+        : output.empty()
+        ? stats.text_lock_signal
+        : Clamp01(stats.text_output_contrast / 0.12);
+    const double useful_detail = 0.60 * stats.text_lock_signal + 0.40 * contrast_signal;
+    stats.score = 100.0 * useful_detail * (1.0 - 0.75 * stats.bad_lock_signal);
     return stats;
 }
 
@@ -456,6 +540,17 @@ CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir)
                              reactive_size,
                              analysis.frame_id,
                              analysis);
+    std::vector<uint32_t> output_values;
+    if (const auto output = FindResource(manifest, frame_dir, "color_output")) {
+        output_values = ReadRgba8Raw(output->raw,
+                                     static_cast<uint64_t>(output->size.width) * output->size.height);
+    }
+    std::vector<uint32_t> spatial_values;
+    if (const auto spatial = FindResource(manifest, frame_dir, "spatial_baseline")) {
+        spatial_values = ReadRgba8Raw(spatial->raw,
+                                      static_cast<uint64_t>(spatial->size.width) * spatial->size.height);
+    }
+    analysis.locked_detail = ComputeLockedDetailStats(analysis, output_values, spatial_values);
     analysis.ok = true;
     return analysis;
 }
@@ -493,6 +588,8 @@ CaptureAnalysisGateThresholds LoadCaptureAnalysisGateThresholds(const std::files
             thresholds.max_reactive_history_trusted_pct = std::stod(value);
         } else if (key == "max_color_reject_candidate_pct") {
             thresholds.max_color_reject_candidate_pct = std::stod(value);
+        } else if (key == "min_locked_detail_score") {
+            thresholds.min_locked_detail_score = std::stod(value);
         }
     }
     return thresholds;
@@ -534,6 +631,11 @@ CaptureAnalysisGateResult EvaluateCaptureAnalysisGate(const CaptureFrameAnalysis
     }
     if (analysis.color_residual.over_threshold_pct > thresholds.max_color_reject_candidate_pct) {
         return fail("color residual candidate rejection above threshold");
+    }
+    if (analysis.feature_lock_strength.samples > 0 &&
+        analysis.text_region.samples > 0 &&
+        analysis.locked_detail.score < thresholds.min_locked_detail_score) {
+        return fail("locked detail score below threshold");
     }
     gate.passed = true;
     gate.reason = "ok";
@@ -587,7 +689,8 @@ bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
         << "\"max_specular_history_trusted_pct\":" << thresholds.max_specular_history_trusted_pct << ","
         << "\"max_transparent_history_trusted_pct\":" << thresholds.max_transparent_history_trusted_pct << ","
         << "\"max_reactive_history_trusted_pct\":" << thresholds.max_reactive_history_trusted_pct << ","
-        << "\"max_color_reject_candidate_pct\":" << thresholds.max_color_reject_candidate_pct
+        << "\"max_color_reject_candidate_pct\":" << thresholds.max_color_reject_candidate_pct << ","
+        << "\"min_locked_detail_score\":" << thresholds.min_locked_detail_score
         << "},\n";
     out << "  \"global\": {\n";
     write_value_stats("history_weight", analysis.history_weight, true);
@@ -601,6 +704,14 @@ bool WriteCaptureAnalysisJson(const CaptureFrameAnalysis& analysis,
         << "\"static_region_history_trusted_pct\":" << analysis.static_region_history_trusted_pct << ","
         << "\"motion_region_mean_history\":" << analysis.motion_region_mean_history << ","
         << "\"static_region_mean_history\":" << analysis.static_region_mean_history
+        << "},\n";
+    out << "  \"locked_detail\": {"
+        << "\"text_output_contrast\":" << analysis.locked_detail.text_output_contrast << ","
+        << "\"text_spatial_contrast\":" << analysis.locked_detail.text_spatial_contrast << ","
+        << "\"text_contrast_ratio\":" << analysis.locked_detail.text_contrast_ratio << ","
+        << "\"text_lock_signal\":" << analysis.locked_detail.text_lock_signal << ","
+        << "\"bad_lock_signal\":" << analysis.locked_detail.bad_lock_signal << ","
+        << "\"score\":" << analysis.locked_detail.score
         << "},\n";
     out << "  \"regions\": {\n";
     write_region_stats("text", analysis.text_region, true);
@@ -639,6 +750,9 @@ std::string SummarizeCaptureAnalysis(const CaptureFrameAnalysis& analysis) {
         << " text_history_mean=" << analysis.text_region.mean_history
         << " text_history_trusted_pct=" << analysis.text_region.history_trusted_pct
         << " text_feature_lock_mean=" << analysis.text_region.mean_feature_lock
+        << " text_output_contrast=" << analysis.locked_detail.text_output_contrast
+        << " text_contrast_ratio=" << analysis.locked_detail.text_contrast_ratio
+        << " locked_detail_score=" << analysis.locked_detail.score
         << " specular_samples=" << analysis.specular_region.samples
         << " specular_history_mean=" << analysis.specular_region.mean_history
         << " specular_history_trusted_pct=" << analysis.specular_region.history_trusted_pct

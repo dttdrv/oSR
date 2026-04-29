@@ -22,6 +22,7 @@ struct CaptureComparisonRow {
     double transparent_history_trusted_pct = 0.0;
     double reactive_history_trusted_pct = 0.0;
     double color_reject_candidate_pct = 0.0;
+    double locked_detail_score = 0.0;
 };
 
 [[nodiscard]] CaptureComparisonRow LoadCaptureComparisonRow(const std::filesystem::path& capture_path);

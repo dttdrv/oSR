@@ -123,14 +123,16 @@ double Score(const CaptureComparisonRow& row) {
     const double transparent_ok = 1.0 - Clamp01(row.transparent_history_trusted_pct / 8.0);
     const double reactive_ok = 1.0 - Clamp01(row.reactive_history_trusted_pct / 1.0);
     const double color_ok = 1.0 - Clamp01(row.color_reject_candidate_pct / 3.0);
+    const double locked_detail_ok = Clamp01(row.locked_detail_score / 100.0);
     const double quality =
         100.0 * (0.25 * motion_ok +
-                 0.20 * static_ok +
+                 0.17 * static_ok +
                  0.15 * reactive_ok +
-                 0.15 * text_ok +
+                 0.13 * text_ok +
                  0.10 * specular_ok +
                  0.075 * transparent_ok +
-                 0.075 * color_ok);
+                 0.075 * color_ok +
+                 0.05 * locked_detail_ok);
     return row.gate_passed ? quality : quality - 10000.0;
 }
 
@@ -167,6 +169,8 @@ CaptureComparisonRow LoadCaptureComparisonRow(const std::filesystem::path& captu
     const auto global = ObjectForKey(text, "global").value_or("{}");
     const auto color_residual = ObjectForKey(global, "color_residual").value_or("{}");
     row.color_reject_candidate_pct = DoubleValue(color_residual, "over_threshold_pct").value_or(0.0);
+    const auto locked_detail = ObjectForKey(text, "locked_detail").value_or("{}");
+    row.locked_detail_score = DoubleValue(locked_detail, "score").value_or(0.0);
 
     const auto split = ObjectForKey(text, "motion_static_split").value_or("{}");
     row.motion_history_trusted_pct = DoubleValue(split, "motion_region_history_trusted_pct").value_or(0.0);
@@ -196,7 +200,7 @@ std::string CaptureComparisonCsvHeader() {
     return "rank,path,loaded,analysis_ok,gate_passed,score,frame_id,gate_reason,error,"
            "motion_history_trusted_pct,static_history_trusted_pct,text_history_trusted_pct,"
            "specular_history_trusted_pct,transparent_history_trusted_pct,reactive_history_trusted_pct,"
-           "color_reject_candidate_pct";
+           "color_reject_candidate_pct,locked_detail_score";
 }
 
 std::string CaptureComparisonCsvRow(size_t rank, const CaptureComparisonRow& row) {
@@ -217,7 +221,8 @@ std::string CaptureComparisonCsvRow(size_t rank, const CaptureComparisonRow& row
         << row.specular_history_trusted_pct << ","
         << row.transparent_history_trusted_pct << ","
         << row.reactive_history_trusted_pct << ","
-        << row.color_reject_candidate_pct;
+        << row.color_reject_candidate_pct << ","
+        << row.locked_detail_score;
     return out.str();
 }
 

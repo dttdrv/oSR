@@ -119,7 +119,8 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
                                               uint64_t depth_hash,
                                               uint64_t motion_vectors_hash,
                                               uint64_t reactive_mask_hash,
-                                              const TemporalResolveDebugMaps* temporal_debug_maps) {
+                                              const TemporalResolveDebugMaps* temporal_debug_maps,
+                                              const std::vector<uint32_t>* spatial_baseline) {
     std::filesystem::create_directories(frame_dir);
     DebugDumpResult result;
     const auto render_size = frame.context.render_size;
@@ -132,6 +133,11 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
     result.motion_vectors_y_pgm = WriteMotionComponentPgm(frame_dir / "motion_vectors_y.pgm", frame.motion_vectors, render_size, false);
     result.reactive_mask_pgm = WriteFloatPgm(frame_dir / "reactive_mask.pgm", frame.reactive_mask, render_size, 0.0f, 1.0f);
     result.output_ppm = WriteRgbaPpm(frame_dir / "color_output.ppm", display_output, display_size);
+    const bool has_spatial_baseline = spatial_baseline &&
+                                      spatial_baseline->size() == static_cast<size_t>(display_size.width) * display_size.height;
+    if (has_spatial_baseline) {
+        result.spatial_baseline_ppm = WriteRgbaPpm(frame_dir / "spatial_baseline.ppm", *spatial_baseline, display_size);
+    }
     const bool has_temporal_maps = temporal_debug_maps &&
                                    temporal_debug_maps->display_size.width == display_size.width &&
                                    temporal_debug_maps->display_size.height == display_size.height &&
@@ -184,6 +190,11 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
     result.motion_vectors_raw = WriteRawBytes(frame_dir / "motion_vectors.rg32f.raw", frame.motion_vectors.data(), frame.motion_vectors.size() * sizeof(Float2Buffer));
     result.reactive_mask_raw = WriteRawBytes(frame_dir / "reactive_mask.r32f.raw", frame.reactive_mask.data(), frame.reactive_mask.size() * sizeof(float));
     result.output_raw = WriteRawBytes(frame_dir / "color_output.rgba8.raw", display_output.data(), display_output.size() * sizeof(uint32_t));
+    if (has_spatial_baseline) {
+        result.spatial_baseline_raw = WriteRawBytes(frame_dir / "spatial_baseline.rgba8.raw",
+                                                    spatial_baseline->data(),
+                                                    spatial_baseline->size() * sizeof(uint32_t));
+    }
 
     std::ofstream manifest(frame_dir / "artifacts.json", std::ios::trunc);
     if (manifest) {
@@ -191,7 +202,12 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
         manifest << "  \"schema\": \"osr.capture.artifacts.v1\",\n";
         manifest << "  \"resources\": [\n";
         manifest << "    {\"name\":\"color_input\",\"view\":\"color_input.ppm\",\"raw\":\"color_input.rgba8.raw\",\"format\":\"rgba8\",\"width\":" << render_size.width << ",\"height\":" << render_size.height << ",\"hash\":" << color_input_hash << "},\n";
-        manifest << "    {\"name\":\"color_output\",\"view\":\"color_output.ppm\",\"raw\":\"color_output.rgba8.raw\",\"format\":\"rgba8\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << ",\"hash\":" << color_output_hash << "},\n";
+        manifest << "    {\"name\":\"color_output\",\"view\":\"color_output.ppm\",\"raw\":\"color_output.rgba8.raw\",\"format\":\"rgba8\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << ",\"hash\":" << color_output_hash << "}";
+        if (has_spatial_baseline) {
+            manifest << ",\n";
+            manifest << "    {\"name\":\"spatial_baseline\",\"view\":\"spatial_baseline.ppm\",\"raw\":\"spatial_baseline.rgba8.raw\",\"format\":\"rgba8\",\"width\":" << display_size.width << ",\"height\":" << display_size.height << "}";
+        }
+        manifest << ",\n";
         manifest << "    {\"name\":\"depth\",\"view\":\"depth.pgm\",\"raw\":\"depth.r32f.raw\",\"format\":\"r32f\",\"width\":" << render_size.width << ",\"height\":" << render_size.height << ",\"hash\":" << depth_hash << ",\"view_min\":0,\"view_max\":1},\n";
         manifest << "    {\"name\":\"motion_vectors\",\"view\":\"motion_vectors_magnitude.pgm\",\"view_x\":\"motion_vectors_x.pgm\",\"view_y\":\"motion_vectors_y.pgm\",\"raw\":\"motion_vectors.rg32f.raw\",\"format\":\"rg32f\",\"width\":" << render_size.width << ",\"height\":" << render_size.height << ",\"hash\":" << motion_vectors_hash << "},\n";
         manifest << "    {\"name\":\"reactive_mask\",\"view\":\"reactive_mask.pgm\",\"raw\":\"reactive_mask.r32f.raw\",\"format\":\"r32f\",\"width\":" << render_size.width << ",\"height\":" << render_size.height << ",\"hash\":" << reactive_mask_hash << ",\"view_min\":0,\"view_max\":1}";

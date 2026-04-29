@@ -25,6 +25,15 @@ struct CaptureRegionStats {
     double mean_feature_lock = 0.0;
 };
 
+struct CaptureLockedDetailStats {
+    double text_output_contrast = 0.0;
+    double text_spatial_contrast = 0.0;
+    double text_contrast_ratio = 0.0;
+    double text_lock_signal = 0.0;
+    double bad_lock_signal = 0.0;
+    double score = 0.0;
+};
+
 struct CaptureFrameAnalysis {
     bool ok = false;
     std::string error;
@@ -44,6 +53,7 @@ struct CaptureFrameAnalysis {
     CaptureRegionStats specular_region;
     CaptureRegionStats transparent_region;
     CaptureRegionStats reactive_region;
+    CaptureLockedDetailStats locked_detail;
 };
 
 struct CaptureAnalysisGateResult {
@@ -59,6 +69,7 @@ struct CaptureAnalysisGateThresholds {
     double max_transparent_history_trusted_pct = 8.0;
     double max_reactive_history_trusted_pct = 1.0;
     double max_color_reject_candidate_pct = 3.0;
+    double min_locked_detail_score = 50.0;
 };
 
 [[nodiscard]] CaptureFrameAnalysis AnalyzeCaptureFrame(const std::filesystem::path& frame_dir);

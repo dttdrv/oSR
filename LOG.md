@@ -767,3 +767,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name feature_lock_uav_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed and reported `feature_lock_mean=0.000415937`, `text_feature_lock_mean=0.0165235`, and `reactive_feature_lock_mean=0`.
 - Comparison: `tools/run_capture_compare.bat build/manual/captures/feature_lock_sharpening_v1 build/manual/captures/feature_lock_uav_v1` exited `0`; both captures passed with the same current ROI/history score.
+
+### Baseline-Aware Locked Detail Metric
+
+- Added optional `spatial_baseline` PPM/raw artifacts to wind-tunnel capture dumps so saved captures can compare temporal output detail against the deterministic spatial baseline.
+- Added `locked_detail` capture-analysis metrics: text output contrast, text spatial contrast, output/spatial text contrast ratio, text lock signal, bad-lock signal, and final locked-detail score.
+- The locked-detail score rewards stable text ROI feature locks plus output-vs-spatial text contrast, while penalizing specular, transparent, and reactive lock leakage.
+- Added `min_locked_detail_score` to `profiles/capture_gate.cfg`, and capture compare now ranks sessions with `locked_detail_score`.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name locked_detail_metric_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed and reported `text_contrast_ratio=1.01007` and `locked_detail_score=83.1908`.
+- Comparison: `tools/run_capture_compare.bat build/manual/captures/feature_lock_uav_v1_verify build/manual/captures/locked_detail_metric_v1` exited `0`; the new capture ranked higher because old analysis files have no locked-detail score (`81.6484` vs `77.4889`).

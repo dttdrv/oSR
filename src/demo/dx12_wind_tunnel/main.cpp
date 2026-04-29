@@ -1038,7 +1038,8 @@ int main(int argc, char** argv) {
                                                                                          0,
                                                                                          0,
                                                                                          0,
-                                                                                         &gpu_debug_maps);
+                                                                                         &gpu_debug_maps,
+                                                                                         &spatial);
                         }
                         sequence_capture_written = dump.AllRequired();
                         bool selected_capture_analysis_ok = true;
@@ -1455,7 +1456,8 @@ int main(int argc, char** argv) {
                                                                                        depth_hash,
                                                                                        motion_vectors_hash,
                                                                                        reactive_mask_hash,
-                                                                                       temporal_mode ? &temporal_debug_maps : nullptr);
+                                                                                       temporal_mode ? &temporal_debug_maps : nullptr,
+                                                                                       &spatial_output);
         if (!dump_result.AllRequired()) {
             osr::core::ValidationReport dump_report;
             dump_report.messages.push_back({

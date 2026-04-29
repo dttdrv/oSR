@@ -23,6 +23,8 @@ struct DebugDumpResult {
     bool reactive_mask_raw = false;
     bool output_ppm = false;
     bool output_raw = false;
+    bool spatial_baseline_ppm = false;
+    bool spatial_baseline_raw = false;
     bool history_weight_pgm = false;
     bool color_residual_pgm = false;
     bool depth_residual_pgm = false;
@@ -57,6 +59,7 @@ DebugDumpResult WriteSyntheticFrameDebugDumps(const std::filesystem::path& frame
                                               uint64_t depth_hash = 0,
                                               uint64_t motion_vectors_hash = 0,
                                               uint64_t reactive_mask_hash = 0,
-                                              const TemporalResolveDebugMaps* temporal_debug_maps = nullptr);
+                                              const TemporalResolveDebugMaps* temporal_debug_maps = nullptr,
+                                              const std::vector<uint32_t>* spatial_baseline = nullptr);
 
 } // namespace osr::demo::wind_tunnel
