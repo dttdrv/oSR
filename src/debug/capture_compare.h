@@ -26,6 +26,9 @@ struct CaptureComparisonRow {
     double text_native_contrast_ratio = 0.0;
     double bad_lock_signal = 0.0;
     double locked_detail_score = 0.0;
+    bool sequence_metrics_loaded = false;
+    double sequence_temporal_delta_ratio = 0.0;
+    double sequence_stability_improvement_pct = 0.0;
 };
 
 [[nodiscard]] CaptureComparisonRow LoadCaptureComparisonRow(const std::filesystem::path& capture_path);

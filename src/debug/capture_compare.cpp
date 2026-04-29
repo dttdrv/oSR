@@ -10,6 +10,7 @@
 #include <locale>
 #include <optional>
 #include <sstream>
+#include <string>
 #include <string_view>
 
 namespace osr::debug {
@@ -26,6 +27,49 @@ std::filesystem::path AnalysisPath(const std::filesystem::path& capture_path) {
         return capture_path;
     }
     return capture_path / "capture_analysis.json";
+}
+
+std::vector<std::string> SplitCsvLine(const std::string& line) {
+    std::vector<std::string> cells;
+    std::string cell;
+    std::istringstream in(line);
+    while (std::getline(in, cell, ',')) {
+        cells.push_back(cell);
+    }
+    return cells;
+}
+
+std::string TrimCell(std::string value) {
+    while (!value.empty() && (value.back() == '\r' || value.back() == '\n' ||
+                              value.back() == ' ' || value.back() == '\t')) {
+        value.pop_back();
+    }
+    size_t begin = 0;
+    while (begin < value.size() && (value[begin] == ' ' || value[begin] == '\t')) {
+        ++begin;
+    }
+    return value.substr(begin);
+}
+
+std::optional<double> CsvDoubleValue(const std::filesystem::path& path, std::string_view column) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        return std::nullopt;
+    }
+    std::string header_line;
+    std::string value_line;
+    if (!std::getline(in, header_line) || !std::getline(in, value_line)) {
+        return std::nullopt;
+    }
+    const auto headers = SplitCsvLine(header_line);
+    const auto values = SplitCsvLine(value_line);
+    const std::string column_name(column);
+    for (size_t i = 0; i < headers.size() && i < values.size(); ++i) {
+        if (TrimCell(headers[i]) == column_name) {
+            return std::stod(TrimCell(values[i]));
+        }
+    }
+    return std::nullopt;
 }
 
 std::optional<std::string> ObjectForKey(const std::string& text, std::string_view key) {
@@ -127,10 +171,15 @@ double Score(const CaptureComparisonRow& row) {
     const double native_detail_ok = row.text_native_contrast_ratio > 0.0
         ? Clamp01((row.text_native_contrast_ratio - 0.90) / 0.10)
         : 0.0;
+    const double sequence_ok = row.sequence_metrics_loaded
+        ? 1.0 - Clamp01((row.sequence_temporal_delta_ratio - 0.80) / 0.10)
+        : 0.0;
     const double bad_lock_ok = 1.0 - Clamp01(row.bad_lock_signal);
+    const double sequence_weight = row.sequence_metrics_loaded ? 0.05 : 0.0;
+    const double static_weight = row.sequence_metrics_loaded ? 0.10 : 0.15;
     const double quality =
         100.0 * (0.25 * motion_ok +
-                 0.15 * static_ok +
+                 static_weight * static_ok +
                  0.15 * reactive_ok +
                  0.11 * text_ok +
                  0.10 * specular_ok +
@@ -138,6 +187,7 @@ double Score(const CaptureComparisonRow& row) {
                  0.075 * color_ok +
                  0.05 * locked_detail_ok +
                  0.01 * native_detail_ok +
+                 sequence_weight * sequence_ok +
                  0.03 * bad_lock_ok);
     return row.gate_passed ? quality : quality - 10000.0;
 }
@@ -191,6 +241,15 @@ CaptureComparisonRow LoadCaptureComparisonRow(const std::filesystem::path& captu
     row.transparent_history_trusted_pct = RegionHistoryTrustedPct(regions, "transparent");
     row.reactive_history_trusted_pct = RegionHistoryTrustedPct(regions, "reactive");
 
+    const auto sequence_path = capture_path / "sequence_gate_metrics.csv";
+    const auto sequence_ratio = CsvDoubleValue(sequence_path, "temporal_delta_ratio");
+    const auto sequence_stability = CsvDoubleValue(sequence_path, "stability_improvement_pct");
+    if (sequence_ratio && sequence_stability) {
+        row.sequence_metrics_loaded = true;
+        row.sequence_temporal_delta_ratio = *sequence_ratio;
+        row.sequence_stability_improvement_pct = *sequence_stability;
+    }
+
     row.score = Score(row);
     return row;
 }
@@ -209,7 +268,8 @@ std::string CaptureComparisonCsvHeader() {
     return "rank,path,loaded,analysis_ok,gate_passed,score,frame_id,gate_reason,error,"
            "motion_history_trusted_pct,static_history_trusted_pct,text_history_trusted_pct,"
            "specular_history_trusted_pct,transparent_history_trusted_pct,reactive_history_trusted_pct,"
-           "color_reject_candidate_pct,text_contrast_ratio,text_native_contrast_ratio,bad_lock_signal,locked_detail_score";
+           "color_reject_candidate_pct,text_contrast_ratio,text_native_contrast_ratio,bad_lock_signal,locked_detail_score,"
+           "sequence_metrics_loaded,sequence_temporal_delta_ratio,sequence_stability_improvement_pct";
 }
 
 std::string CaptureComparisonCsvRow(size_t rank, const CaptureComparisonRow& row) {
@@ -234,7 +294,10 @@ std::string CaptureComparisonCsvRow(size_t rank, const CaptureComparisonRow& row
         << row.text_contrast_ratio << ","
         << row.text_native_contrast_ratio << ","
         << row.bad_lock_signal << ","
-        << row.locked_detail_score;
+        << row.locked_detail_score << ","
+        << (row.sequence_metrics_loaded ? 1 : 0) << ","
+        << row.sequence_temporal_delta_ratio << ","
+        << row.sequence_stability_improvement_pct;
     return out.str();
 }
 

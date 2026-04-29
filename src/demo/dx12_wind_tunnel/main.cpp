@@ -992,6 +992,15 @@ int main(int argc, char** argv) {
                         sequence_ok = sequence_capture.BeginSession(capture_config) &&
                                       sequence_capture.WriteSessionManifest(frame.context, GetCommandLineA()) &&
                                       CopyCaptureGateThresholdSnapshot(capture_gate_thresholds_path, sequence_capture.SessionPath());
+                        if (sequence_ok) {
+                            osr::demo::wind_tunnel::SequenceMetricsSettings sequence_gate_settings;
+                            sequence_gate_settings.display_size = {320, 200};
+                            sequence_gate_settings.render_scale = 2.0f / 3.0f;
+                            sequence_gate_settings.frame_count = 16;
+                            sequence_gate_settings.temporal_settings = temporal_settings;
+                            sequence_ok = WriteSequenceMetricsCsv(osr::demo::wind_tunnel::RunSequenceMetrics(sequence_gate_settings),
+                                                                  sequence_capture.SessionPath() / "sequence_gate_metrics.csv");
+                        }
                         bool selected_debug_parity_ok = true;
                         if (sequence_ok) {
                             uint32_t validation_errors = 0;
@@ -1403,6 +1412,13 @@ int main(int argc, char** argv) {
     const bool capture_started = capture.BeginSession(capture_config);
     if (capture_started) {
         capture.WriteSessionManifest(synthetic.context, GetCommandLineA());
+        osr::demo::wind_tunnel::SequenceMetricsSettings sequence_gate_settings;
+        sequence_gate_settings.display_size = {320, 200};
+        sequence_gate_settings.render_scale = 2.0f / 3.0f;
+        sequence_gate_settings.frame_count = 16;
+        sequence_gate_settings.temporal_settings = temporal_settings;
+        WriteSequenceMetricsCsv(osr::demo::wind_tunnel::RunSequenceMetrics(sequence_gate_settings),
+                                capture.SessionPath() / "sequence_gate_metrics.csv");
         uint32_t validation_errors = 0;
         uint32_t validation_warnings = 0;
         CountValidation(report, validation_errors, validation_warnings);

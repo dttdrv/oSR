@@ -864,3 +864,13 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Decision: do not promote `0.55` or `0.60` globally. Keep default sharpening at `0.50` until the score includes multi-frame stability alongside selected-frame native text contrast.
 - Verification after reverting the attempted default bump: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name native_default_s050_verify_v2 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`.
+
+### Sequence-Aware Capture Compare
+
+- Selected-frame DX12 capture sessions now write `sequence_gate_metrics.csv`, using the same fixed 320x200, 16-frame sequence lab gate as the manual stability test and the capture's active temporal settings.
+- Capture compare now parses optional `sequence_gate_metrics.csv` and reports `sequence_metrics_loaded`, `sequence_temporal_delta_ratio`, and `sequence_stability_improvement_pct`.
+- Capture compare scoring now includes a small sequence-stability term when the sidecar exists; passing ratios at or below `0.80` are treated as good, while above-threshold instability is penalized.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name sequence_sidecar_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; sidecar reported `temporal_delta_ratio=0.796012`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name sequence_sidecar_s055_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg --sharpening 0.55` exited `0`; sidecar reported `temporal_delta_ratio=0.804987`.
+- Comparison: `tools/run_capture_compare.bat build/manual/captures/sequence_sidecar_v1 build/manual/captures/sequence_sidecar_s055_v1` exited `0`; the default `0.50` capture ranked above the sharper `0.55` capture once sequence stability was visible.

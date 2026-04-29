@@ -103,6 +103,7 @@ build_status:
     - Capture analysis now gates text_native_contrast_ratio at 0.90 when native_reference exists.
     - Default temporal sharpening is tuned to 0.50 after native-reference captures improved text_native_contrast_ratio to 0.937315 without failing bad-lock/reactive gates.
     - Sharpening 0.55/0.60 passed selected-frame native gates, but 0.55 failed the broader multi-frame sequence stability test when promoted; default remains 0.50.
+    - Selected-frame captures now write sequence_gate_metrics.csv, and capture compare uses sequence_temporal_delta_ratio to penalize selected-frame winners that fail broader multi-frame stability.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -159,7 +160,7 @@ next_actions:
   - Port bounded residual search to HLSL behind MotionRisk/ShimmerRisk tiles.
   - Tune feature-lock thresholds using locked_detail_score, text_contrast_ratio, and bad_lock_signal instead of the older ROI/history score alone.
   - Add a static-detail confidence map that can distinguish true stable text edges from transparent-pane stripe edges before loosening feature locks.
-  - Add multi-frame native-reference or sequence-aware stability terms to capture compare before promoting sharper selected-frame-only winners.
+  - Promote sequence_gate_metrics.csv into a hard selected-capture gate after thresholds are calibrated across more captures.
   - Fold confidence-gated sharpening into the first real reconstruction pass.
   - Surface quality_mode/custom_render_scale in the future DX12 harness UI as a segmented preset control plus slider.
   - Add throttled XeSS execute-parameter metadata decoding for No Man's Sky once the exact SDK header version is identified, without dereferencing unknown resources unsafely.

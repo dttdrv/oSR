@@ -49,6 +49,14 @@ void WriteAnalysis(const std::filesystem::path& dir,
     out << "}\n";
 }
 
+void WriteSequenceMetrics(const std::filesystem::path& dir,
+                          double temporal_delta_ratio,
+                          double stability_improvement_pct) {
+    std::ofstream out(dir / "sequence_gate_metrics.csv", std::ios::trunc);
+    out << "frames,spatial_frame_delta_mean,temporal_frame_delta_mean,temporal_delta_ratio,stability_improvement_pct\n";
+    out << "16,0.01,0.007," << temporal_delta_ratio << "," << stability_improvement_pct << "\n";
+}
+
 } // namespace
 
 int main() {
@@ -57,6 +65,8 @@ int main() {
     WriteAnalysis(root / "good", true, 0.0, 99.0, 55.0, 0.0, 1.0, 0.0, 0.5, 1.08, 0.97, 0.05, 95.0);
     WriteAnalysis(root / "blurry", true, 0.0, 89.0, 20.0, 0.0, 1.0, 0.0, 0.5, 0.90, 0.80, 0.05, 5.0);
     WriteAnalysis(root / "leaky", false, 5.0, 99.0, 55.0, 15.0, 20.0, 10.0, 10.0, 1.08, 0.97, 0.95, 90.0);
+    WriteSequenceMetrics(root / "good", 0.72, 28.0);
+    WriteSequenceMetrics(root / "blurry", 0.88, 12.0);
 
     auto good = osr::debug::LoadCaptureComparisonRow(root / "good");
     auto blurry = osr::debug::LoadCaptureComparisonRow(root / "blurry");
@@ -66,6 +76,11 @@ int main() {
     }
     if (good.text_native_contrast_ratio < 0.969 || good.text_native_contrast_ratio > 0.971) {
         return Fail("native contrast ratio failed to load");
+    }
+    if (!good.sequence_metrics_loaded ||
+        good.sequence_temporal_delta_ratio < 0.719 ||
+        good.sequence_temporal_delta_ratio > 0.721) {
+        return Fail("sequence metrics failed to load");
     }
     if (!(good.score > blurry.score && blurry.score > leaky.score)) {
         return Fail("comparison score ordering mismatch");
@@ -82,6 +97,7 @@ int main() {
         header.find("text_native_contrast_ratio") == std::string::npos ||
         header.find("bad_lock_signal") == std::string::npos ||
         header.find("locked_detail_score") == std::string::npos ||
+        header.find("sequence_temporal_delta_ratio") == std::string::npos ||
         row.find(",1,1,1,") == std::string::npos) {
         return Fail("comparison CSV output missing expected fields");
     }
