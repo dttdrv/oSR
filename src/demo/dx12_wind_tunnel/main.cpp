@@ -342,6 +342,7 @@ void ApplyTemporalSettings(osr::backends::dx12::TemporalResolveConstants& consta
     constants.sharpening_low_trust_scale = settings.sharpening_low_trust_scale;
     constants.sharpening_reactive_scale = settings.sharpening_reactive_scale;
     constants.history_clip_margin = settings.history_clip_margin;
+    constants.feature_lock_sharpening_boost = settings.feature_lock_sharpening_boost;
 }
 
 bool WriteSequenceMetricsCsv(const osr::demo::wind_tunnel::SequenceMetricsResult& result,

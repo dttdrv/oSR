@@ -22,6 +22,7 @@ cbuffer TemporalConstants : register(b0)
     float g_sharpening_low_trust_scale;
     float g_sharpening_reactive_scale;
     float g_history_clip_margin;
+    float g_feature_lock_sharpening_boost;
     float2 g_jitter_offset;
 };
 
@@ -57,7 +58,30 @@ float4 SampleCurrentDisplay(float2 display_px)
     return QuantizeRgba8(SampleRenderColor(g_current_color, render_float));
 }
 
-float4 ApplyDetailRecovery(float4 resolved, float2 display_px, float history_weight, float reactive, bool disoccluded)
+float LocalEdgeStrength(float2 display_px)
+{
+    float2 left_px = float2(max(display_px.x - 1.0f, 0.0f), display_px.y);
+    float2 right_px = float2(min(display_px.x + 1.0f, float(g_display_size.x - 1)), display_px.y);
+    float2 up_px = float2(display_px.x, max(display_px.y - 1.0f, 0.0f));
+    float2 down_px = float2(display_px.x, min(display_px.y + 1.0f, float(g_display_size.y - 1)));
+    float dx = abs(Luma(SampleCurrentDisplay(right_px).rgb) - Luma(SampleCurrentDisplay(left_px).rgb));
+    float dy = abs(Luma(SampleCurrentDisplay(down_px).rgb) - Luma(SampleCurrentDisplay(up_px).rgb));
+    return saturate(max(dx, dy));
+}
+
+float FeatureLockStrength(float2 display_px, float history_weight, float color_residual, float motion_len, float reactive, bool disoccluded)
+{
+    bool stable = LocalEdgeStrength(display_px) >= 0.18f &&
+                  history_weight >= 0.70f &&
+                  color_residual <= 0.045f &&
+                  (color_residual * color_residual) <= 0.0008f &&
+                  motion_len <= 1.5f &&
+                  reactive < 0.20f &&
+                  !disoccluded;
+    return stable ? 0.22f : 0.0f;
+}
+
+float4 ApplyDetailRecovery(float4 resolved, float2 display_px, float history_weight, float feature_lock_strength, float reactive, bool disoccluded)
 {
     if (g_sharpening_amount <= 0.0f || disoccluded)
     {
@@ -66,7 +90,8 @@ float4 ApplyDetailRecovery(float4 resolved, float2 display_px, float history_wei
 
     float trust_scale = lerp(saturate(g_sharpening_low_trust_scale), 1.0f, saturate(history_weight));
     float reactive_scale = lerp(1.0f, saturate(g_sharpening_reactive_scale), saturate(reactive));
-    float amount = saturate(g_sharpening_amount) * trust_scale * reactive_scale;
+    float lock_scale = 1.0f + saturate(feature_lock_strength) * saturate(g_feature_lock_sharpening_boost);
+    float amount = saturate(g_sharpening_amount) * trust_scale * reactive_scale * lock_scale;
     if (amount <= 0.0f)
     {
         return resolved;
@@ -233,8 +258,9 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
         history_weight *= saturate(1.0f - depth_residual / g_depth_rejection_threshold);
     }
 
+    float feature_lock_strength = FeatureLockStrength(display_px, history_weight, color_residual, motion_len, reactive, disoccluded);
     float4 blended = QuantizeRgba8(lerp(current_color, history_color, history_weight));
-    float4 resolved = ApplyDetailRecovery(blended, display_px, history_weight, reactive, disoccluded);
+    float4 resolved = ApplyDetailRecovery(blended, display_px, history_weight, feature_lock_strength, reactive, disoccluded);
     g_output_color[out_px] = QuantizeRgba8(resolved);
     g_debug_history_weight[out_px] = history_weight;
     g_debug_color_residual[out_px] = color_residual;

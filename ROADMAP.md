@@ -78,3 +78,22 @@ Pass gate:
 - The pass is optional, isolated, and disabled by default.
 - It does not become the core path.
 - It fits the same logging, validation, and profiling discipline.
+
+## Future Packaging: Cross-Platform FSR Replacement Tool
+
+Goal: after oSR reconstruction is visibly and measurably worthwhile, package it as a Windows/Linux tool that can automatically install or inject an oSR bridge for games with FSR-style temporal upscaler support.
+
+This is explicitly not the current quality target. The current target remains reconstruction quality and observability in the harness and controlled game bridge.
+
+Scope:
+- Prefer FSR/FFX-style support first because it is widespread and vendor-neutral.
+- Support Windows DLL proxy packaging and Linux shared-library/proton-oriented packaging.
+- Detect game executable/API/runtime files, create backups, install the correct bridge, and restore cleanly.
+- Keep anti-cheat games out of scope unless the game has an explicitly supported mod/plugin path.
+- Never silently overwrite vendor DLLs or game files without backup and a restore path.
+
+Pass gate:
+- oSR already produces better controlled-scene results than the baseline being replaced.
+- The bridge can capture and validate required temporal SR inputs.
+- Installer has dry-run, install, verify, and restore modes.
+- Logs clearly identify game, bridge type, original runtime version/hash, installed oSR version/hash, and restore location.

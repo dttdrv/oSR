@@ -746,3 +746,14 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Kept the feature-lock artifact optional so GPU temporal captures that only expose history/color/depth maps still analyze correctly until the shader writes a feature-lock UAV.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name feature_lock_metrics_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed and reported `feature_lock_mean=0` as expected for the current GPU path.
+
+### Feature Lock Detail Recovery
+
+- Wired feature-lock evidence into CPU and DX12 temporal detail recovery as a conservative sharpening boost on stable high-trust edges.
+- Added `feature_lock_sharpening_boost` to temporal resolve settings and DX12 temporal constants.
+- The boost is gated by the existing feature-lock criteria: edge strength, high history trust, low luma residual, low residual variance proxy, low motion, non-reactive, and non-disoccluded.
+- Updated the embedded DX12 shader string to match the external HLSL path's YCoCg clipping and feature-lock sharpening behavior.
+- Added a temporal resolve regression test proving feature locks increase detail recovery on stable high-trust edges.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name feature_lock_sharpening_v1 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture analysis gate passed.
+- Comparison: `tools/run_capture_compare.bat build/manual/captures/feature_lock_metrics_v1 build/manual/captures/feature_lock_sharpening_v1` exited `0`; both captures passed gates, with existing score effectively unchanged (`80.5975` before, `80.5953` after) because the current score does not reward locked-detail sharpness.

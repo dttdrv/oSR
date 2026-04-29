@@ -49,12 +49,27 @@ cbuffer TemporalConstants : register(b0)
     float g_sharpening_low_trust_scale;
     float g_sharpening_reactive_scale;
     float g_history_clip_margin;
+    float g_feature_lock_sharpening_boost;
     float2 g_jitter_offset;
 };
 
 float Luma(float3 c)
 {
     return dot(c, float3(0.2126f, 0.7152f, 0.0722f));
+}
+
+float3 ToYCoCg(float3 c)
+{
+    return float3(c.r * 0.25f + c.g * 0.5f + c.b * 0.25f,
+                  c.r * 0.5f - c.b * 0.5f,
+                  -c.r * 0.25f + c.g * 0.5f - c.b * 0.25f);
+}
+
+float3 FromYCoCg(float3 c)
+{
+    return float3(c.x + c.y - c.z,
+                  c.x + c.z,
+                  c.x - c.y - c.z);
 }
 
 float4 QuantizeRgba8(float4 c)
@@ -70,7 +85,30 @@ float4 SampleCurrentDisplay(float2 display_px)
     return QuantizeRgba8(SampleRenderColor(g_current_color, render_float));
 }
 
-float4 ApplyDetailRecovery(float4 resolved, float2 display_px, float history_weight, float reactive, bool disoccluded)
+float LocalEdgeStrength(float2 display_px)
+{
+    float2 left_px = float2(max(display_px.x - 1.0f, 0.0f), display_px.y);
+    float2 right_px = float2(min(display_px.x + 1.0f, float(g_display_size.x - 1)), display_px.y);
+    float2 up_px = float2(display_px.x, max(display_px.y - 1.0f, 0.0f));
+    float2 down_px = float2(display_px.x, min(display_px.y + 1.0f, float(g_display_size.y - 1)));
+    float dx = abs(Luma(SampleCurrentDisplay(right_px).rgb) - Luma(SampleCurrentDisplay(left_px).rgb));
+    float dy = abs(Luma(SampleCurrentDisplay(down_px).rgb) - Luma(SampleCurrentDisplay(up_px).rgb));
+    return saturate(max(dx, dy));
+}
+
+float FeatureLockStrength(float2 display_px, float history_weight, float color_residual, float motion_len, float reactive, bool disoccluded)
+{
+    bool stable = LocalEdgeStrength(display_px) >= 0.18f &&
+                  history_weight >= 0.70f &&
+                  color_residual <= 0.045f &&
+                  (color_residual * color_residual) <= 0.0008f &&
+                  motion_len <= 1.5f &&
+                  reactive < 0.20f &&
+                  !disoccluded;
+    return stable ? 0.22f : 0.0f;
+}
+
+float4 ApplyDetailRecovery(float4 resolved, float2 display_px, float history_weight, float feature_lock_strength, float reactive, bool disoccluded)
 {
     if (g_sharpening_amount <= 0.0f || disoccluded)
     {
@@ -79,7 +117,8 @@ float4 ApplyDetailRecovery(float4 resolved, float2 display_px, float history_wei
 
     float trust_scale = lerp(saturate(g_sharpening_low_trust_scale), 1.0f, saturate(history_weight));
     float reactive_scale = lerp(1.0f, saturate(g_sharpening_reactive_scale), saturate(reactive));
-    float amount = saturate(g_sharpening_amount) * trust_scale * reactive_scale;
+    float lock_scale = 1.0f + saturate(feature_lock_strength) * saturate(g_feature_lock_sharpening_boost);
+    float amount = saturate(g_sharpening_amount) * trust_scale * reactive_scale * lock_scale;
     if (amount <= 0.0f)
     {
         return resolved;
@@ -127,9 +166,16 @@ float4 ClipHistoryToCurrentNeighborhood(float4 history_color, float2 display_px)
     float3 c2 = SampleCurrentDisplay(right_px).rgb;
     float3 c3 = SampleCurrentDisplay(up_px).rgb;
     float3 c4 = SampleCurrentDisplay(down_px).rgb;
-    float3 lo = min(c0, min(c1, min(c2, min(c3, c4))));
-    float3 hi = max(c0, max(c1, max(c2, max(c3, c4))));
-    history_color.rgb = clamp(history_color.rgb, saturate(lo - g_history_clip_margin), saturate(hi + g_history_clip_margin));
+    float3 y0 = ToYCoCg(c0);
+    float3 y1 = ToYCoCg(c1);
+    float3 y2 = ToYCoCg(c2);
+    float3 y3 = ToYCoCg(c3);
+    float3 y4 = ToYCoCg(c4);
+    float3 lo = min(y0, min(y1, min(y2, min(y3, y4))));
+    float3 hi = max(y0, max(y1, max(y2, max(y3, y4))));
+    float3 history_ycocg = ToYCoCg(history_color.rgb);
+    history_ycocg = clamp(history_ycocg, lo - g_history_clip_margin, hi + g_history_clip_margin);
+    history_color.rgb = saturate(FromYCoCg(history_ycocg));
     return QuantizeRgba8(history_color);
 }
 
@@ -239,8 +285,9 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
         history_weight *= saturate(1.0f - depth_residual / g_depth_rejection_threshold);
     }
 
+    float feature_lock_strength = FeatureLockStrength(display_px, history_weight, color_residual, motion_len, reactive, disoccluded);
     float4 blended = QuantizeRgba8(lerp(current_color, history_color, history_weight));
-    float4 resolved = ApplyDetailRecovery(blended, display_px, history_weight, reactive, disoccluded);
+    float4 resolved = ApplyDetailRecovery(blended, display_px, history_weight, feature_lock_strength, reactive, disoccluded);
     g_output_color[out_px] = QuantizeRgba8(resolved);
     g_debug_history_weight[out_px] = history_weight;
     g_debug_color_residual[out_px] = color_residual;
@@ -288,7 +335,7 @@ bool TemporalResolvePass::Initialize(void* native_device) {
     root_params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     root_params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     root_params[1].Constants.ShaderRegister = 0;
-    root_params[1].Constants.Num32BitValues = 15;
+    root_params[1].Constants.Num32BitValues = 16;
     root_params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
     D3D12_ROOT_SIGNATURE_DESC root_desc {};
@@ -446,6 +493,7 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         float sharpening_low_trust_scale;
         float sharpening_reactive_scale;
         float history_clip_margin;
+        float feature_lock_sharpening_boost;
         float jitter_x;
         float jitter_y;
     };
@@ -463,10 +511,11 @@ bool TemporalResolvePass::Dispatch(void* native_command_list,
         constants.sharpening_low_trust_scale,
         constants.sharpening_reactive_scale,
         constants.history_clip_margin,
+        constants.feature_lock_sharpening_boost,
         constants.jitter_offset.x,
         constants.jitter_offset.y
     };
-    command_list->SetComputeRoot32BitConstants(1, 15, &c, 0);
+    command_list->SetComputeRoot32BitConstants(1, 16, &c, 0);
     command_list->Dispatch((constants.display_size.width + 7u) / 8u,
                            (constants.display_size.height + 7u) / 8u,
                            1);

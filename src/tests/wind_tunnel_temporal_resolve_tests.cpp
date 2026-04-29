@@ -240,10 +240,10 @@ int main() {
         return Fail("YCoCg history clipping should reject luma-impossible yellow from red/green neighborhood");
     }
 
-    repro_current.assign(9, 0xffffffffu);
-    repro_current[0] = 0xff000000u;
-    repro_current[3] = 0xff000000u;
-    repro_current[6] = 0xff000000u;
+    repro_current.assign(9, 0xffa0a0a0u);
+    repro_current[0] = 0xff202020u;
+    repro_current[3] = 0xff202020u;
+    repro_current[6] = 0xff202020u;
     repro_history = repro_current;
     settings.max_history_weight = 1.0f;
     settings.history_clip_margin = 0.0f;
@@ -260,6 +260,26 @@ int main() {
                                                           &feature_debug);
     if (stats.feature_lock_strength_mean <= 0.0 || feature_debug.feature_lock_strength[4] <= 0.0f) {
         return Fail("stable high-trust edge should produce feature-lock diagnostics");
+    }
+    settings.sharpening_amount = 0.25f;
+    settings.feature_lock_sharpening_boost = 0.0f;
+    const auto no_lock_boost = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current,
+                                                                               repro_history,
+                                                                               custom,
+                                                                               custom.context.display_size,
+                                                                               settings,
+                                                                               &stats);
+    settings.feature_lock_sharpening_boost = 0.8f;
+    const auto lock_boost = osr::demo::wind_tunnel::ResolveTemporalDisplay(repro_current,
+                                                                            repro_history,
+                                                                            custom,
+                                                                            custom.context.display_size,
+                                                                            settings,
+                                                                            &stats);
+    const uint32_t no_boost_red = (no_lock_boost[4] >> 16) & 0xffu;
+    const uint32_t boosted_red = (lock_boost[4] >> 16) & 0xffu;
+    if (boosted_red <= no_boost_red) {
+        return Fail("feature locks should increase detail recovery on stable high-trust edges");
     }
 
     return 0;

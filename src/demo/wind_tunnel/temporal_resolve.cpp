@@ -60,6 +60,7 @@ uint32_t ApplyDetailRecovery(const std::vector<uint32_t>& current_display,
                              uint32_t y,
                              uint32_t resolved,
                              float history_weight,
+                             float feature_lock_strength,
                              float reactive,
                              bool disoccluded,
                              const TemporalResolveSettings& settings,
@@ -78,7 +79,12 @@ uint32_t ApplyDetailRecovery(const std::vector<uint32_t>& current_display,
     const float reactive_scale = std::lerp(1.0f,
                                            std::clamp(settings.sharpening_reactive_scale, 0.0f, 1.0f),
                                            std::clamp(reactive, 0.0f, 1.0f));
-    const float amount = std::clamp(settings.sharpening_amount, 0.0f, 1.0f) * trust_scale * reactive_scale;
+    const float lock_scale = 1.0f + std::clamp(feature_lock_strength, 0.0f, 1.0f) *
+                                       std::clamp(settings.feature_lock_sharpening_boost, 0.0f, 1.0f);
+    const float amount = std::clamp(settings.sharpening_amount, 0.0f, 1.0f) *
+                         trust_scale *
+                         reactive_scale *
+                         lock_scale;
     if (amount <= 0.0f) {
         return resolved;
     }
@@ -426,6 +432,7 @@ std::vector<uint32_t> ResolveTemporalDisplay(const std::vector<uint32_t>& curren
                                                         y,
                                                         blended,
                                                         history_weight,
+                                                        feature_lock.strength,
                                                         reactive,
                                                         disoccluded,
                                                         settings,
