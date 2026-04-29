@@ -798,3 +798,10 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `tools/run_dx12_wind_tunnel.bat --headless --reconstruction temporal-gpu --frames 16 --capture-frame 12 --capture-run-name split_default_s040_clip015 --metric-gate --capture-gate-thresholds profiles/capture_gate.cfg` exited `0`; capture gate passed.
 - Verification: `tools/run_manual_tests.bat` exited `0`.
 - Comparison: `tools/run_capture_compare.bat build/manual/captures/split_default_s040 build/manual/captures/split_guarded_s040_clip015 build/manual/captures/split_default_s040_clip015` exited `0`; default `clip015` ranked first/tied with the override run (`81.6955` vs previous default `81.6895`).
+
+### Capture Compare Bad-Lock Signal
+
+- Added `text_contrast_ratio` and `bad_lock_signal` columns to capture-compare CSV output.
+- Folded `bad_lock_signal` into the capture comparison score with a small direct penalty, while keeping the existing locked-detail score as the main detail metric.
+- Verification: `tools/run_manual_tests.bat` exited `0`.
+- Verification: `tools/run_capture_compare.bat build/manual/captures/split_default_s040 build/manual/captures/split_guarded_s040_clip015 build/manual/captures/split_default_s040_clip015` exited `0`; output now reports `text_contrast_ratio=1.01617`, `bad_lock_signal=0.102451`, and `locked_detail_score=83.4721` for the current default capture.

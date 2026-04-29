@@ -21,6 +21,8 @@ void WriteAnalysis(const std::filesystem::path& dir,
                    double transparent,
                    double reactive,
                    double color_reject,
+                   double text_contrast_ratio,
+                   double bad_lock,
                    double locked_detail) {
     std::filesystem::create_directories(dir);
     std::ofstream out(dir / "capture_analysis.json", std::ios::trunc);
@@ -33,7 +35,9 @@ void WriteAnalysis(const std::filesystem::path& dir,
     out << "  \"global\": {\"color_residual\":{\"over_threshold_pct\":" << color_reject << "}},\n";
     out << "  \"motion_static_split\": {\"motion_region_history_trusted_pct\":" << motion
         << ",\"static_region_history_trusted_pct\":" << stat << "},\n";
-    out << "  \"locked_detail\": {\"score\":" << locked_detail << "},\n";
+    out << "  \"locked_detail\": {\"text_contrast_ratio\":" << text_contrast_ratio
+        << ",\"bad_lock_signal\":" << bad_lock
+        << ",\"score\":" << locked_detail << "},\n";
     out << "  \"regions\": {\n";
     out << "    \"text\": {\"history_trusted_pct\":" << text << "},\n";
     out << "    \"specular\": {\"history_trusted_pct\":" << specular << "},\n";
@@ -48,9 +52,9 @@ void WriteAnalysis(const std::filesystem::path& dir,
 int main() {
     const std::filesystem::path root = "build/manual/capture_compare_tests";
     std::filesystem::remove_all(root);
-    WriteAnalysis(root / "good", true, 0.0, 99.0, 55.0, 0.0, 1.0, 0.0, 0.5, 95.0);
-    WriteAnalysis(root / "blurry", true, 0.0, 89.0, 20.0, 0.0, 1.0, 0.0, 0.5, 5.0);
-    WriteAnalysis(root / "leaky", false, 5.0, 99.0, 55.0, 15.0, 20.0, 10.0, 10.0, 90.0);
+    WriteAnalysis(root / "good", true, 0.0, 99.0, 55.0, 0.0, 1.0, 0.0, 0.5, 1.08, 0.05, 95.0);
+    WriteAnalysis(root / "blurry", true, 0.0, 89.0, 20.0, 0.0, 1.0, 0.0, 0.5, 0.90, 0.05, 5.0);
+    WriteAnalysis(root / "leaky", false, 5.0, 99.0, 55.0, 15.0, 20.0, 10.0, 10.0, 1.08, 0.95, 90.0);
 
     auto good = osr::debug::LoadCaptureComparisonRow(root / "good");
     auto blurry = osr::debug::LoadCaptureComparisonRow(root / "blurry");
@@ -69,6 +73,8 @@ int main() {
     const auto header = osr::debug::CaptureComparisonCsvHeader();
     const auto row = osr::debug::CaptureComparisonCsvRow(1, ranked[0]);
     if (header.find("reactive_history_trusted_pct") == std::string::npos ||
+        header.find("text_contrast_ratio") == std::string::npos ||
+        header.find("bad_lock_signal") == std::string::npos ||
         header.find("locked_detail_score") == std::string::npos ||
         row.find(",1,1,1,") == std::string::npos) {
         return Fail("comparison CSV output missing expected fields");
