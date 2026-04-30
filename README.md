@@ -1,12 +1,30 @@
 # oSR
 
-oSR is an early clean-room prototype for a DX12 temporal super-resolution replacement layer. The current repository version is `v0.2.0`: the lab SR path exists, the XeSS-style quality ladder is implemented, and the No Man's Sky XeSS proxy can load, forward to the real runtime, and decode Vulkan init/execute metadata into oSR's normalized `FrameContext` contract.
+oSR is an early clean-room prototype for a harness-first temporal super-resolution replacement layer. The current repository version is `v0.2.0`: the lab SR path exists, the XeSS-style quality ladder is implemented, and the No Man's Sky XeSS proxy can load, forward to the real runtime, and decode Vulkan init/execute metadata into oSR's normalized `FrameContext` contract.
 
 Current phase: `phase_4`. This is not a `v1.0` release yet; `v1.0` should mean a real game frame reaches oSR-owned reconstruction instead of pass-through forwarding. See `ARCHITECTURE.md`, `ROADMAP.md`, `STATE.yaml`, and `LOG.md`.
 
 Harness plan: see `HARNESS.md` for the dual-mode eye-test plus logging/capture design.
 
 ## Build
+
+Portable Linux/core path:
+
+```bash
+bash tools/run_linux_core_tests.sh
+```
+
+Or manually:
+
+```bash
+cmake --preset linux-core
+cmake --build --preset linux-core
+ctest --preset linux-core
+```
+
+See `docs/LINUX.md` for elementaryOS notes and the current Linux/Windows target split.
+
+Windows DX12 path:
 
 ```powershell
 cmake --preset ninja-debug

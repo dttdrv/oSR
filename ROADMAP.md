@@ -31,6 +31,7 @@ Pass gate:
 - The DX12 wind tunnel creates resource-backed synthetic color/output/depth/MV/reactive inputs and validates them through `FrameContext`.
 - Capture packs and offline analysis report SR readiness, distinguishing complete harness frames from partial game bridge observations.
 - Controlled DX12 temporal captures must report `sr_ready=1` before they are accepted as lab evidence.
+- The portable core, CPU wind tunnel, capture analysis, and non-DX12 tests configure and run on Linux with Windows-only backends disabled.
 
 ## Phase 3: Deterministic Spatial Upscaler
 

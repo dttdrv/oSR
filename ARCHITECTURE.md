@@ -1,6 +1,6 @@
 # oSR Architecture
 
-oSR is a clean-room prototype for a Windows temporal super-resolution replacement layer. The first target is games or sample applications that already expose DLSS2+/FSR2+/XeSS-style temporal upscaler inputs. The prototype does not attempt to recover missing renderer data from arbitrary games.
+oSR is a clean-room prototype for a harness-first temporal super-resolution replacement layer. The first runtime bridge targets Windows games or sample applications that already expose DLSS2+/FSR2+/XeSS-style temporal upscaler inputs, but the core reconstruction lab is kept portable so Linux development can proceed in parallel. The prototype does not attempt to recover missing renderer data from arbitrary games.
 
 ## Design Goals
 
@@ -98,6 +98,7 @@ Near-term hypotheses:
 
 - `src/core`: API-neutral data model, config, logging, resource registry.
 - `src/backends/dx12`: DX12 resource handling, barriers, descriptors, and debug copy/upscale dispatch.
+- Future `src/backends/vulkan`: Linux/Proton-friendly resource handling and writer experiments. This is intentionally separate from DX12 rather than hidden behind a premature abstraction.
 - `src/interop/fsr2_bridge`: FFX/FSR-style input normalization and exported wrapper skeleton.
 - `src/interop/xess_bridge`: v0 stub only; documents future XeSS-SR boundary.
 - `src/interop/dlss_bridge`: v0 stub only; documents future DLSS/NVNGX boundary.

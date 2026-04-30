@@ -2,6 +2,22 @@
 
 Append-only engineering changelog. New entries go at the top of the dated section or under a new date.
 
+## 2026-04-30
+
+### Harness-First Linux Split
+
+- Decision: focus development on the harness instead of live game replacement until reconstruction quality and observability improve in controlled scenes.
+- Decision: Linux development is now active in parallel for the planned elementaryOS switch; Windows DX12 remains the current GPU reference, but portable core and CPU lab tests must not depend on Windows headers.
+- Added CMake options `OSR_BUILD_DX12`, `OSR_BUILD_WIN32_HARNESS`, and `OSR_BUILD_XESS_PROXY`.
+- Gated Windows-only targets so Linux builds can configure without D3D12/Win32 headers: `osr_dx12`, `osr_fsr_bridge`, `osr_dx12_wind_tunnel`, `osr_manual_3d_wind_tunnel`, and `osr_xess_proxy`.
+- Added the `linux-core` CMake preset and `tools/run_linux_core_tests.sh` for portable core/reconstruction/debug/wind-tunnel/test verification on Linux.
+- Added `docs/LINUX.md` with elementaryOS setup, current Linux target coverage, Windows-only target boundaries, and the near-term Linux harness direction.
+- Verification: `cmake --preset linux-core` configured with DX12, Win32 harness, and XeSS proxy disabled.
+- Verification: `cmake --build --preset linux-core` built portable targets and tests.
+- Verification: `ctest --preset linux-core` passed `20/20` tests on the current Windows host using the portable target graph.
+- Verification: `OSR_NO_PAUSE=1 tools/run_manual_tests.bat` exited `0`, confirming the existing Windows/manual harness suite still passes after the build split.
+- Verification: `cmake --preset ninja-debug` still configures the Windows-default target graph with DX12 and Win32 harness targets enabled.
+
 ## 2026-04-29
 
 ### XeSS Quality Ladder And NMS Injection Tool

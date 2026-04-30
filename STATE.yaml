@@ -4,7 +4,7 @@ build_status:
   configured: true
   compiled: partial
   tests_passed: true
-  last_checked: 2026-04-29
+  last_checked: 2026-04-30
   last_preset: direct-mingw-manual
   notes:
     - Previous full Ninja build passed at commit e91acfd.
@@ -130,6 +130,12 @@ build_status:
     - OSR_XESS_MODE=osr now evaluates an explicit replacement policy and logs replacement_decision on xessVKExecute.
     - Replacement policy refuses takeover when required execute metadata is unsafe, when motion-vector scale is unknown/zero, or while the Vulkan writer backend is unavailable.
     - The rebuilt replacement-policy proxy is installed into the local No Man's Sky Binaries folder; default mode remains pass-through.
+    - Harness work is now the primary product direction; game injection remains downstream diagnostic/packaging work.
+    - CMake now gates Windows-only DX12, Win32 harness, and XeSS proxy targets behind OSR_BUILD_DX12, OSR_BUILD_WIN32_HARNESS, and OSR_BUILD_XESS_PROXY.
+    - Added a linux-core CMake preset and tools/run_linux_core_tests.sh so portable core, reconstruction, wind-tunnel CPU logic, capture analysis, and non-DX12 tests can build on elementaryOS/Linux with Windows-only targets disabled.
+    - Portable linux-core CMake profile configured, built, and passed 20/20 CTest tests on the current host with Windows-only targets disabled.
+    - Existing Windows/manual harness suite still passes after the Linux build split.
+    - Windows-default ninja-debug CMake profile still configures with DX12 and Win32 harness targets enabled.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -138,6 +144,7 @@ external_dependencies:
     status: installed_locally_not_vendored
 known_working_assumptions:
   - Windows 11 primary target.
+  - Linux development is now active in parallel, with elementaryOS as the expected user environment.
   - Primary hardware target is AMD Radeon 760M / Ryzen 5 7640HS class laptop.
   - Output target is 1920x1200.
   - Initial bridge is FSR3.1 / FidelityFX API style DX12 input.
@@ -146,11 +153,13 @@ known_working_assumptions:
   - oSR's research differentiator is trust-field temporal reconstruction with explainable confidence-driven history selection.
   - Manual quality control uses XeSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
   - oSR's knowledge base lives under docs/wiki; RESEARCH.md is now an index/front door.
+  - Harness-first development takes priority over game injection until the reconstruction path is visibly and measurably stronger in controlled scenes.
 unknowns:
   - Final exported DLL names for bridge packaging beyond the XeSS diagnostic proxy.
   - No Man's Sky motion-vector scale/convention source, because the captured session did not call xessSetVelocityScale.
   - Whether No Man's Sky ever supplies responsive mask or exposure texture paths under other settings/scenes.
   - Vulkan writer strategy for safely writing the XeSS output texture without breaking game image layout/synchronization expectations.
+  - Preferred Linux interactive graphics harness backend; current leaning is SDL2 plus Vulkan after the portable CPU lab is verified on elementaryOS.
 target_games_for_initial_testing:
   samples:
     - AMD FidelityFX SDK FSR3 upscaler sample
@@ -158,11 +167,14 @@ target_games_for_initial_testing:
     - DX12 wind tunnel proof of life with synthetic SR input resources
     - Native Win32 3D wind tunnel executable for movement/settings/readable diagnostics
     - Standalone WebGL 3D wind tunnel for visual edge/jitter/render-scale inspection
+    - Portable Linux core/sequence/capture-analysis harness path through the linux-core preset
   later_offline_games:
     - No Man's Sky
     - The Outer Worlds: Spacer's Choice Edition
     - RoboCop: Rogue City
 next_actions:
+  - Verify tools/run_linux_core_tests.sh on elementaryOS as soon as the Linux machine is available.
+  - Design a Linux-native interactive harness backend, likely SDL2 plus Vulkan, while preserving the existing DX12 wind tunnel as the Windows GPU reference.
   - Keep docs/wiki/source-index.md updated before adding new research-backed implementation claims.
   - Build an Inspector-style DX12 wind tunnel diagnostics layer with MV, exposure, responsive-mask, jitter, depth, and capture-around-frame controls.
   - Replace runtime HLSL compilation with embedded shader bytecode.

@@ -7,7 +7,31 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(OSR_BUILD_TESTS "Build oSR tests" ON)
+set(OSR_DEFAULT_BUILD_DX12 OFF)
+set(OSR_DEFAULT_BUILD_WIN32_HARNESS OFF)
+if(WIN32)
+    set(OSR_DEFAULT_BUILD_DX12 ON)
+    set(OSR_DEFAULT_BUILD_WIN32_HARNESS ON)
+endif()
+option(OSR_BUILD_DX12 "Build Windows DX12 backend and DX12 harness targets" ${OSR_DEFAULT_BUILD_DX12})
+option(OSR_BUILD_WIN32_HARNESS "Build the native Win32 manual 3D harness" ${OSR_DEFAULT_BUILD_WIN32_HARNESS})
 option(OSR_BUILD_XESS_PROXY "Build the Windows libxess.dll diagnostic proxy" OFF)
+
+if(OSR_BUILD_DX12 AND NOT WIN32)
+    message(FATAL_ERROR "OSR_BUILD_DX12 currently requires Windows/D3D12 headers and libraries. Configure Linux builds with -DOSR_BUILD_DX12=OFF.")
+endif()
+
+if(OSR_BUILD_WIN32_HARNESS AND NOT WIN32)
+    message(FATAL_ERROR "OSR_BUILD_WIN32_HARNESS requires Win32 headers and libraries. Configure Linux builds with -DOSR_BUILD_WIN32_HARNESS=OFF.")
+endif()
+
+if(OSR_BUILD_XESS_PROXY AND NOT WIN32)
+    message(FATAL_ERROR "OSR_BUILD_XESS_PROXY builds a Windows libxess.dll proxy and requires WIN32.")
+endif()
+
+message(STATUS "oSR DX12 backend: ${OSR_BUILD_DX12}")
+message(STATUS "oSR Win32 manual harness: ${OSR_BUILD_WIN32_HARNESS}")
+message(STATUS "oSR XeSS diagnostic proxy: ${OSR_BUILD_XESS_PROXY}")
 
 add_library(osr_core STATIC
     src/core/config.cpp
@@ -34,24 +58,26 @@ add_library(osr_reconstruction STATIC
 target_include_directories(osr_reconstruction PUBLIC src)
 target_link_libraries(osr_reconstruction PUBLIC osr_core)
 
-add_library(osr_dx12 STATIC
-    src/backends/dx12/barriers.cpp
-    src/backends/dx12/debug_upscale_pass.cpp
-    src/backends/dx12/descriptor_helpers.cpp
-    src/backends/dx12/dx12_backend.cpp
-    src/backends/dx12/temporal_resolve_pass.cpp
-)
-target_include_directories(osr_dx12 PUBLIC src)
-target_link_libraries(osr_dx12 PUBLIC osr_core osr_reconstruction)
-if(WIN32)
+if(OSR_BUILD_DX12)
+    add_library(osr_dx12 STATIC
+        src/backends/dx12/barriers.cpp
+        src/backends/dx12/debug_upscale_pass.cpp
+        src/backends/dx12/descriptor_helpers.cpp
+        src/backends/dx12/dx12_backend.cpp
+        src/backends/dx12/temporal_resolve_pass.cpp
+    )
+    target_include_directories(osr_dx12 PUBLIC src)
+    target_link_libraries(osr_dx12 PUBLIC osr_core osr_reconstruction)
     target_link_libraries(osr_dx12 PUBLIC d3d12 dxgi dxguid d3dcompiler)
 endif()
 
-add_library(osr_fsr_bridge STATIC
-    src/interop/fsr2_bridge/fsr_bridge.cpp
-)
-target_include_directories(osr_fsr_bridge PUBLIC src)
-target_link_libraries(osr_fsr_bridge PUBLIC osr_core osr_dx12)
+if(OSR_BUILD_DX12)
+    add_library(osr_fsr_bridge STATIC
+        src/interop/fsr2_bridge/fsr_bridge.cpp
+    )
+    target_include_directories(osr_fsr_bridge PUBLIC src)
+    target_link_libraries(osr_fsr_bridge PUBLIC osr_core osr_dx12)
+endif()
 
 add_library(osr_vendor_stubs STATIC
     src/interop/dlss_bridge/dlss_bridge.cpp
@@ -121,22 +147,22 @@ add_executable(osr_quality_mode_demo
 )
 target_link_libraries(osr_quality_mode_demo PRIVATE osr_core)
 
-add_executable(osr_manual_3d_wind_tunnel
-    src/demo/manual_3d_wind_tunnel.cpp
-)
-target_link_libraries(osr_manual_3d_wind_tunnel PRIVATE osr_core osr_wind_tunnel)
-if(WIN32)
+if(OSR_BUILD_WIN32_HARNESS)
+    add_executable(osr_manual_3d_wind_tunnel
+        src/demo/manual_3d_wind_tunnel.cpp
+    )
+    target_link_libraries(osr_manual_3d_wind_tunnel PRIVATE osr_core osr_wind_tunnel)
     target_link_libraries(osr_manual_3d_wind_tunnel PRIVATE user32 gdi32 comctl32)
 endif()
 
-add_executable(osr_dx12_wind_tunnel
-    src/demo/dx12_wind_tunnel/main.cpp
-    src/demo/dx12_wind_tunnel/display_upscale.cpp
-    src/demo/dx12_wind_tunnel/dx12_texture_io.cpp
-    src/demo/dx12_wind_tunnel/presenter.cpp
-)
-target_link_libraries(osr_dx12_wind_tunnel PRIVATE osr_core osr_debug osr_wind_tunnel osr_dx12)
-if(WIN32)
+if(OSR_BUILD_DX12)
+    add_executable(osr_dx12_wind_tunnel
+        src/demo/dx12_wind_tunnel/main.cpp
+        src/demo/dx12_wind_tunnel/display_upscale.cpp
+        src/demo/dx12_wind_tunnel/dx12_texture_io.cpp
+        src/demo/dx12_wind_tunnel/presenter.cpp
+    )
+    target_link_libraries(osr_dx12_wind_tunnel PRIVATE osr_core osr_debug osr_wind_tunnel osr_dx12)
     target_link_libraries(osr_dx12_wind_tunnel PRIVATE d3d12 dxgi dxguid d3dcompiler user32)
 endif()
 

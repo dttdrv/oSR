@@ -20,6 +20,19 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "OSR_BUILD_TESTS": "ON"
       }
+    },
+    {
+      "name": "linux-core",
+      "displayName": "Portable Linux/Core Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-core",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "OSR_BUILD_TESTS": "ON",
+        "OSR_BUILD_DX12": "OFF",
+        "OSR_BUILD_WIN32_HARNESS": "OFF",
+        "OSR_BUILD_XESS_PROXY": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -31,6 +44,10 @@
     {
       "name": "ninja-debug",
       "configurePreset": "ninja-debug"
+    },
+    {
+      "name": "linux-core",
+      "configurePreset": "linux-core"
     }
   ],
   "testPresets": [
@@ -40,7 +57,13 @@
       "output": {
         "outputOnFailure": true
       }
+    },
+    {
+      "name": "linux-core",
+      "configurePreset": "linux-core",
+      "output": {
+        "outputOnFailure": true
+      }
     }
   ]
 }
-
