@@ -136,6 +136,11 @@ build_status:
     - Portable linux-core CMake profile configured, built, and passed 20/20 CTest tests on the current host with Windows-only targets disabled.
     - Existing Windows/manual harness suite still passes after the Linux build split.
     - Windows-default ninja-debug CMake profile still configures with DX12 and Win32 harness targets enabled.
+    - Added osr_portable_wind_tunnel as a cross-platform CPU harness that can emit captures, sequence metrics, temporal diagnostics, and capture-analysis gates without D3D12/Win32.
+    - Portable quality-gated capture portable_quality_gate_v3 passed at 1280x800 Quality with sr_ready=1, capture gate ok, text/native contrast ratio 0.93776, motion history trusted 0, and static history trusted 98.8316%.
+    - Portable corrupted-MV metric gate rejects flip-x motion-vector mode as expected.
+    - linux-core CTest suite now passes 22/22 tests, including portable harness smoke and corrupted-MV rejection.
+    - Existing Windows/manual test suite still passes after adding the portable harness.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -168,12 +173,14 @@ target_games_for_initial_testing:
     - Native Win32 3D wind tunnel executable for movement/settings/readable diagnostics
     - Standalone WebGL 3D wind tunnel for visual edge/jitter/render-scale inspection
     - Portable Linux core/sequence/capture-analysis harness path through the linux-core preset
+    - Portable CPU wind tunnel executable for Linux-safe capture packs and metric gates
   later_offline_games:
     - No Man's Sky
     - The Outer Worlds: Spacer's Choice Edition
     - RoboCop: Rogue City
 next_actions:
   - Verify tools/run_linux_core_tests.sh on elementaryOS as soon as the Linux machine is available.
+  - Run tools/run_portable_wind_tunnel.sh on elementaryOS and compare capture packs against the Windows DX12 wind tunnel reference.
   - Design a Linux-native interactive harness backend, likely SDL2 plus Vulkan, while preserving the existing DX12 wind tunnel as the Windows GPU reference.
   - Keep docs/wiki/source-index.md updated before adding new research-backed implementation claims.
   - Build an Inspector-style DX12 wind tunnel diagnostics layer with MV, exposure, responsive-mask, jitter, depth, and capture-around-frame controls.

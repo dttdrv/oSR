@@ -20,6 +20,18 @@ Run the portable test path:
 bash tools/run_linux_core_tests.sh
 ```
 
+Run the portable CPU wind tunnel with capture output and metric gates:
+
+```bash
+bash tools/run_portable_wind_tunnel.sh
+```
+
+Useful faster smoke command:
+
+```bash
+bash tools/run_portable_wind_tunnel.sh --frames 8 --display-size 320x200 --quality quality --capture-run-name portable_smoke --capture-frame 8 --overwrite
+```
+
 Equivalent manual commands:
 
 ```bash
@@ -37,6 +49,7 @@ ctest --preset linux-core
 - `osr_debug`
 - `osr_wind_tunnel`
 - `osr_sequence_lab`
+- `osr_portable_wind_tunnel`
 - `osr_quality_mode_demo`
 - `osr_trust_field_demo`
 - capture analyzer/compare tools
@@ -62,9 +75,11 @@ more naturally than D3D12.
 
 1. Keep the CPU sequence lab and capture analyzer identical across Windows and
    Linux.
-2. Add a portable interactive harness backend after the current DX12 lab gates
+2. Use `osr_portable_wind_tunnel` as the Linux-safe capture producer until the
+   interactive Linux graphics path exists.
+3. Add a portable interactive harness backend after the current DX12 lab gates
    stay green. SDL2 plus Vulkan is the preferred shape, but it should be kept
    behind `src/backends/vulkan` and `src/demo/vulkan_wind_tunnel`.
-3. Treat Proton/game injection as downstream. The current mission is still a
+4. Treat Proton/game injection as downstream. The current mission is still a
    measurable, inspectable harness that improves reconstruction quality without
    hiding broken inputs.

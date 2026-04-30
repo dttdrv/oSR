@@ -54,6 +54,20 @@ tools\run_dx12_wind_tunnel.bat
 build\manual\osr_dx12_wind_tunnel.exe
 ```
 
+Portable Linux-safe capture executable:
+
+```text
+tools/run_portable_wind_tunnel.sh
+build/linux-core/osr_portable_wind_tunnel
+```
+
+The portable wind tunnel is the non-interactive lab harness for Linux and CI-like
+runs. It uses the same synthetic frame generator, CPU temporal resolve, ROI
+metrics, SR readiness serialization, capture-pack writer, and capture analyzer
+as the DX12 path, but it does not require D3D12 or Win32. Its job is to keep the
+science loop moving on elementaryOS while the Windows DX12 harness remains the
+GPU reference.
+
 Required window layout:
 
 ```text

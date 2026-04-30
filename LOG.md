@@ -18,6 +18,24 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 - Verification: `OSR_NO_PAUSE=1 tools/run_manual_tests.bat` exited `0`, confirming the existing Windows/manual harness suite still passes after the build split.
 - Verification: `cmake --preset ninja-debug` still configures the Windows-default target graph with DX12 and Win32 harness targets enabled.
 
+### Portable Wind Tunnel Harness
+
+- Added `src/demo/portable_wind_tunnel.cpp`, a cross-platform CPU harness executable that runs deterministic synthetic frames, CPU temporal resolve, sequence metrics, temporal diagnostics, optional capture packs, and capture-analysis gates without D3D12/Win32.
+- Added CMake target `osr_portable_wind_tunnel`.
+- Added CTest coverage:
+  - `portable_wind_tunnel_smoke` writes a small capture pack.
+  - `portable_wind_tunnel_rejects_corrupt_mv` expects metric-gated corrupted motion-vector mode to fail with `Metric gate failed`.
+- Added launchers:
+  - `tools/run_portable_wind_tunnel.sh` for Linux/elementaryOS.
+  - `tools/run_portable_wind_tunnel.bat` for Windows.
+- Decision: full capture-analysis quality gates should be run at normal lab sizes such as `1280x800`; tiny `320x200` captures are fast smoke tests but can under-report text-history trust.
+- Verification: `build/linux-core/osr_portable_wind_tunnel.exe --frames 16 --display-size 1280x800 --quality quality --capture-run-name portable_quality_gate_v3 --capture-frame 12 --capture-root build/manual/captures --overwrite --metric-gate` exited `0`.
+- Verification: the generated `portable_quality_gate_v3` capture reported `sr_ready=1`, capture-analysis gate `ok`, text/native contrast ratio `0.93776`, motion history trusted `0`, and static history trusted `98.8316%`.
+- Verification: corrupted MV run `--mv-mode flip-x --metric-gate` returned the expected metric-gate failure path.
+- Verification: `cmake --build --preset linux-core; ctest --preset linux-core` passed `22/22` tests.
+- Verification: `OSR_NO_PAUSE=1 tools/run_manual_tests.bat` exited `0` after adding the portable harness.
+- Verification: `OSR_NO_PAUSE=1 tools/run_portable_wind_tunnel.bat --frames 8 --display-size 320x200 --quality quality --capture-run-name portable_bat_smoke --capture-frame 8 --capture-root build/manual/captures --overwrite` exited `0`.
+
 ## 2026-04-29
 
 ### XeSS Quality Ladder And NMS Injection Tool

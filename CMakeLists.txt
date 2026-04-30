@@ -171,6 +171,11 @@ add_executable(osr_sequence_lab
 )
 target_link_libraries(osr_sequence_lab PRIVATE osr_core osr_wind_tunnel)
 
+add_executable(osr_portable_wind_tunnel
+    src/demo/portable_wind_tunnel.cpp
+)
+target_link_libraries(osr_portable_wind_tunnel PRIVATE osr_core osr_debug osr_wind_tunnel)
+
 add_executable(osr_capture_analyzer
     src/tools/capture_analyzer.cpp
 )
@@ -284,6 +289,28 @@ if(OSR_BUILD_TESTS)
     )
     target_link_libraries(osr_wind_tunnel_sequence_metrics_tests PRIVATE osr_core osr_wind_tunnel)
     add_test(NAME wind_tunnel_sequence_metrics COMMAND osr_wind_tunnel_sequence_metrics_tests)
+
+    add_test(NAME portable_wind_tunnel_smoke
+        COMMAND osr_portable_wind_tunnel
+            --frames 8
+            --display-size 320x200
+            --quality quality
+            --capture-run-name portable_ctest
+            --capture-frame 8
+            --capture-root build/manual/captures
+            --overwrite
+    )
+    add_test(NAME portable_wind_tunnel_rejects_corrupt_mv
+        COMMAND osr_portable_wind_tunnel
+            --frames 16
+            --display-size 320x200
+            --quality quality
+            --mv-mode flip-x
+            --metric-gate
+    )
+    set_tests_properties(portable_wind_tunnel_rejects_corrupt_mv PROPERTIES
+        WILL_FAIL TRUE
+    )
 
     add_executable(osr_capture_pack_tests
         src/tests/capture_pack_tests.cpp

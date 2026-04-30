@@ -14,6 +14,12 @@ Portable Linux/core path:
 bash tools/run_linux_core_tests.sh
 ```
 
+Portable CPU wind-tunnel harness with capture pack and metric gate:
+
+```bash
+bash tools/run_portable_wind_tunnel.sh
+```
+
 Or manually:
 
 ```bash
@@ -161,6 +167,18 @@ To build and run the current manual test suite:
 ```text
 tools\run_manual_tests.bat
 ```
+
+For the cross-platform CPU harness on Windows:
+
+```text
+tools\run_portable_wind_tunnel.bat
+```
+
+The portable harness writes sequence metrics to
+`build/manual/osr_portable_wind_tunnel_metrics.csv` and, by default, a capture
+pack to `build/manual/captures/portable_manual`. It is the Linux-safe path for
+capture analysis and metric gates while the DX12 wind tunnel remains the Windows
+GPU reference.
 
 ```powershell
 & 'C:\Users\deyan\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\c++.exe' -IC:/Users/deyan/Projects/oSR/src -std=c++20 src/demo/quality_mode_demo.cpp src/core/quality_mode.cpp -o build/manual/osr_quality_mode_demo.exe
