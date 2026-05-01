@@ -6,6 +6,16 @@ Current phase: `phase_4`. This is not a `v1.0` release yet; `v1.0` should mean a
 
 Harness plan: see `HARNESS.md` for the dual-mode eye-test plus logging/capture design.
 
+## Documentation
+
+- `docs/README.md`: documentation index.
+- `docs/PROJECT_STATUS.md`: current capability, limits, and latest verified results.
+- `docs/HARNESS_USER_GUIDE.md`: how to run manual, portable, and DX12 harnesses.
+- `docs/CAPTURE_PACKS.md`: capture-pack layout and metric interpretation.
+- `docs/LINUX.md`: elementaryOS/Linux development path.
+- `docs/DEVELOPMENT.md`: build targets, verification, and engineering rules.
+- `docs/wiki/README.md`: source-backed SR research wiki.
+
 ## Build
 
 Portable Linux/core path:

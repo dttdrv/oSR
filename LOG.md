@@ -2,6 +2,18 @@
 
 Append-only engineering changelog. New entries go at the top of the dated section or under a new date.
 
+## 2026-05-02
+
+### Documentation System Pass
+
+- Confirmed latest pushed commit before this pass was `e6ff6f1` on `master`.
+- Added `docs/README.md` as the project documentation index.
+- Added `docs/PROJECT_STATUS.md` with current phase, working capabilities, non-working areas, latest verified results, priority, and reality check.
+- Added `docs/HARNESS_USER_GUIDE.md` with portable wind tunnel, DX12 wind tunnel, native manual harness, capture analyzer, metric interpretation, exit codes, and recommended workflows.
+- Added `docs/CAPTURE_PACKS.md` with capture-pack layout, file meanings, metric definitions, gate-threshold usage, failure interpretation, and evidence rules for quality claims.
+- Added `docs/DEVELOPMENT.md` with target boundaries, CMake options, presets, required verification commands, logging/state discipline, code-boundary rules, and known technical debt.
+- Updated `README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `docs/LINUX.md`, and `docs/wiki/README.md` to point at the expanded documentation set.
+
 ## 2026-04-30
 
 ### Harness-First Linux Split

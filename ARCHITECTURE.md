@@ -2,6 +2,10 @@
 
 oSR is a clean-room prototype for a harness-first temporal super-resolution replacement layer. The first runtime bridge targets Windows games or sample applications that already expose DLSS2+/FSR2+/XeSS-style temporal upscaler inputs, but the core reconstruction lab is kept portable so Linux development can proceed in parallel. The prototype does not attempt to recover missing renderer data from arbitrary games.
 
+Practical operation docs live under `docs/`: `PROJECT_STATUS.md`,
+`HARNESS_USER_GUIDE.md`, `CAPTURE_PACKS.md`, `LINUX.md`, and
+`DEVELOPMENT.md`.
+
 ## Design Goals
 
 - Capture a normalized temporal SR frame contract from an existing upscaler integration.

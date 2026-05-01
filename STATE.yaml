@@ -4,8 +4,8 @@ build_status:
   configured: true
   compiled: partial
   tests_passed: true
-  last_checked: 2026-04-30
-  last_preset: direct-mingw-manual
+  last_checked: 2026-05-02
+  last_preset: documentation-pass
   notes:
     - Previous full Ninja build passed at commit e91acfd.
     - Current CMake/Ninja configure/build stalls during compiler ABI/tool execution in this sandbox; changed test sources compile and pass via direct MinGW commands.
@@ -141,6 +141,7 @@ build_status:
     - Portable corrupted-MV metric gate rejects flip-x motion-vector mode as expected.
     - linux-core CTest suite now passes 22/22 tests, including portable harness smoke and corrupted-MV rejection.
     - Existing Windows/manual test suite still passes after adding the portable harness.
+    - Documentation has been expanded into docs/README.md, docs/PROJECT_STATUS.md, docs/HARNESS_USER_GUIDE.md, docs/CAPTURE_PACKS.md, docs/LINUX.md, docs/DEVELOPMENT.md, and docs/wiki.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -158,6 +159,7 @@ known_working_assumptions:
   - oSR's research differentiator is trust-field temporal reconstruction with explainable confidence-driven history selection.
   - Manual quality control uses XeSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
   - oSR's knowledge base lives under docs/wiki; RESEARCH.md is now an index/front door.
+  - Practical user/developer documentation lives under docs/ with README.md as the index.
   - Harness-first development takes priority over game injection until the reconstruction path is visibly and measurably stronger in controlled scenes.
 unknowns:
   - Final exported DLL names for bridge packaging beyond the XeSS diagnostic proxy.
@@ -181,6 +183,7 @@ target_games_for_initial_testing:
 next_actions:
   - Verify tools/run_linux_core_tests.sh on elementaryOS as soon as the Linux machine is available.
   - Run tools/run_portable_wind_tunnel.sh on elementaryOS and compare capture packs against the Windows DX12 wind tunnel reference.
+  - Keep docs/PROJECT_STATUS.md and docs/HARNESS_USER_GUIDE.md current whenever harness behavior changes.
   - Design a Linux-native interactive harness backend, likely SDL2 plus Vulkan, while preserving the existing DX12 wind tunnel as the Windows GPU reference.
   - Keep docs/wiki/source-index.md updated before adding new research-backed implementation claims.
   - Build an Inspector-style DX12 wind tunnel diagnostics layer with MV, exposure, responsive-mask, jitter, depth, and capture-around-frame controls.

@@ -2,6 +2,9 @@
 
 This directory is the project memory for super-resolution research. It is written for future agents and humans: short enough to search, strict enough to keep claims tied to sources or local code.
 
+For operational docs, start at [../README.md](../README.md). This wiki is for
+research and source-backed technical reasoning, not day-to-day harness commands.
+
 ## Index
 
 - [source-index.md](source-index.md) - primary sources and local code evidence.

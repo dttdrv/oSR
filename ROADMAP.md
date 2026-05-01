@@ -32,6 +32,7 @@ Pass gate:
 - Capture packs and offline analysis report SR readiness, distinguishing complete harness frames from partial game bridge observations.
 - Controlled DX12 temporal captures must report `sr_ready=1` before they are accepted as lab evidence.
 - The portable core, CPU wind tunnel, capture analysis, and non-DX12 tests configure and run on Linux with Windows-only backends disabled.
+- `docs/` contains practical user/developer guides for harness operation, capture-pack interpretation, Linux setup, and current project status.
 
 ## Phase 3: Deterministic Spatial Upscaler
 
