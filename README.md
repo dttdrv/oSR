@@ -15,6 +15,7 @@ Harness plan: see `HARNESS.md` for the dual-mode eye-test plus logging/capture d
 - `docs/LINUX.md`: elementaryOS/Linux development path.
 - `docs/DEVELOPMENT.md`: build targets, verification, and engineering rules.
 - `docs/wiki/README.md`: source-backed SR research wiki.
+- `LINUX_HANDOFF.md`: detailed handoff for continuing the project on Linux.
 
 ## Build
 

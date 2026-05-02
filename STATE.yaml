@@ -142,6 +142,7 @@ build_status:
     - linux-core CTest suite now passes 22/22 tests, including portable harness smoke and corrupted-MV rejection.
     - Existing Windows/manual test suite still passes after adding the portable harness.
     - Documentation has been expanded into docs/README.md, docs/PROJECT_STATUS.md, docs/HARNESS_USER_GUIDE.md, docs/CAPTURE_PACKS.md, docs/LINUX.md, docs/DEVELOPMENT.md, and docs/wiki.
+    - LINUX_HANDOFF.md now contains the maximal-detail Linux migration handoff with preferences, decisions, mistakes, calculations, current commands, and next milestones.
 external_dependencies:
   fidelityfx_sdk:
     path: external/FidelityFX-SDK
@@ -160,6 +161,7 @@ known_working_assumptions:
   - Manual quality control uses XeSS-style presets plus a custom render-scale slider clamped to one-third through native resolution.
   - oSR's knowledge base lives under docs/wiki; RESEARCH.md is now an index/front door.
   - Practical user/developer documentation lives under docs/ with README.md as the index.
+  - Linux migration context lives in LINUX_HANDOFF.md.
   - Harness-first development takes priority over game injection until the reconstruction path is visibly and measurably stronger in controlled scenes.
 unknowns:
   - Final exported DLL names for bridge packaging beyond the XeSS diagnostic proxy.

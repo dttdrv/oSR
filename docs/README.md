@@ -18,6 +18,8 @@ high-signal; deeper operational detail lives here.
   logging/state discipline, and contribution rules.
 - [Research wiki](wiki/README.md): source-backed SR knowledge base and research
   backlog.
+- [Linux handoff](../LINUX_HANDOFF.md): maximal-detail migration handoff for
+  continuing the project on elementaryOS/Linux.
 
 ## Current Practical Path
 

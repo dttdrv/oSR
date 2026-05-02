@@ -7,6 +7,7 @@ Append-only engineering changelog. New entries go at the top of the dated sectio
 ### Documentation System Pass
 
 - Confirmed latest pushed commit before this pass was `e6ff6f1` on `master`.
+- Added `LINUX_HANDOFF.md` as the maximal-detail migration handoff for continuing oSR on elementaryOS/Linux, including preferences, decisions, mistakes, calculations, current metrics, commands, and next milestones.
 - Added `docs/README.md` as the project documentation index.
 - Added `docs/PROJECT_STATUS.md` with current phase, working capabilities, non-working areas, latest verified results, priority, and reality check.
 - Added `docs/HARNESS_USER_GUIDE.md` with portable wind tunnel, DX12 wind tunnel, native manual harness, capture analyzer, metric interpretation, exit codes, and recommended workflows.

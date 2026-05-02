@@ -5,6 +5,8 @@ lab, capture analysis, quality modes, XeSS metadata normalization, and non-DX12
 tests are expected to build on Linux. Windows-only work remains available behind
 explicit CMake options.
 
+For the maximal migration handoff, read `../LINUX_HANDOFF.md`.
+
 ## elementaryOS Setup
 
 Install a normal C++ toolchain:
